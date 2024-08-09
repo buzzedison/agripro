@@ -47,7 +47,7 @@ export default function ContactUs() {
         >
           <h2 className="text-4xl font-extrabold text-green-900 sm:text-5xl mb-4">Let's Grow Together</h2>
           <p className="mt-4 text-xl text-gray-500">
-            Have a question or want to collaborate? We'd love to hear from you!
+            Have a question or want to collaborate? We would love to hear from you!
           </p>
         </motion.div>
 
