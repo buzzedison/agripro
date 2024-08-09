@@ -45,7 +45,7 @@ export default function ContactUs() {
           transition={{ duration: 0.8, delay: 0.2 }}
           className="text-center"
         >
-          <h2 className="text-4xl font-extrabold text-green-900 sm:text-5xl mb-4">Let's Grow Together</h2>
+          <h2 className="text-4xl font-extrabold text-green-900 sm:text-5xl mb-4">Let&apos;s Grow Together</h2>
           <p className="mt-4 text-xl text-gray-500">
             Have a question or want to collaborate? We would love to hear from you!
           </p>

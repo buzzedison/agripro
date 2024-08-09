@@ -30,7 +30,9 @@ export default function KnowledgeHub() {
             </span>
           </h2>
           <p className="mt-4 max-w-2xl mx-auto text-xl text-gray-500">
-            We're building a vibrant online space where you can access a wealth of resources, connect with a thriving community of agripreneurs, and gain expert insights to fuel your success. The AgriPro Knowledge Hub is coming soon!
+            We are building a vibrant online space where you can access a wealth of resources, 
+            connect with a thriving community of agripreneurs, and gain expert insights to fuel your success. 
+            The AgriPro Knowledge Hub is coming soon!
           </p>
         </motion.div>
 
