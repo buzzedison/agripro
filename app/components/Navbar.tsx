@@ -29,48 +29,51 @@ export default function Navbar() {
     <nav className="bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
-          <div className="flex-shrink-0">
-            <Link href="/">
-              <motion.img
-                src="/logo.svg"
-                alt="AgriPro Logo"
-                className="h-12 w-auto"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              />
-            </Link>
-          </div>
-          <div className="hidden md:block">
-            <div className="ml-10 flex items-baseline space-x-4">
-              {navigation.map((item) =>
-                item.subItems ? (
-                  <div key={item.name} className="relative group">
-                    <button className="text-gray-800 font-semibold hover:text-green-600 focus:outline-none px-3 py-2 rounded-md text-sm">
-                      {item.name}
-                    </button>
-                    <div className="absolute z-10 hidden group-hover:block w-48 bg-white shadow-lg rounded-md p-4 space-y-2">
+          <Link href="/">
+            <motion.img
+              src="/images/logo.png"
+              alt="AgriPro Logo"
+              className="h-12 w-auto"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            />
+          </Link>
+          <div className="hidden md:flex items-center space-x-8">
+            {navigation.map((item) =>
+              item.subItems ? (
+                <div key={item.name} className="relative group">
+                  <button className="text-gray-800 font-semibold hover:text-green-600 focus:outline-none px-3 py-2 rounded-md text-sm">
+                    {item.name}
+                  </button>
+                  <div className="absolute z-10 hidden group-hover:block w-48 bg-white shadow-lg rounded-md mt-2 transition-all duration-300 ease-in-out transform origin-top scale-0 group-hover:scale-100">
+                    <div className="py-2">
                       {item.subItems.map((subItem) => (
                         <Link
                           key={subItem.name}
                           href={subItem.href}
-                          className="block text-gray-800 hover:text-green-600 font-medium"
+                          className="block px-4 py-2 text-gray-800 hover:bg-green-50 hover:text-green-600 font-medium transition duration-150 ease-in-out"
                         >
                           {subItem.name}
                         </Link>
                       ))}
                     </div>
                   </div>
-                ) : (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className="text-gray-800 font-semibold hover:text-green-600 px-3 py-2 rounded-md text-sm"
-                  >
-                    {item.name}
-                  </Link>
-                )
-              )}
-            </div>
+                </div>
+              ) : (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className="text-gray-800 font-semibold hover:text-green-600 px-3 py-2 rounded-md text-sm"
+                >
+                  {item.name}
+                </Link>
+              )
+            )}
+            <Link href="/get-involved">
+              <button className="bg-green-600 text-white px-6 py-2 rounded-md shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-200 ease-in-out">
+                Get Involved
+              </button>
+            </Link>
           </div>
           <div className="md:hidden">
             <button
@@ -114,6 +117,11 @@ export default function Navbar() {
                 </Link>
               )
             )}
+            <Link href="/get-involved">
+              <button className="w-full bg-green-600 text-white px-4 py-2 rounded-md shadow hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-200 ease-in-out mt-4">
+                Get Involved
+              </button>
+            </Link>
           </div>
         </div>
       )}
