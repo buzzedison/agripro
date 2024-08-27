@@ -1,14 +1,15 @@
 "use client"
+
 // components/ContactPage.tsx
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FaFacebook, FaTwitter, FaInstagram, FaLinkedin, FaEnvelope, FaPhone, FaMapMarkerAlt } from 'react-icons/fa';
+import { FaFacebook, FaTwitter, FaInstagram, FaLinkedin, FaMapMarkerAlt } from 'react-icons/fa';
 
 const socialMedia = [
-  { icon: <FaFacebook />, url: 'https://facebook.com/agripro', color: 'bg-blue-600' },
-  { icon: <FaTwitter />, url: 'https://twitter.com/agripro', color: 'bg-blue-400' },
-  { icon: <FaInstagram />, url: 'https://instagram.com/agripro', color: 'bg-pink-500' },
-  { icon: <FaLinkedin />, url: 'https://linkedin.com/company/agripro', color: 'bg-blue-700' },
+  { icon: <FaFacebook />, url: 'https://facebook.com//agriprogh', color: 'bg-blue-600' },
+  { icon: <FaTwitter />, url: 'https://twitter.com/agriprotweet', color: 'bg-black' },
+  { icon: <FaInstagram />, url: 'https://www.instagram.com/agri.pro/', color: 'bg-pink-500' },
+  { icon: <FaLinkedin />, url: 'https://www.linkedin.com/company/agriprohub', color: 'bg-blue-700' },
 ];
 
 const ContactPage: React.FC = () => {
@@ -41,7 +42,7 @@ const ContactPage: React.FC = () => {
         >
           <h1 className="text-5xl font-black text-gray-900 mb-4">Get in Touch</h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            We'd love to hear from you! Reach out to us through any of the following channels or fill out the form below.
+            We&apos;d love to hear from you! Reach out to us through any of the following channels or fill out the form below.
           </p>
         </motion.div>
 
@@ -54,16 +55,8 @@ const ContactPage: React.FC = () => {
             <h2 className="text-3xl font-bold mb-8">Contact Information</h2>
             <div className="space-y-6">
               <div className="flex items-center">
-                <FaEnvelope className="text-2xl text-green-500 mr-4" />
-                <span>info@agripro.com</span>
-              </div>
-              <div className="flex items-center">
-                <FaPhone className="text-2xl text-green-500 mr-4" />
-                <span>+1 (234) 567-8900</span>
-              </div>
-              <div className="flex items-center">
                 <FaMapMarkerAlt className="text-2xl text-green-500 mr-4" />
-                <span>123 AgriPro Street, Farmville, AG 12345</span>
+                <span>7 Tunemete St,Accra, Ghana</span>
               </div>
             </div>
 
@@ -137,7 +130,7 @@ const ContactPage: React.FC = () => {
               <div>
                 <motion.button
                   type="submit"
-                  className="w-full bg-green-500 text-white px-6 py-3 rounded-md text-lg font-semibold hover:bg-green-600 transition duration-200"
+                  className="w-full bg-green-800 text-white px-6 py-3 rounded-md text-lg font-semibold hover:bg-green-600 transition duration-200"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >

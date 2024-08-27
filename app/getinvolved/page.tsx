@@ -47,7 +47,7 @@ const GetInvolvedPage: React.FC = () => {
             Get Involved in the AgriPro Revolution
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Your involvement can make a significant impact on the future of agriculture in Africa. Choose how you'd like to contribute to our mission.
+            Your involvement can make a significant impact on the future of agriculture in Africa. Choose how you&apos;d like to contribute to our mission.
           </p>
         </motion.div>
 
@@ -81,7 +81,7 @@ const GetInvolvedPage: React.FC = () => {
               {involvementOptions[selectedOption].title}
             </h2>
             <p className="text-lg mb-6">
-              Great choice! Here's how you can get started:
+              Great choice! Here&apos;s how you can get started:
             </p>
             <ul className="list-disc list-inside space-y-2 mb-6">
               <li>Fill out our online application form</li>
