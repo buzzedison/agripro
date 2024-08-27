@@ -1,5 +1,5 @@
 // app/page.tsx
-import ContactUs from './components/ContactUs';
+// import ContactUs from './components/ContactUs';
 import Hero from './components/Hero';
 import Impact from './components/Impact';
 import KnowledgeHub from './components/KnowledgeHub';
@@ -12,7 +12,7 @@ export default function Home() {
       <Solutions/>
       <Impact/>
       <KnowledgeHub/>
-      <ContactUs/>
+      {/* <ContactUs/> */}
       {/* Add other sections here */}
     </main>
   );
