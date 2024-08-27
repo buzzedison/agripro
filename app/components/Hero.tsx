@@ -50,7 +50,7 @@ export default function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.8 }}
           >
-            <Link href="#" className="inline-block bg-white text-green-900 py-3 px-6 rounded-full font-bold tracking-wider hover:bg-opacity-90 transition duration-300">
+            <Link href="/services" className="inline-block bg-white text-green-900 py-3 px-6 rounded-full font-bold tracking-wider hover:bg-opacity-90 transition duration-300">
               Explore Our Services
             </Link>
           </motion.div>

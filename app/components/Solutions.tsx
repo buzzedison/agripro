@@ -3,6 +3,7 @@
 
 import { motion } from 'framer-motion';
 import { FaSearch, FaCompass, FaGraduationCap, FaLightbulb } from 'react-icons/fa';
+import Link from "next/link"
 
 const features = [
   {
@@ -80,12 +81,12 @@ export default function Solutions() {
             whileTap={{ scale: 0.95 }}
             className="inline-flex rounded-full shadow-lg"
           >
-            <a
-              href="#"
+            <Link
+              href="/services"
               className="inline-flex items-center justify-center px-8 py-4 border border-transparent text-xl font-medium rounded-full text-white bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
             >
               Discover How We Can Help
-            </a>
+            </Link>
           </motion.div>
         </div>
       </div>
