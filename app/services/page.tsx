@@ -9,7 +9,7 @@ const services = [
   {
     icon: <FaLightbulb size={48} />,
     title: 'Agribusiness Research and Advisory',
-    description: "Agriculture can be tough. We're here to make it easy. We provide the insights and guidance you need to make smart decisions and grow your business.",
+    description: "Agriculture can be tough. We&apos;re here to make it easy. We provide the insights and guidance you need to make smart decisions and grow your business.",
     color: 'bg-green-700',
   },
   {
@@ -47,7 +47,7 @@ export default function ServicesPage() {
           </h1>
           <p className="mt-4 text-xl text-gray-600 max-w-3xl mx-auto">
           Cultivating resilient food systems by empowering agripreneurs and driving innovation in agriculture.
-            We understand the challenges faced by agripreneurs today, and we're here to provide the tools and guidance you need to thrive.
+            We understand the challenges faced by agripreneurs today, and we&apos;re here to provide the tools and guidance you need to thrive.
           </p>
         </motion.div>
 

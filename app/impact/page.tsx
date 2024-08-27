@@ -76,7 +76,7 @@ export default function ImpactPage() {
             Our Impact
           </h1>
           <p className="mt-4 text-xl text-gray-600 max-w-3xl mx-auto">
-            We have made significant strides in empowering young people and promoting agribusiness in Africa. Here's a glimpse of our impact so far and our ambitious goals for the future.
+            We have made significant strides in empowering young people and promoting agribusiness in Africa. Here&apos;s a glimpse of our impact so far and our ambitious goals for the future.
           </p>
         </motion.div>
 
