@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@heroicons/react": "^2.1.5",
+    "@types/airtable": "^0.10.0",
+    "airtable": "^0.12.2",
     "framer-motion": "^11.3.24",
     "next": "14.2.5",
     "react": "^18",

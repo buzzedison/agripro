@@ -9,8 +9,16 @@ export default function ContactUs() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [errorMessage, setErrorMessage] = useState('');
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setIsLoading(true);
+    setSubmitStatus('idle');
+    setErrorMessage('');
+  
     try {
       const response = await fetch('/api/contact', {
         method: 'POST',
@@ -19,22 +27,28 @@ export default function ContactUs() {
         },
         body: JSON.stringify({ name, email, message }),
       });
-
+  
       if (response.ok) {
-        // Reset form fields on successful submission
+        setSubmitStatus('success');
         setName('');
         setEmail('');
         setMessage('');
-        alert('Thank you for your message. We will get back to you soon!');
       } else {
-        throw new Error('Failed to submit the form');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to submit the form');
       }
     } catch (error) {
       console.error('Error submitting form:', error);
-      alert('An error occurred while submitting the form. Please try again later.');
+      if (error instanceof Error) {
+        setErrorMessage(error.message);
+      } else {
+        setErrorMessage('An unknown error occurred');
+      }
+      setSubmitStatus('error');
+    } finally {
+      setIsLoading(false);
     }
   };
-
   return (
     <section className="bg-white py-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -141,12 +155,23 @@ export default function ContactUs() {
                 <div>
                   <button
                     type="submit"
-                    className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                    disabled={isLoading}
+                    className={`inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${
+                      isLoading ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
                   >
-                    Send Message
+                    {isLoading ? 'Sending...' : 'Send Message'}
                   </button>
                 </div>
               </form>
+              {submitStatus === 'success' && (
+                <p className="mt-4 text-green-600">Thank you for your message. We will get back to you soon!</p>
+              )}
+              {submitStatus === 'error' && (
+                <p className="mt-4 text-red-600">
+                  {errorMessage || 'An error occurred while submitting the form. Please try again later.'}
+                </p>
+              )}
             </div>
           </motion.div>
         </div>
