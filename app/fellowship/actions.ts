@@ -1,9 +1,28 @@
 'use server'
 
 import { Resend } from 'resend'
+import { createClient } from '@supabase/supabase-js'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const ADMIN_EMAILS = ['edison@agriprohub.com', 'info@agriprohub.com']
+
+// Check if Resend API key is configured
+if (!process.env.RESEND_API_KEY) {
+  console.warn('RESEND_API_KEY not configured - emails will not be sent')
+}
+
+// Supabase client for database operations
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+if (!supabaseUrl) {
+  console.error('NEXT_PUBLIC_SUPABASE_URL is not set')
+}
+if (!supabaseServiceKey) {
+  console.error('SUPABASE_SERVICE_ROLE_KEY is not set')
+}
+
+const supabase = createClient(supabaseUrl!, supabaseServiceKey!)
 
 interface FellowshipApplicationData {
   // Personal Information
@@ -36,9 +55,9 @@ interface FellowshipApplicationData {
   availabilityStart: string
   accommodationNeeds: string
   
-  // Documents
-  resumeFile: File | null
-  transcriptFile: File | null
+  // Documents  
+  resumeFile: string | null
+  transcriptFile: string | null
   videoUrl: string
   
   // References
@@ -56,20 +75,106 @@ interface FellowshipApplicationData {
 
 export async function submitFellowshipApplication(data: FellowshipApplicationData) {
   try {
-    // Validate required fields
-    if (!data.firstName || !data.lastName || !data.email || !data.motivationEssay || !data.videoUrl) {
+    console.log('Fellowship application received:', { 
+      name: (data.firstName || '') + ' ' + (data.lastName || ''), 
+      email: data.email || 'no-email',
+      hasResume: !!data.resumeFile,
+      hasVideo: !!data.videoUrl
+    })
+
+    // Check Supabase configuration first
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('Supabase configuration missing:', { 
+        hasUrl: !!supabaseUrl, 
+        hasServiceKey: !!supabaseServiceKey 
+      })
       return {
         success: false,
-        error: 'Please fill in all required fields.'
+        message: 'Database configuration error. Please contact support.'
+      }
+    }
+    
+    // Validate required fields
+    if (!data.firstName || !data.lastName || !data.email || !data.motivationEssay || !data.videoUrl) {
+      console.log('Validation failed: Missing required fields')
+      return {
+        success: false,
+        message: 'Please fill in all required fields.'
       }
     }
 
     if (!data.commitmentAgreement || !data.dataConsent) {
+      console.log('Validation failed: Missing agreements')
       return {
         success: false,
-        error: 'Please accept the required agreements.'
+        message: 'Please accept the required agreements.'
       }
     }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(data.email)) {
+      return {
+        success: false,
+        message: 'Please provide a valid email address.'
+      }
+    }
+
+    // Save application to database
+    console.log('Saving application to database...')
+    const { data: savedApplication, error: dbError } = await supabase
+      .from('fellowship_applications')
+      .insert({
+        first_name: data.firstName,
+        last_name: data.lastName,
+        email: data.email,
+        phone: data.phone,
+        date_of_birth: data.dateOfBirth,
+        nationality: data.nationality,
+        current_location: data.currentLocation,
+        education: data.education,
+        graduation_year: data.graduationYear,
+        current_status: data.currentStatus,
+        previous_experience: data.previousExperience,
+        technical_skills: data.technicalSkills,
+        language_skills: data.languageSkills,
+        relevant_experience: data.relevantExperience,
+        motivation_essay: data.motivationEssay,
+        problem_solving_example: data.problemSolvingExample,
+        career_goals: data.careerGoals,
+        preferred_placement: data.preferredPlacement,
+        availability_start: data.availabilityStart,
+        accommodation_needs: data.accommodationNeeds,
+        resume_file_name: data.resumeFile,
+        transcript_file_name: data.transcriptFile,
+        video_url: data.videoUrl,
+        reference1_name: data.reference1Name,
+        reference1_email: data.reference1Email,
+        reference1_relationship: data.reference1Relationship,
+        reference2_name: data.reference2Name,
+        reference2_email: data.reference2Email,
+        reference2_relationship: data.reference2Relationship,
+        commitment_agreement: data.commitmentAgreement,
+        data_consent: data.dataConsent,
+        status: 'submitted'
+      })
+      .select()
+
+    if (dbError) {
+      console.error('Database save error:', dbError)
+      if (dbError.code === '23505') { // Unique constraint violation
+        return {
+          success: false,
+          message: 'An application with this email address already exists. Please use a different email or contact us if you need to update your application.'
+        }
+      }
+      return {
+        success: false,
+        message: 'Failed to save application. Please try again.'
+      }
+    }
+
+    console.log('Application saved successfully:', savedApplication?.[0]?.id)
 
     // Create admin notification email
     const adminEmailHtml = `
@@ -193,8 +298,10 @@ ${data.careerGoals}
         </div>
 
         <div style="background-color: #fef3c7; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <h2 style="color: #92400e; margin-top: 0;">📹 Video Introduction</h2>
+          <h2 style="color: #92400e; margin-top: 0;">📹 Video & Documents</h2>
           <p><strong>Video URL:</strong> <a href="${data.videoUrl}" target="_blank" style="color: #16a34a;">${data.videoUrl}</a></p>
+          <p><strong>Resume File:</strong> ${data.resumeFile || 'Not uploaded'}</p>
+          <p><strong>Transcript File:</strong> ${data.transcriptFile || 'Not uploaded'}</p>
         </div>
 
         ${data.accommodationNeeds ? `
@@ -218,12 +325,19 @@ ${data.careerGoals}
     `
 
     // Send notification to admin
-    await resend.emails.send({
-      from: 'Agripro Fellowship <onboarding@resend.dev>',
-      to: ADMIN_EMAILS,
-      subject: `🌾 New Fellowship Application: ${data.firstName} ${data.lastName}`,
-      html: adminEmailHtml,
-    })
+    console.log('Sending admin notification email...')
+    try {
+      const adminEmailResult = await resend.emails.send({
+        from: 'Agripro Fellowship <onboarding@resend.dev>',
+        to: ADMIN_EMAILS,
+        subject: `🌾 New Fellowship Application: ${data.firstName} ${data.lastName}`,
+        html: adminEmailHtml,
+      })
+      console.log('Admin email result:', adminEmailResult)
+    } catch (emailError) {
+      console.error('Admin email failed:', emailError)
+      // Continue with the process even if email fails
+    }
 
     // Send confirmation to applicant
     const confirmationEmailHtml = `
@@ -298,12 +412,19 @@ ${data.careerGoals}
       </div>
     `
 
-    await resend.emails.send({
-      from: 'Agripro Fellowship <onboarding@resend.dev>',
-      to: [data.email],
-      subject: '🌾 Your Agripro Fellowship Application - Confirmed',
-      html: confirmationEmailHtml,
-    })
+    console.log('Sending confirmation email to applicant...')
+    try {
+      const confirmationEmailResult = await resend.emails.send({
+        from: 'Agripro Fellowship <onboarding@resend.dev>',
+        to: [data.email],
+        subject: '🌾 Your Agripro Fellowship Application - Confirmed',
+        html: confirmationEmailHtml,
+      })
+      console.log('Confirmation email result:', confirmationEmailResult)
+    } catch (emailError) {
+      console.error('Confirmation email failed:', emailError)
+      // Continue with the process even if email fails
+    }
 
     // Send reference notification emails
     const referenceEmailHtml = (referenceName: string, applicantName: string) => `
@@ -358,20 +479,27 @@ ${data.careerGoals}
     `
 
     // Send reference notifications
-    await Promise.all([
-      resend.emails.send({
-        from: 'Agripro Fellowship <onboarding@resend.dev>',
-        to: [data.reference1Email],
-        subject: `Reference Request: ${data.firstName} ${data.lastName} - Agripro Fellowship`,
-        html: referenceEmailHtml(data.reference1Name, `${data.firstName} ${data.lastName}`),
-      }),
-      resend.emails.send({
-        from: 'Agripro Fellowship <onboarding@resend.dev>',
-        to: [data.reference2Email],
-        subject: `Reference Request: ${data.firstName} ${data.lastName} - Agripro Fellowship`,
-        html: referenceEmailHtml(data.reference2Name, `${data.firstName} ${data.lastName}`),
-      })
-    ])
+    console.log('Sending reference notification emails...')
+    try {
+      const referenceEmailResults = await Promise.all([
+        resend.emails.send({
+          from: 'Agripro Fellowship <onboarding@resend.dev>',
+          to: [data.reference1Email],
+          subject: `Reference Request: ${data.firstName} ${data.lastName} - Agripro Fellowship`,
+          html: referenceEmailHtml(data.reference1Name, `${data.firstName} ${data.lastName}`),
+        }),
+        resend.emails.send({
+          from: 'Agripro Fellowship <onboarding@resend.dev>',
+          to: [data.reference2Email],
+          subject: `Reference Request: ${data.firstName} ${data.lastName} - Agripro Fellowship`,
+          html: referenceEmailHtml(data.reference2Name, `${data.firstName} ${data.lastName}`),
+        })
+      ])
+      console.log('Reference email results:', referenceEmailResults)
+    } catch (emailError) {
+      console.error('Reference emails failed:', emailError)
+      // Continue with the process even if email fails
+    }
 
     return { 
       success: true, 
@@ -379,9 +507,31 @@ ${data.careerGoals}
     }
   } catch (error) {
     console.error('Fellowship application submission error:', error)
+    
+    // More specific error messages
+    if (error instanceof Error) {
+      console.error('Detailed error:', error.message, error.stack)
+      if (error.message.includes('Invalid email')) {
+        return { 
+          success: false, 
+          message: 'Invalid email address provided. Please check and try again.' 
+        }
+      }
+      if (error.message.includes('Rate limit')) {
+        return { 
+          success: false, 
+          message: 'Too many submission attempts. Please wait a moment and try again.' 
+        }
+      }
+      return { 
+        success: false, 
+        message: `Submission error: ${error.message}` 
+      }
+    }
+    
     return { 
       success: false, 
-      error: 'Failed to submit application. Please try again or contact us directly.' 
+      message: 'Failed to submit application. Please ensure all required fields are filled and try again. If the problem persists, contact us at fellowship@agriprohub.com.' 
     }
   }
 }

@@ -152,12 +152,84 @@ export default function FellowshipApplication() {
     setFormData(prev => ({ ...prev, [fieldName]: file }))
   }
 
+  const validateForm = () => {
+    const requiredFields = [
+      'firstName', 'lastName', 'email', 'phone', 'dateOfBirth', 'nationality', 
+      'currentLocation', 'education', 'graduationYear', 'currentStatus',
+      'motivationEssay', 'problemSolvingExample', 'careerGoals', 'videoUrl',
+      'reference1Name', 'reference1Email', 'reference1Relationship',
+      'reference2Name', 'reference2Email', 'reference2Relationship',
+      'availabilityStart'
+    ]
+    
+    const missingFields = requiredFields.filter(field => !formData[field as keyof FormData])
+    
+    if (missingFields.length > 0) {
+      return { isValid: false, message: `Please fill in these required fields: ${missingFields.join(', ')}` }
+    }
+    
+    if (!formData.commitmentAgreement || !formData.dataConsent) {
+      return { isValid: false, message: 'Please accept both required agreements to submit your application.' }
+    }
+    
+    if (!formData.resumeFile) {
+      return { isValid: false, message: 'Please upload your resume/CV before submitting.' }
+    }
+
+    // Validate and format video URL
+    if (formData.videoUrl) {
+      let videoUrl = formData.videoUrl.trim()
+      if (!videoUrl.startsWith('http://') && !videoUrl.startsWith('https://')) {
+        videoUrl = 'https://' + videoUrl
+      }
+      
+      // Basic URL validation
+      try {
+        new URL(videoUrl)
+        // Update the form data with the properly formatted URL
+        setFormData(prev => ({ ...prev, videoUrl }))
+      } catch {
+        return { isValid: false, message: 'Please provide a valid video URL (e.g., https://youtube.com/watch?v=...).' }
+      }
+    }
+    
+    return { isValid: true, message: '' }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
     
+    // Validate form before submission
+    const validation = validateForm()
+    if (!validation.isValid) {
+      setSubmitStatus({
+        success: false,
+        message: validation.message
+      })
+      setIsSubmitting(false)
+      return
+    }
+    
     try {
-      const result = await submitFellowshipApplication(formData)
+      // Convert File objects to strings for server action (we'll handle file uploads separately)
+      const submissionData = {
+        ...formData,
+        resumeFile: formData.resumeFile ? formData.resumeFile.name : null,
+        transcriptFile: formData.transcriptFile ? formData.transcriptFile.name : null,
+      }
+      
+      const result = await submitFellowshipApplication(submissionData)
+      console.log('Submission result:', result)
+      
+      if (!result) {
+        setSubmitStatus({
+          success: false,
+          message: 'No response received from server. Please try again.'
+        })
+        return
+      }
+      
       setSubmitStatus(result)
       
       if (result.success) {
@@ -167,9 +239,10 @@ export default function FellowshipApplication() {
         }, 2000)
       }
     } catch (error) {
+      console.error('Submission error:', error)
       setSubmitStatus({
         success: false,
-        message: 'An error occurred. Please try again.'
+        message: `Submission failed: ${error instanceof Error ? error.message : 'Please try again or contact fellowship@agriprohub.com'}`
       })
     } finally {
       setIsSubmitting(false)
@@ -646,18 +719,64 @@ export default function FellowshipApplication() {
       
       <div className="bg-green-50 p-6 rounded-lg">
         <h3 className="text-lg font-semibold text-green-800 mb-4">Application Summary</h3>
-        <div className="grid md:grid-cols-2 gap-4 text-sm">
-          <div>
-            <p><strong>Name:</strong> {formData.firstName} {formData.lastName}</p>
-            <p><strong>Email:</strong> {formData.email}</p>
-            <p><strong>Location:</strong> {formData.currentLocation}</p>
-            <p><strong>Education:</strong> {formData.education}</p>
+        
+        {/* Personal Information */}
+        <div className="mb-6">
+          <h4 className="font-semibold text-gray-800 mb-2">Personal Information</h4>
+          <div className="grid md:grid-cols-2 gap-4 text-sm">
+            <div>
+              <p><strong>Name:</strong> {formData.firstName} {formData.lastName}</p>
+              <p><strong>Email:</strong> {formData.email}</p>
+              <p><strong>Phone:</strong> {formData.phone}</p>
+              <p><strong>Location:</strong> {formData.currentLocation}</p>
+            </div>
+            <div>
+              <p><strong>Nationality:</strong> {formData.nationality}</p>
+              <p><strong>Date of Birth:</strong> {formData.dateOfBirth}</p>
+              <p><strong>Education:</strong> {formData.education}</p>
+              <p><strong>Status:</strong> {formData.currentStatus}</p>
+            </div>
           </div>
-          <div>
-            <p><strong>Status:</strong> {formData.currentStatus}</p>
-            <p><strong>Technical Skills:</strong> {formData.technicalSkills.length} selected</p>
-            <p><strong>Languages:</strong> {formData.languageSkills.length} selected</p>
-            <p><strong>Preferred Start:</strong> {formData.availabilityStart}</p>
+        </div>
+
+        {/* Skills & Experience */}
+        <div className="mb-6">
+          <h4 className="font-semibold text-gray-800 mb-2">Skills & Experience</h4>
+          <div className="text-sm space-y-2">
+            <p><strong>Technical Skills:</strong> {formData.technicalSkills.length > 0 ? formData.technicalSkills.join(', ') : 'None selected'}</p>
+            <p><strong>Languages:</strong> {formData.languageSkills.length > 0 ? formData.languageSkills.join(', ') : 'None selected'}</p>
+            <p><strong>Previous Experience:</strong> {formData.previousExperience || 'Not provided'}</p>
+          </div>
+        </div>
+
+        {/* Essays */}
+        <div className="mb-6">
+          <h4 className="font-semibold text-gray-800 mb-2">Essays</h4>
+          <div className="text-sm space-y-2">
+            <p><strong>Motivation Essay:</strong> {formData.motivationEssay ? `${formData.motivationEssay.substring(0, 100)}...` : 'Not completed'}</p>
+            <p><strong>Problem-Solving Example:</strong> {formData.problemSolvingExample ? `${formData.problemSolvingExample.substring(0, 100)}...` : 'Not completed'}</p>
+            <p><strong>Career Goals:</strong> {formData.careerGoals ? `${formData.careerGoals.substring(0, 100)}...` : 'Not completed'}</p>
+          </div>
+        </div>
+
+        {/* Documents & References */}
+        <div className="mb-6">
+          <h4 className="font-semibold text-gray-800 mb-2">Documents & References</h4>
+          <div className="text-sm space-y-2">
+            <p><strong>Resume:</strong> {formData.resumeFile ? formData.resumeFile.name : 'Not uploaded'}</p>
+            <p><strong>Transcript:</strong> {formData.transcriptFile ? formData.transcriptFile.name : 'Not uploaded'}</p>
+            <p><strong>Video URL:</strong> {formData.videoUrl || 'Not provided'}</p>
+            <p><strong>References:</strong> {formData.reference1Name} & {formData.reference2Name}</p>
+          </div>
+        </div>
+
+        {/* Preferences */}
+        <div>
+          <h4 className="font-semibold text-gray-800 mb-2">Preferences</h4>
+          <div className="text-sm space-y-2">
+            <p><strong>Preferred Placement:</strong> {formData.preferredPlacement || 'No preference'}</p>
+            <p><strong>Available From:</strong> {formData.availabilityStart}</p>
+            <p><strong>Special Accommodations:</strong> {formData.accommodationNeeds || 'None'}</p>
           </div>
         </div>
       </div>
