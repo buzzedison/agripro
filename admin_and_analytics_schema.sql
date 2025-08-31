@@ -84,9 +84,15 @@ CREATE INDEX idx_article_analytics_article_id ON article_analytics(article_id);
 CREATE INDEX idx_content_access_user_id ON content_access(user_id);
 CREATE INDEX idx_content_access_content_id ON content_access(content_id);
 
--- Insert initial admin user (edison@agriprohub.com)
+-- Insert initial admin users
 INSERT INTO admin_users (email, first_name, last_name, role) VALUES
-('edison@agriprohub.com', 'Edison', 'Admin', 'super_admin');
+('edison@agriprohub.com', 'Edison', 'Admin', 'super_admin'),
+('paul@agriprohub.com', 'Paul', 'Admin', 'admin')
+ON CONFLICT (email) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  role = EXCLUDED.role,
+  updated_at = CURRENT_TIMESTAMP;
 
 -- Add update trigger for updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()

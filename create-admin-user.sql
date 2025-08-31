@@ -16,9 +16,11 @@ CREATE TABLE IF NOT EXISTS admin_users (
 -- Create index for faster lookups
 CREATE UNIQUE INDEX IF NOT EXISTS idx_admin_users_email ON admin_users(email);
 
--- Insert or update admin user
+-- Insert or update admin users
 INSERT INTO admin_users (email, first_name, last_name, role, is_active)
-VALUES ('edison@agriprohub.com', 'Edison', 'Admin', 'super_admin', true)
+VALUES 
+  ('edison@agriprohub.com', 'Edison', 'Admin', 'super_admin', true),
+  ('paul@agriprohub.com', 'Paul', 'Admin', 'admin', true)
 ON CONFLICT (email) DO UPDATE SET
   first_name = EXCLUDED.first_name,
   last_name = EXCLUDED.last_name,
@@ -26,5 +28,5 @@ ON CONFLICT (email) DO UPDATE SET
   is_active = EXCLUDED.is_active,
   updated_at = CURRENT_TIMESTAMP;
 
--- Verify the user was created
-SELECT * FROM admin_users WHERE email = 'edison@agriprohub.com';
+-- Verify the users were created
+SELECT * FROM admin_users WHERE email IN ('edison@agriprohub.com', 'paul@agriprohub.com');

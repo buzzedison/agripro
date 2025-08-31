@@ -10,16 +10,25 @@ export async function POST(request: NextRequest) {
   try {
     console.log('Setting up admin user...')
 
-    // Try to create the admin user directly
+    // Try to create the admin users directly
     const { data, error } = await supabase
       .from('admin_users')
-      .upsert({
-        email: 'edison@agriprohub.com',
-        first_name: 'Edison',
-        last_name: 'Admin',
-        role: 'super_admin',
-        is_active: true
-      }, {
+      .upsert([
+        {
+          email: 'edison@agriprohub.com',
+          first_name: 'Edison',
+          last_name: 'Admin',
+          role: 'super_admin',
+          is_active: true
+        },
+        {
+          email: 'paul@agriprohub.com',
+          first_name: 'Paul',
+          last_name: 'Admin',
+          role: 'admin',
+          is_active: true
+        }
+      ], {
         onConflict: 'email',
         ignoreDuplicates: false
       })
@@ -59,16 +68,25 @@ export async function POST(request: NextRequest) {
           }, { status: 500 })
         }
 
-        // Now try to insert the admin user again
+        // Now try to insert the admin users again
         const { data: retryData, error: retryError } = await supabase
           .from('admin_users')
-          .upsert({
-            email: 'edison@agriprohub.com',
-            first_name: 'Edison',
-            last_name: 'Admin',
-            role: 'super_admin',
-            is_active: true
-          }, {
+          .upsert([
+            {
+              email: 'edison@agriprohub.com',
+              first_name: 'Edison',
+              last_name: 'Admin',
+              role: 'super_admin',
+              is_active: true
+            },
+            {
+              email: 'paul@agriprohub.com',
+              first_name: 'Paul',
+              last_name: 'Admin',
+              role: 'admin',
+              is_active: true
+            }
+          ], {
             onConflict: 'email',
             ignoreDuplicates: false
           })
@@ -83,8 +101,8 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({
           success: true,
-          message: 'Admin user created successfully (table was created first)',
-          adminData: retryData?.[0]
+          message: 'Admin users created successfully (table was created first)',
+          adminData: retryData
         })
       }
 
@@ -96,8 +114,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Admin user created/updated successfully',
-      adminData: data?.[0]
+      message: 'Admin users created/updated successfully',
+      adminData: data
     })
 
   } catch (error) {
