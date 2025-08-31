@@ -27,56 +27,47 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // IMPORTANT: Avoid writing any logic between createServerClient and
-  // supabase.auth.getUser(). A simple mistake could make it very hard to debug
-  // issues with users being randomly logged out.
-
+  // This will refresh session if expired - required for Server Components
+  // https://supabase.com/docs/guides/auth/server-side/nextjs
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Protect knowledge hub content routes that require authentication
-  const isKnowledgeHubProtectedRoute = 
-    request.nextUrl.pathname.startsWith('/knowledgehub/insights/') ||
-    request.nextUrl.pathname.startsWith('/knowledgehub/practices/') ||
-    request.nextUrl.pathname.startsWith('/knowledgehub/research/') ||
-    request.nextUrl.pathname.startsWith('/knowledgehub/whitepapers/') ||
-    request.nextUrl.pathname.startsWith('/knowledgehub/videos/')
+  // Check if user is accessing admin routes
+  if (request.nextUrl.pathname.startsWith('/admin')) {
+    // Allow access to debug page and setup endpoints without admin check
+    if (request.nextUrl.pathname === '/admin/debug' ||
+        request.nextUrl.pathname.startsWith('/api/admin/check-status') ||
+        request.nextUrl.pathname.startsWith('/api/admin/setup')) {
+      return supabaseResponse
+    }
 
-  // Protect expert-related pages - requires authentication
-  const isExpertApplicationRoute = request.nextUrl.pathname === '/knowledgehub/experts/apply'
-  const isExpertsListingRoute = request.nextUrl.pathname === '/knowledgehub/experts'
+    if (!user) {
+      // Redirect to login if not authenticated
+      const url = request.nextUrl.clone()
+      url.pathname = '/auth/login'
+      url.searchParams.set('redirect', request.nextUrl.pathname)
+      return NextResponse.redirect(url)
+    }
 
-  // Check if user has reached content limit (stored in cookies)
-  const contentViewCount = parseInt(request.cookies.get('content_views')?.value || '0')
-  const hasReachedLimit = contentViewCount >= 2
+    // For now, allow edison@agriprohub.com to access admin routes
+    // This is temporary until the database is properly set up
+    if (user.email === 'edison@agriprohub.com') {
+      return supabaseResponse
+    }
 
-  if (isKnowledgeHubProtectedRoute && hasReachedLimit && !user) {
-    // Redirect to login with return URL
-    const redirectUrl = new URL('/auth/login', request.url)
-    redirectUrl.searchParams.set('redirectTo', request.nextUrl.pathname)
-    return NextResponse.redirect(redirectUrl)
+    // For other users, check if they are admin
+    const isAdmin = await checkIfUserIsAdmin(user.email!)
+    if (!isAdmin) {
+      // Redirect to unauthorized page
+      const url = request.nextUrl.clone()
+      url.pathname = '/unauthorized'
+      return NextResponse.redirect(url)
+    }
   }
 
-  // Protect expert-related pages - always require authentication
-  if ((isExpertApplicationRoute || isExpertsListingRoute) && !user) {
-    const redirectUrl = new URL('/auth/login', request.url)
-    redirectUrl.searchParams.set('redirectTo', request.nextUrl.pathname)
-    return NextResponse.redirect(redirectUrl)
-  }
-
-  // IMPORTANT: You *must* return the supabaseResponse object as it is. If you're
-  // creating a new response object with NextResponse.next() make sure to:
-  // 1. Pass the request in it, like so:
-  //    const myNewResponse = NextResponse.next({ request })
-  // 2. Copy over the cookies, like so:
-  //    myNewResponse.cookies.setAll(supabaseResponse.cookies.getAll())
-  // 3. Change the myNewResponse object to fit your needs, but avoid changing
-  //    the cookies!
-  // 4. Finally:
-  //    return myNewResponse
-  // If this is not done, you may be causing the browser and server to go out
-  // of sync and terminate the user's session prematurely!
+  // IMPORTANT: Avoid writing any logic between createServerClient and
+  // supabaseResponse creation above.
 
   return supabaseResponse
 }
@@ -92,4 +83,34 @@ export const config = {
      */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
-} 
+}
+
+async function checkIfUserIsAdmin(email: string): Promise<boolean> {
+  try {
+    // Use createClient from supabase-js directly for middleware
+    const { createClient } = await import('@supabase/supabase-js')
+    
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    const { data, error } = await supabase
+      .from('admin_users')
+      .select('id')
+      .eq('email', email)
+      .eq('is_active', true)
+      .single()
+
+    if (error) {
+      // If table doesn't exist or no admin user found, return false
+      console.log('Admin check failed:', error.message)
+      return false
+    }
+
+    return !!data
+  } catch (error) {
+    console.error('Error checking admin status in middleware:', error)
+    return false
+  }
+}

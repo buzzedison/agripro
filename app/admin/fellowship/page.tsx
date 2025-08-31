@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { FaEye, FaStar, FaDownload, FaSearch, FaFilter, FaUser, FaCalendarAlt } from 'react-icons/fa'
 
@@ -57,12 +57,12 @@ export default function FellowshipAdmin() {
     }
   }
 
-  const filterApplications = () => {
+  const filterApplications = useCallback(() => {
     let filtered = applications
 
     // Search filter
     if (searchTerm) {
-      filtered = filtered.filter(app => 
+      filtered = filtered.filter(app =>
         `${app.first_name} ${app.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
         app.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
         app.current_location.toLowerCase().includes(searchTerm.toLowerCase())
@@ -82,7 +82,7 @@ export default function FellowshipAdmin() {
     }
 
     setFilteredApplications(filtered)
-  }
+  }, [applications, searchTerm, statusFilter, shortlistFilter])
 
   const toggleShortlist = async (id: number, currentStatus: boolean) => {
     try {

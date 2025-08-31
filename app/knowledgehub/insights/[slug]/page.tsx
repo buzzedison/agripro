@@ -6,6 +6,8 @@ import { urlForImage } from '@/lib/image'
 import { PortableText } from '@portabletext/react'
 import { format } from 'date-fns'
 import { ArrowLeft, Info, AlertTriangle, CheckCircle, XCircle, Lightbulb } from 'lucide-react'
+import ArticleStats from '../../components/ArticleStats'
+import ArticleViewTracker from '../../components/ArticleViewTracker'
 
 type Props = {
   params: { slug: string }
@@ -140,18 +142,25 @@ export default async function InsightPage({ params }: Props) {
 
   return (
     <article className="min-h-screen bg-gray-50">
+      {/* View Tracker */}
+      <ArticleViewTracker
+        articleId={insight._id || params.slug}
+        articleType="insight"
+        articleTitle={insight.title}
+      />
+
       {/* Hero Section */}
       <div className="bg-white border-b">
         <div className="max-w-4xl mx-auto px-4 py-12">
           {/* Back Button */}
-          <Link 
-            href="/knowledgehub/insights" 
+          <Link
+            href="/knowledgehub/insights"
             className="inline-flex items-center gap-2 text-gray-600 hover:text-green-600 transition-colors mb-8 group"
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
             <span>Back to Insights</span>
           </Link>
-          
+
           <div className="mb-8">
             <span className="inline-block px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium mb-4">
               {insight.category}
@@ -188,13 +197,20 @@ export default async function InsightPage({ params }: Props) {
               </p>
             </div>
           )}
-          
+
           <div className="prose prose-lg prose-green max-w-none">
-            <PortableText 
+            <PortableText
               value={insight.content}
               components={components}
             />
           </div>
+
+          {/* Article Stats */}
+          <ArticleStats
+            articleId={insight._id || params.slug}
+            articleType="insight"
+            articleTitle={insight.title}
+          />
         </div>
       </div>
     </article>

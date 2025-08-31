@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { FaArrowLeft, FaStar, FaEnvelope, FaPhone, FaMapMarkerAlt, FaCalendarAlt, FaGraduationCap, FaVideo, FaFileAlt, FaUser } from 'react-icons/fa'
@@ -54,13 +54,7 @@ export default function ApplicationDetail() {
   const [notes, setNotes] = useState('')
   const [rating, setRating] = useState<number>(0)
 
-  useEffect(() => {
-    if (id) {
-      fetchApplication()
-    }
-  }, [id])
-
-  const fetchApplication = async () => {
+  const fetchApplication = useCallback(async () => {
     try {
       const response = await fetch(`/api/admin/fellowship/applications/${id}`)
       if (response.ok) {
@@ -76,7 +70,13 @@ export default function ApplicationDetail() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [id])
+
+  useEffect(() => {
+    if (id) {
+      fetchApplication()
+    }
+  }, [id, fetchApplication])
 
   const updateApplication = async (updates: Partial<FellowshipApplication>) => {
     setSaving(true)

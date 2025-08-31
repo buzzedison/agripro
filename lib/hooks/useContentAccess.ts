@@ -12,6 +12,7 @@ interface ContentAccessState {
   canAccessContent: boolean;
   incrementViewCount: () => void;
   resetViewCount: () => void;
+  trackArticleView: (articleId: string, articleType: string, articleTitle?: string, viewDuration?: number) => Promise<void>;
 }
 
 export function useContentAccess(): ContentAccessState {
@@ -86,13 +87,34 @@ export function useContentAccess(): ContentAccessState {
     if (!user) {
       const newCount = contentViewCount + 1;
       setContentViewCount(newCount);
-      
+
       // Set cookie that expires in 24 hours
       if (typeof document !== 'undefined') {
         const expires = new Date();
         expires.setTime(expires.getTime() + (24 * 60 * 60 * 1000));
         document.cookie = `content_views=${newCount}; expires=${expires.toUTCString()}; path=/`;
       }
+    }
+  };
+
+  const trackArticleView = async (articleId: string, articleType: string, articleTitle?: string, viewDuration?: number) => {
+    try {
+      await fetch('/api/knowledge-hub/track-view', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          articleId,
+          articleType,
+          articleTitle,
+          userEmail: user?.email,
+          userId: user?.id,
+          viewDuration
+        }),
+      });
+    } catch (error) {
+      console.error('Error tracking article view:', error);
     }
   };
 
@@ -114,5 +136,6 @@ export function useContentAccess(): ContentAccessState {
     canAccessContent,
     incrementViewCount,
     resetViewCount,
+    trackArticleView,
   };
 } 
