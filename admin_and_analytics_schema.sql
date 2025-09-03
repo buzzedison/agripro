@@ -87,7 +87,8 @@ CREATE INDEX idx_content_access_content_id ON content_access(content_id);
 -- Insert initial admin users
 INSERT INTO admin_users (email, first_name, last_name, role) VALUES
 ('edison@agriprohub.com', 'Edison', 'Admin', 'super_admin'),
-('paul@agriprohub.com', 'Paul', 'Admin', 'admin')
+('paul@agriprohub.com', 'Paul', 'Admin', 'admin'),
+('lawrence@agriprohub.com', 'Lawrence', 'Admin', 'admin')
 ON CONFLICT (email) DO UPDATE SET
   first_name = EXCLUDED.first_name,
   last_name = EXCLUDED.last_name,

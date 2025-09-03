@@ -27,6 +27,13 @@ export async function POST(request: NextRequest) {
           last_name: 'Admin',
           role: 'admin',
           is_active: true
+        },
+        {
+          email: 'lawrence@agriprohub.com',
+          first_name: 'Lawrence',
+          last_name: 'Admin',
+          role: 'admin',
+          is_active: true
         }
       ], {
         onConflict: 'email',
@@ -82,6 +89,13 @@ export async function POST(request: NextRequest) {
             {
               email: 'paul@agriprohub.com',
               first_name: 'Paul',
+              last_name: 'Admin',
+              role: 'admin',
+              is_active: true
+            },
+            {
+              email: 'lawrence@agriprohub.com',
+              first_name: 'Lawrence',
               last_name: 'Admin',
               role: 'admin',
               is_active: true

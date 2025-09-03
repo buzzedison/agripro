@@ -20,7 +20,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_admin_users_email ON admin_users(email);
 INSERT INTO admin_users (email, first_name, last_name, role, is_active)
 VALUES 
   ('edison@agriprohub.com', 'Edison', 'Admin', 'super_admin', true),
-  ('paul@agriprohub.com', 'Paul', 'Admin', 'admin', true)
+  ('paul@agriprohub.com', 'Paul', 'Admin', 'admin', true),
+  ('lawrence@agriprohub.com', 'Lawrence', 'Admin', 'admin', true)
 ON CONFLICT (email) DO UPDATE SET
   first_name = EXCLUDED.first_name,
   last_name = EXCLUDED.last_name,
@@ -29,4 +30,4 @@ ON CONFLICT (email) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 -- Verify the users were created
-SELECT * FROM admin_users WHERE email IN ('edison@agriprohub.com', 'paul@agriprohub.com');
+SELECT * FROM admin_users WHERE email IN ('edison@agriprohub.com', 'paul@agriprohub.com', 'lawrence@agriprohub.com');
