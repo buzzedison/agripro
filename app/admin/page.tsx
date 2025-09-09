@@ -34,7 +34,19 @@ export default function AdminDashboard() {
     try {
       setStatsLoading(true)
       console.log('Fetching admin overview stats...')
-      const response = await fetch('/api/admin/overview')
+
+      // Add timeout to prevent indefinite loading
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 second timeout
+
+      const response = await fetch('/api/admin/overview', {
+        signal: controller.signal,
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      })
+
+      clearTimeout(timeoutId)
 
       if (response.ok) {
         const data = await response.json()
@@ -47,10 +59,32 @@ export default function AdminDashboard() {
           uniqueViewers: data.uniqueViewers || 0
         })
       } else {
-        console.error('Failed to fetch admin stats')
+        console.error('Failed to fetch admin stats:', response.status, response.statusText)
+        // Still update with zeros if API fails
+        setStats({
+          totalUsers: 0,
+          pageViews: 0,
+          applications: 0,
+          signups: 0,
+          uniqueViewers: 0
+        })
       }
     } catch (error) {
       console.error('Error fetching admin stats:', error)
+
+      // If it's an abort error, still set some default stats
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('Request timed out, using default stats')
+      }
+
+      // Always set default stats on error to prevent infinite loading
+      setStats({
+        totalUsers: 0,
+        pageViews: 0,
+        applications: 0,
+        signups: 0,
+        uniqueViewers: 0
+      })
     } finally {
       setStatsLoading(false)
     }

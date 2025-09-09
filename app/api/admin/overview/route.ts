@@ -37,15 +37,28 @@ export async function GET(request: NextRequest) {
 
     console.log('Applications query result:', { count: applicationsCount, error: applicationsError })
 
-    // Get unique viewers
-    const { data: uniqueViewers, error: uniqueError } = await supabase
-      .from('article_views')
-      .select('user_email, ip_address')
-      .not('user_email', 'is', null)
+    // Get unique viewers - use a more efficient query
+    let uniqueCount = 0
+    let uniqueError = null
 
-    // Calculate unique viewers
-    const uniqueEmails = new Set(uniqueViewers?.map(v => v.user_email).filter(Boolean) || [])
-    const uniqueCount = uniqueEmails.size
+    try {
+      // Use a more efficient query to count distinct user_emails
+      const { data: uniqueViewers, error: uniqueErr } = await supabase
+        .from('article_views')
+        .select('user_email')
+        .not('user_email', 'is', null)
+        .limit(1000) // Limit to avoid performance issues
+
+      uniqueError = uniqueErr
+
+      if (uniqueViewers) {
+        const uniqueEmails = new Set(uniqueViewers.map(v => v.user_email).filter(Boolean))
+        uniqueCount = uniqueEmails.size
+      }
+    } catch (err) {
+      console.log('Error calculating unique viewers:', err instanceof Error ? err.message : 'Unknown error')
+      uniqueCount = 0
+    }
 
     console.log('Admin overview results:', {
       signups: signupsCount || 0,

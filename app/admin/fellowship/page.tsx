@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { FaEye, FaStar, FaDownload, FaSearch, FaFilter, FaUser, FaCalendarAlt } from 'react-icons/fa'
+import { FaEye, FaStar, FaDownload, FaSearch, FaFilter, FaUser, FaCalendarAlt, FaPaperPlane, FaCheckSquare, FaSquare } from 'react-icons/fa'
 
 interface FellowshipApplication {
   id: number
@@ -31,6 +31,9 @@ export default function FellowshipAdmin() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [shortlistFilter, setShortlistFilter] = useState('all')
+  const [selectedApplications, setSelectedApplications] = useState<number[]>([])
+  const [sendingAssessments, setSendingAssessments] = useState(false)
+  const [sendResult, setSendResult] = useState<any>(null)
 
   useEffect(() => {
     fetchApplications()
@@ -143,6 +146,62 @@ export default function FellowshipAdmin() {
     }
   }
 
+  const toggleApplicationSelection = (applicationId: number) => {
+    setSelectedApplications(prev =>
+      prev.includes(applicationId)
+        ? prev.filter(id => id !== applicationId)
+        : [...prev, applicationId]
+    )
+  }
+
+  const selectAllShortlisted = () => {
+    const shortlistedIds = filteredApplications
+      .filter(app => app.shortlisted && app.status !== 'assessment_invited')
+      .map(app => app.id)
+    setSelectedApplications(shortlistedIds)
+  }
+
+  const clearSelection = () => {
+    setSelectedApplications([])
+  }
+
+  const sendAssessments = async () => {
+    if (selectedApplications.length === 0) {
+      alert('Please select at least one application to send assessments to.')
+      return
+    }
+
+    try {
+      setSendingAssessments(true)
+      setSendResult(null)
+
+      const response = await fetch('/api/admin/fellowship/send-assessment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ applicationIds: selectedApplications })
+      })
+
+      const data = await response.json()
+      setSendResult(data)
+
+      if (data.success) {
+        // Refresh applications to show updated status
+        await fetchApplications()
+        // Clear selection
+        setSelectedApplications([])
+        alert(`✅ Assessment invitations sent successfully!\n\nSent to: ${data.sent?.length || 0} candidates\nErrors: ${data.errors?.length || 0}`)
+      } else {
+        alert(`❌ Failed to send assessments: ${data.error}`)
+      }
+    } catch (error) {
+      console.error('Error sending assessments:', error)
+      setSendResult({ error: 'Network error occurred' })
+      alert('❌ Network error occurred while sending assessments.')
+    } finally {
+      setSendingAssessments(false)
+    }
+  }
+
   const getStatusColor = (status: string) => {
     const colors = {
       'submitted': 'bg-blue-100 text-blue-800',
@@ -252,15 +311,75 @@ export default function FellowshipAdmin() {
               </select>
             </div>
 
-            {/* Export Button */}
-            <button
-              onClick={exportApplications}
-              className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-            >
-              <FaDownload className="mr-2" />
-              Export CSV
-            </button>
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-2">
+              {/* Send Assessment Actions */}
+              <div className="flex gap-2">
+                <button
+                  onClick={selectAllShortlisted}
+                  className="inline-flex items-center px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Select Shortlisted
+                </button>
+                {selectedApplications.length > 0 && (
+                  <>
+                    <button
+                      onClick={clearSelection}
+                      className="inline-flex items-center px-3 py-2 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700 transition-colors"
+                    >
+                      Clear ({selectedApplications.length})
+                    </button>
+                    <button
+                      onClick={sendAssessments}
+                      disabled={sendingAssessments}
+                      className="inline-flex items-center px-3 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <FaPaperPlane className="mr-1" />
+                      {sendingAssessments ? 'Sending...' : 'Send Assessment'}
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {/* Export Button */}
+              <button
+                onClick={exportApplications}
+                className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <FaDownload className="mr-2" />
+                Export CSV
+              </button>
+            </div>
           </div>
+
+          {/* Send Assessment Results */}
+          {sendResult && (
+            <div className="mt-4 p-4 rounded-lg">
+              {sendResult.success ? (
+                <div className="bg-green-50 border border-green-200 text-green-800">
+                  <div className="flex items-center">
+                    <FaCheckSquare className="mr-2" />
+                    <span className="font-medium">Assessment invitations sent successfully!</span>
+                  </div>
+                  <div className="mt-2 text-sm">
+                    <p>Sent to: {sendResult.sent?.length || 0} candidates</p>
+                    {sendResult.errors?.length > 0 && (
+                      <p className="text-red-600">Errors: {sendResult.errors.length}</p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-red-50 border border-red-200 text-red-800">
+                  <div className="flex items-center">
+                    <span className="font-medium">Failed to send assessments</span>
+                  </div>
+                  <div className="mt-2 text-sm">
+                    <p>{sendResult.error}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Applications Table */}
@@ -269,6 +388,20 @@ export default function FellowshipAdmin() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <input
+                      type="checkbox"
+                      checked={selectedApplications.length > 0 && selectedApplications.length === filteredApplications.filter(app => app.shortlisted && app.status !== 'assessment_invited').length}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          selectAllShortlisted()
+                        } else {
+                          clearSelection()
+                        }
+                      }}
+                      className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                    />
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Applicant
                   </th>
@@ -289,6 +422,16 @@ export default function FellowshipAdmin() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredApplications.map((application) => (
                   <tr key={application.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      {application.shortlisted && application.status !== 'assessment_invited' && (
+                        <input
+                          type="checkbox"
+                          checked={selectedApplications.includes(application.id)}
+                          onChange={() => toggleApplicationSelection(application.id)}
+                          className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                        />
+                      )}
+                    </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10">
