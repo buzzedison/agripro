@@ -1,9 +1,63 @@
-'use client'
+"use client"
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { FaArrowLeft, FaStar, FaEnvelope, FaPhone, FaMapMarkerAlt, FaCalendarAlt, FaGraduationCap, FaVideo, FaFileAlt, FaUser } from 'react-icons/fa'
+import { FaArrowLeft, FaStar, FaEnvelope, FaPhone, FaMapMarkerAlt, FaCalendarAlt, FaGraduationCap, FaVideo, FaFileAlt, FaUser, FaSync, FaCheckCircle, FaExclamationTriangle } from 'react-icons/fa'
+
+interface AssessmentQuestion {
+  id: number
+  question_number: number
+  section: string
+  question_type: 'multiple_choice' | 'essay' | 'ranking'
+  question: string
+  options: string[] | null
+  max_points: number
+}
+
+interface AssessmentResponse {
+  id: number
+  response_text: string | null
+  response_options: string[] | null
+  points_awarded: number | null
+  graded_by: string | null
+  graded_at: string | null
+  created_at: string
+  assessment_questions: AssessmentQuestion
+}
+
+interface AssessmentResult {
+  id: number
+  invitation_id: number
+  total_score: number
+  max_score: number
+  percentage_score: number | null
+  qualitative_score: number
+  quantitative_score: number
+  status: string
+  reviewer_notes: string | null
+  recommendation: string | null
+  reviewed_by: string | null
+  reviewed_at: string | null
+}
+
+interface AssessmentInvitation {
+  id: number
+  application_id?: number
+  invitation_token?: string
+  status: string
+  sent_at: string | null
+  started_at: string | null
+  completed_at: string | null
+  expires_at: string | null
+}
+
+interface AssessmentData {
+  success: boolean
+  invitation: AssessmentInvitation | null
+  responses: AssessmentResponse[]
+  result: AssessmentResult | null
+}
 
 interface FellowshipApplication {
   id: number
@@ -53,6 +107,47 @@ export default function ApplicationDetail() {
   const [saving, setSaving] = useState(false)
   const [notes, setNotes] = useState('')
   const [rating, setRating] = useState<number>(0)
+  const [assessmentLoading, setAssessmentLoading] = useState(false)
+  const [assessmentError, setAssessmentError] = useState<string | null>(null)
+  const [assessmentData, setAssessmentData] = useState<AssessmentData | null>(null)
+  const [responseScores, setResponseScores] = useState<Record<number, number>>({})
+  const [resultStatus, setResultStatus] = useState<string>('pending')
+  const [recommendation, setRecommendation] = useState<string>('')
+  const [reviewerName, setReviewerName] = useState<string>('')
+  const [reviewerNotes, setReviewerNotes] = useState<string>('')
+  const [qualitativeScore, setQualitativeScore] = useState<string>('')
+  const [quantitativeScore, setQuantitativeScore] = useState<string>('')
+  const [assessmentSaving, setAssessmentSaving] = useState(false)
+  const [assessmentSaveMessage, setAssessmentSaveMessage] = useState<string | null>(null)
+  const [assessmentSaveError, setAssessmentSaveError] = useState<string | null>(null)
+
+  const fetchAssessment = useCallback(async () => {
+    if (!id) return
+
+    try {
+      setAssessmentLoading(true)
+      setAssessmentError(null)
+      setAssessmentSaveMessage(null)
+      setAssessmentSaveError(null)
+
+      const response = await fetch(`/api/admin/fellowship/assessment-results?application_id=${id}`)
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to load assessment' }))
+        setAssessmentError(errorData.error || 'Failed to load assessment data')
+        setAssessmentData(null)
+        return
+      }
+
+      const data = await response.json()
+      setAssessmentData(data)
+    } catch (error) {
+      console.error('Error fetching assessment data:', error)
+      setAssessmentError('Network error while loading assessment data')
+      setAssessmentData(null)
+    } finally {
+      setAssessmentLoading(false)
+    }
+  }, [id])
 
   const fetchApplication = useCallback(async () => {
     try {
@@ -75,8 +170,44 @@ export default function ApplicationDetail() {
   useEffect(() => {
     if (id) {
       fetchApplication()
+      fetchAssessment()
     }
-  }, [id, fetchApplication])
+  }, [id, fetchApplication, fetchAssessment])
+
+  useEffect(() => {
+    if (!assessmentData) {
+      setResponseScores({})
+      setResultStatus('pending')
+      setRecommendation('')
+      setReviewerName('')
+      setReviewerNotes('')
+      setQualitativeScore('')
+      setQuantitativeScore('')
+      return
+    }
+
+    const initialScores: Record<number, number> = {}
+    assessmentData.responses.forEach(response => {
+      initialScores[response.id] = response.points_awarded ?? 0
+    })
+    setResponseScores(initialScores)
+
+    const result = assessmentData.result
+    setResultStatus(result?.status || 'pending')
+    setRecommendation(result?.recommendation || '')
+    setReviewerName(result?.reviewed_by || '')
+    setReviewerNotes(result?.reviewer_notes || '')
+    setQualitativeScore(
+      result?.qualitative_score !== null && result?.qualitative_score !== undefined
+        ? String(result.qualitative_score)
+        : ''
+    )
+    setQuantitativeScore(
+      result?.quantitative_score !== null && result?.quantitative_score !== undefined
+        ? String(result.quantitative_score)
+        : ''
+    )
+  }, [assessmentData])
 
   const updateApplication = async (updates: Partial<FellowshipApplication>) => {
     setSaving(true)
@@ -110,6 +241,59 @@ export default function ApplicationDetail() {
 
   const updateStatus = async (newStatus: string) => {
     await updateApplication({ status: newStatus })
+  }
+
+  const handleAssessmentRefresh = async () => {
+    await fetchAssessment()
+  }
+
+  const saveAssessmentGrading = async () => {
+    if (!assessmentData?.invitation) return
+
+    try {
+      setAssessmentSaving(true)
+      setAssessmentSaveMessage(null)
+      setAssessmentSaveError(null)
+
+      const totalAwarded = Object.values(responseScores).reduce((sum, value) => sum + (Number(value) || 0), 0)
+      const maxPoints = assessmentData.responses.reduce((sum, response) => sum + (response.assessment_questions?.max_points || 0), 0)
+
+      const payload = {
+        invitationId: assessmentData.invitation.id,
+        responses: assessmentData.responses.map(response => ({
+          id: response.id,
+          points_awarded: Number(responseScores[response.id] ?? 0)
+        })),
+        totalScore: totalAwarded,
+        maxScore: maxPoints,
+        resultStatus,
+        recommendation,
+        reviewerName,
+        reviewerNotes,
+        qualitativeScore,
+        quantitativeScore
+      }
+
+      const res = await fetch('/api/admin/fellowship/assessment-grade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to save assessment grading')
+      }
+
+      setAssessmentSaveMessage('Assessment grading saved successfully')
+      await fetchAssessment()
+    } catch (error) {
+      console.error('Save assessment grading error:', error)
+      setAssessmentSaveError(error instanceof Error ? error.message : 'Failed to save assessment grading')
+    } finally {
+      setAssessmentSaving(false)
+    }
   }
 
   const getStatusColor = (status: string) => {
@@ -197,6 +381,280 @@ export default function ApplicationDetail() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Assessment & Scoring Section */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Assessment &amp; Scoring</h2>
+                  <p className="text-sm text-gray-600">Review submitted responses and record your evaluation</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleAssessmentRefresh}
+                    className="inline-flex items-center px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                  >
+                    <FaSync className={`mr-2 ${assessmentLoading ? 'animate-spin' : ''}`} />
+                    Refresh
+                  </button>
+                  {assessmentData?.invitation?.status === 'completed' && (
+                    <span className="inline-flex items-center px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">
+                      <FaCheckCircle className="mr-1" /> Completed
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {assessmentError && (
+                <div className="mb-4 flex items-center text-red-600 bg-red-50 border border-red-200 rounded-lg p-4">
+                  <FaExclamationTriangle className="mr-2" />
+                  <span>{assessmentError}</span>
+                </div>
+              )}
+
+              {assessmentSaveMessage && (
+                <div className="mb-4 flex items-center text-green-700 bg-green-50 border border-green-200 rounded-lg p-4">
+                  <FaCheckCircle className="mr-2" />
+                  <span>{assessmentSaveMessage}</span>
+                </div>
+              )}
+
+              {assessmentSaveError && (
+                <div className="mb-4 flex items-center text-red-700 bg-red-50 border border-red-200 rounded-lg p-4">
+                  <FaExclamationTriangle className="mr-2" />
+                  <span>{assessmentSaveError}</span>
+                </div>
+              )}
+
+              {assessmentLoading ? (
+                <div className="py-10 flex flex-col items-center text-gray-500">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mb-3"></div>
+                  Loading assessment data...
+                </div>
+              ) : !assessmentData ? (
+                <div className="py-10 text-center text-gray-500">
+                  Assessment data will appear here once the candidate completes their assessment.
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Invitation Summary */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <div className="text-sm text-gray-500">Invitation Status</div>
+                      <div className="text-lg font-semibold capitalize">{assessmentData.invitation?.status || 'unknown'}</div>
+                      <div className="mt-2 text-xs text-gray-400">
+                        Sent: {assessmentData.invitation?.sent_at ? new Date(assessmentData.invitation.sent_at).toLocaleString() : 'N/A'}
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <div className="text-sm text-gray-500">Progress</div>
+                      <div className="text-lg font-semibold">
+                        {assessmentData.invitation?.started_at ? 'Started' : 'Not Started'}
+                      </div>
+                      <div className="mt-2 text-xs text-gray-400">
+                        Completed: {assessmentData.invitation?.completed_at ? new Date(assessmentData.invitation.completed_at).toLocaleString() : 'Pending'}
+                      </div>
+                    </div>
+                      <div className="bg-gray-50 rounded-lg p-4">
+                      <div className="text-sm text-gray-500">Assessment Link</div>
+                        <div className="text-xs text-green-700 break-all">
+                          {(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000')}/assessment/{assessmentData.invitation?.invitation_token}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Scoring Summary */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <div className="text-sm text-gray-500">Total Score</div>
+                        <div className="text-2xl font-bold text-green-700">
+                          {assessmentData.result?.total_score ?? 0} / {assessmentData.result?.max_score ?? 0}
+                        </div>
+                      </div>
+                      <div className="mt-3 md:mt-0 flex items-center gap-2">
+                        <select
+                          value={resultStatus}
+                          onChange={(e) => setResultStatus(e.target.value)}
+                          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                        >
+                          <option value="pending">Pending Review</option>
+                          <option value="graded">Graded</option>
+                          <option value="reviewed">Reviewed</option>
+                        </select>
+                        <select
+                          value={recommendation}
+                          onChange={(e) => setRecommendation(e.target.value)}
+                          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                        >
+                          <option value="">No Recommendation</option>
+                          <option value="accept">Strong Accept</option>
+                          <option value="interview">Interview</option>
+                          <option value="waitlist">Waitlist</option>
+                          <option value="reject">Reject</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Qualitative Score (out of 45)</label>
+                        <input
+                          type="number"
+                          value={qualitativeScore}
+                          onChange={(e) => setQualitativeScore(e.target.value)}
+                          placeholder="e.g. 32"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Quantitative Score (out of 55)</label>
+                        <input
+                          type="number"
+                          value={quantitativeScore}
+                          onChange={(e) => setQuantitativeScore(e.target.value)}
+                          placeholder="e.g. 40"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Reviewer Notes */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Reviewer Name</label>
+                        <input
+                          type="text"
+                          value={reviewerName}
+                          onChange={(e) => setReviewerName(e.target.value)}
+                          placeholder="Who scored this assessment?"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                        />
+                      </div>
+                      <div>
+                        <div className="text-sm text-gray-500">Last Reviewed</div>
+                        <div className="text-sm">
+                          {assessmentData.result?.reviewed_at ? new Date(assessmentData.result.reviewed_at).toLocaleString() : 'Not yet reviewed'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Reviewer Notes &amp; Summary</label>
+                      <textarea
+                        rows={4}
+                        value={reviewerNotes}
+                        onChange={(e) => setReviewerNotes(e.target.value)}
+                        placeholder="Summarize key strengths, weaknesses, and final recommendation..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Responses Table */}
+                  <div className="border rounded-lg overflow-hidden">
+                    <div className="bg-gray-100 px-4 py-3 border-b">
+                      <div className="font-semibold text-gray-800">Question Responses</div>
+                      <p className="text-sm text-gray-600">Score each response below and add qualitative remarks in the notes panel.</p>
+                    </div>
+                    <div className="divide-y">
+                      {assessmentData.responses.length === 0 ? (
+                        <div className="p-6 text-center text-gray-500">
+                          No responses have been submitted yet.
+                        </div>
+                      ) : (
+                        assessmentData.responses.map((response) => {
+                          const question = response.assessment_questions
+                          const currentScore = responseScores[response.id] ?? 0
+
+                          return (
+                            <div key={response.id} className="p-6">
+                              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                                <div className="flex-1">
+                                  <div className="flex items-center justify-between">
+                                    <div className="text-sm font-medium text-green-700 tracking-wide uppercase">
+                                      Question {question.question_number} • {question.section.replace('_', ' ')}
+                                    </div>
+                                    <div className="text-sm text-gray-500">Max Points: {question.max_points}</div>
+                                  </div>
+                                  <h3 className="text-lg font-semibold text-gray-900 mt-1">{question.question}</h3>
+
+                                  {question.question_type === 'multiple_choice' && question.options && (
+                                    <ul className="mt-3 space-y-1 text-sm text-gray-600">
+                                      {question.options.map((option, index) => (
+                                        <li key={index}>• {option}</li>
+                                      ))}
+                                    </ul>
+                                  )}
+
+                                  {question.question_type === 'ranking' && response.response_options && (
+                                    <div className="mt-3">
+                                      <div className="text-sm font-medium text-gray-700 mb-1">Candidate Ranking</div>
+                                      <ol className="list-decimal list-inside space-y-1 text-sm text-gray-600">
+                                        {response.response_options.map((option, index) => (
+                                          <li key={index}>{option.replace('___ ', '')}</li>
+                                        ))}
+                                      </ol>
+                                    </div>
+                                  )}
+
+                                  {response.response_text && (
+                                    <div className="mt-4">
+                                      <div className="text-sm font-medium text-gray-700 mb-1">Candidate Response</div>
+                                      <div className="bg-white border border-gray-200 rounded-lg p-3 text-sm text-gray-700 whitespace-pre-wrap">
+                                        {response.response_text}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="md:w-64">
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">Points Awarded</label>
+                                  <input
+                                    type="number"
+                                    value={currentScore}
+                                    min={0}
+                                    max={question.max_points}
+                                    onChange={(e) => {
+                                      const value = Number(e.target.value)
+                                      setResponseScores((prev) => ({
+                                        ...prev,
+                                        [response.id]: isNaN(value) ? 0 : value
+                                      }))
+                                    }}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                                  />
+                                  <div className="text-xs text-gray-500 mt-1">Recorded by: {response.graded_by || 'Not graded yet'}</div>
+                                  <div className="text-xs text-gray-500">
+                                    {response.graded_at ? `Graded ${new Date(response.graded_at).toLocaleString()}` : 'Pending grading'}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col md:flex-row gap-3 justify-end">
+                    <button
+                      onClick={handleAssessmentRefresh}
+                      className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                    >
+                      Refresh
+                    </button>
+                    <button
+                      onClick={() => saveAssessmentGrading()}
+                      disabled={assessmentSaving}
+                      className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-60"
+                    >
+                      {assessmentSaving ? 'Saving...' : 'Save Scores'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Personal Information */}
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Personal Information</h2>

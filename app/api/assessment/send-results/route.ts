@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
 </html>`
 
     const { data: emailData, error: emailError } = await resend.emails.send({
-      from: 'AgriProHub Fellowship <fellowship@agriprohub.com>',
+      from: 'AgriProHub Fellowship <fellowship@updates.agriprohub.com>',
       to: [applicant.email],
       subject: 'AgriProHub Fellowship Assessment - Submission Confirmed',
       html: emailHtml,

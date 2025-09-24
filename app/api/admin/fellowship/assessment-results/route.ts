@@ -15,11 +15,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Application ID is required' }, { status: 400 })
     }
 
-    // Get assessment invitation for this application
-    const { data: invitation, error: inviteError } = await supabase
+    // Find latest invitation for this application
+    const { data: invitations, error: inviteError } = await supabase
       .from('assessment_invitations')
       .select(`
         id,
+        application_id,
+        invitation_token,
         status,
         sent_at,
         started_at,
@@ -33,9 +35,17 @@ export async function GET(request: NextRequest) {
         )
       `)
       .eq('application_id', parseInt(applicationId))
-      .single()
+      .order('created_at', { ascending: false })
+      .limit(1)
 
-    if (inviteError || !invitation) {
+    if (inviteError) {
+      console.error('Error fetching invitation:', inviteError)
+      return NextResponse.json({ error: 'Failed to fetch assessment invitation' }, { status: 500 })
+    }
+
+    const invitation = invitations?.[0] || null
+
+    if (!invitation) {
       return NextResponse.json({ error: 'No assessment found for this application' }, { status: 404 })
     }
 
@@ -44,13 +54,16 @@ export async function GET(request: NextRequest) {
       .from('assessment_responses')
       .select(`
         id,
+        invitation_id,
+        question_id,
         response_text,
         response_options,
         points_awarded,
         graded_by,
         graded_at,
         created_at,
-        assessment_questions!inner (
+        updated_at,
+        assessment_questions (
           id,
           question_number,
           section,
@@ -61,7 +74,7 @@ export async function GET(request: NextRequest) {
         )
       `)
       .eq('invitation_id', invitation.id)
-      .order('assessment_questions(question_number)')
+      .order('question_id')
 
     if (responsesError) {
       console.error('Error fetching responses:', responsesError)
@@ -75,10 +88,28 @@ export async function GET(request: NextRequest) {
       .eq('invitation_id', invitation.id)
       .single()
 
+    const getQuestionMeta = (response: any) => {
+      const question = Array.isArray(response.assessment_questions)
+        ? response.assessment_questions[0]
+        : response.assessment_questions
+      return question || null
+    }
+
+    const sortedResponses = (responses || []).sort((a: any, b: any) => {
+      const qa = getQuestionMeta(a)?.question_number ?? 0
+      const qb = getQuestionMeta(b)?.question_number ?? 0
+      return qa - qb
+    })
+
+    const normalizedResponses = sortedResponses.map((response: any) => ({
+      ...response,
+      assessment_questions: getQuestionMeta(response)
+    }))
+
     return NextResponse.json({
       success: true,
       invitation: invitation,
-      responses: responses || [],
+      responses: normalizedResponses,
       result: result || null
     })
 
