@@ -121,6 +121,16 @@ export default function ApplicationDetail() {
   const [assessmentSaveMessage, setAssessmentSaveMessage] = useState<string | null>(null)
   const [assessmentSaveError, setAssessmentSaveError] = useState<string | null>(null)
 
+const computeTotalAwarded = (assessment: AssessmentData | null) => {
+  if (!assessment) return 0
+  return assessment.responses.reduce((sum, response) => sum + (response.points_awarded || 0), 0)
+}
+
+const computeMaxPoints = (assessment: AssessmentData | null) => {
+  if (!assessment) return 0
+  return assessment.responses.reduce((sum, response) => sum + (response.assessment_questions?.max_points || 0), 0)
+}
+
   const fetchAssessment = useCallback(async () => {
     if (!id) return
 
@@ -467,9 +477,9 @@ export default function ApplicationDetail() {
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between">
                       <div>
                         <div className="text-sm text-gray-500">Total Score</div>
-                        <div className="text-2xl font-bold text-green-700">
-                          {assessmentData.result?.total_score ?? 0} / {assessmentData.result?.max_score ?? 0}
-                        </div>
+                      <div className="text-2xl font-bold text-green-700">
+                        {computeTotalAwarded(assessmentData)} / {computeMaxPoints(assessmentData)}
+                      </div>
                       </div>
                       <div className="mt-3 md:mt-0 flex items-center gap-2">
                         <select

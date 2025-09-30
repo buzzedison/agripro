@@ -6,6 +6,20 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+const correctAnswers: Record<number, string> = {
+  1: 'b',
+  2: 'b',
+  3: 'b',
+  4: 'c',
+  5: 'c',
+  6: 'b',
+  7: 'c',
+  8: 'b',
+  9: 'a',
+  10: 'b',
+  11: 'c'
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { token, responses } = await request.json()
@@ -23,7 +37,7 @@ export async function POST(request: NextRequest) {
     // Verify invitation token
     const { data: invitation, error: inviteError } = await supabase
       .from('assessment_invitations')
-      .select('id, status, expires_at, completed_at')
+      .select('id, application_id, status, expires_at, completed_at')
       .eq('invitation_token', token)
       .single()
 
@@ -42,19 +56,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Process each response
-    const submittedResponses = []
-    let totalScore = 0
+    const submittedResponses: any[] = []
+    let autoAwardedScore = 0
     let maxScore = 0
 
     for (const response of responses) {
       const { questionId, responseText, responseOptions } = response
 
       // Get question details to validate response
-      const { data: question, error: questionError } = await supabase
-        .from('assessment_questions')
-        .select('*')
-        .eq('id', questionId)
-        .single()
+    const { data: question, error: questionError } = await supabase
+      .from('assessment_questions')
+      .select('id, question_type, max_points')
+      .eq('id', questionId)
+      .single()
 
       if (questionError || !question) {
         console.error(`Question ${questionId} not found`)
@@ -88,8 +102,27 @@ export async function POST(request: NextRequest) {
 
       // Basic auto-grading for multiple choice questions (you can expand this)
       if (question.question_type === 'multiple_choice' && responseText) {
-        // For now, we'll leave grading to admins
-        // You can add correct answers and auto-grading logic here
+        const correctAnswer = correctAnswers[question.id]
+        if (correctAnswer) {
+          const normalizedResponse = responseText.trim().charAt(0).toLowerCase()
+
+          if (normalizedResponse === correctAnswer) {
+            autoAwardedScore += question.max_points
+
+            const { error: awardError } = await supabase
+              .from('assessment_responses')
+              .update({
+                points_awarded: question.max_points,
+                graded_by: 'auto-grader',
+                graded_at: new Date().toISOString()
+              })
+              .eq('id', savedResponse.id)
+
+            if (awardError) {
+              console.error(`Error setting auto grade for response ${savedResponse.id}:`, awardError)
+            }
+          }
+        }
       }
     }
 
@@ -106,20 +139,76 @@ export async function POST(request: NextRequest) {
       console.error('Error updating invitation status:', updateError)
     }
 
-    // Create initial assessment result record
-    const { data: result, error: resultError } = await supabase
-      .from('assessment_results')
-      .insert({
-        invitation_id: invitation.id,
-        total_score: totalScore,
-        max_score: maxScore,
-        status: 'pending'
-      })
-      .select()
-      .single()
+    // Update application status to reflect assessment completion
+    if (invitation.application_id) {
+      const { error: appStatusError } = await supabase
+        .from('fellowship_applications')
+        .update({ status: 'assessment_completed' })
+        .eq('id', invitation.application_id)
 
-    if (resultError) {
-      console.error('Error creating assessment result:', resultError)
+      if (appStatusError) {
+        console.error('Error updating application status to assessment_completed:', appStatusError)
+      } else {
+        const { error: statusHistoryError } = await supabase
+          .from('fellowship_status_history')
+          .insert({
+            application_id: invitation.application_id,
+            new_status: 'assessment_completed',
+            changed_by: 'system',
+            reason: 'Assessment completed by candidate'
+          })
+
+        if (statusHistoryError) {
+          console.warn('Failed to log status history for assessment completion:', statusHistoryError)
+        }
+      }
+    }
+
+    // Create initial assessment result record
+    const { data: existingResult } = await supabase
+      .from('assessment_results')
+      .select('id')
+      .eq('invitation_id', invitation.id)
+      .maybeSingle()
+
+    let result = existingResult
+
+    if (existingResult) {
+      const { data: updatedResult, error: updateResultError } = await supabase
+        .from('assessment_results')
+        .update({
+          total_score: autoAwardedScore,
+          max_score: maxScore,
+          percentage_score: maxScore > 0 ? Number(((autoAwardedScore / maxScore) * 100).toFixed(2)) : null,
+          status: 'pending'
+        })
+        .eq('id', existingResult.id)
+        .select()
+        .single()
+
+      if (updateResultError) {
+        console.error('Error updating existing assessment result:', updateResultError)
+      } else {
+        result = updatedResult
+      }
+    } else {
+      const { data: newResult, error: newResultError } = await supabase
+        .from('assessment_results')
+        .insert({
+          invitation_id: invitation.id,
+          total_score: autoAwardedScore,
+          max_score: maxScore,
+          percentage_score: maxScore > 0 ? Number(((autoAwardedScore / maxScore) * 100).toFixed(2)) : null,
+          status: 'pending'
+        })
+        .select()
+        .single()
+
+      if (newResultError) {
+        console.error('Error creating assessment result:', newResultError)
+      } else {
+        result = newResult
+      }
     }
 
     // Send confirmation email with results
@@ -147,7 +236,7 @@ export async function POST(request: NextRequest) {
       success: true,
       message: 'Assessment submitted successfully',
       responses_submitted: submittedResponses.length,
-      total_score: totalScore,
+      total_score: autoAwardedScore,
       max_score: maxScore,
       result_id: result?.id
     })

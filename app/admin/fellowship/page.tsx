@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { FaEye, FaStar, FaDownload, FaSearch, FaFilter, FaUser, FaCalendarAlt, FaPaperPlane, FaCheckSquare, FaSquare } from 'react-icons/fa'
+import { FaEye, FaStar, FaDownload, FaSearch, FaUser, FaCalendarAlt, FaPaperPlane, FaCheckSquare, FaSquare } from 'react-icons/fa'
 
 interface FellowshipApplication {
   id: number
@@ -22,6 +22,7 @@ interface FellowshipApplication {
   rating: number | null
   created_at: string
   availability_start: string
+  assessment_completed_at?: string | null
 }
 
 export default function FellowshipAdmin() {
@@ -156,7 +157,7 @@ export default function FellowshipAdmin() {
 
   const selectAllShortlisted = () => {
     const shortlistedIds = filteredApplications
-      .filter(app => app.shortlisted && app.status !== 'assessment_invited')
+      .filter(app => app.shortlisted && !['assessment_invited', 'assessment_completed'].includes(app.status))
       .map(app => app.id)
     setSelectedApplications(shortlistedIds)
   }
@@ -210,7 +211,8 @@ export default function FellowshipAdmin() {
       'interviewed': 'bg-orange-100 text-orange-800',
       'accepted': 'bg-green-100 text-green-800',
       'rejected': 'bg-red-100 text-red-800',
-      'waitlisted': 'bg-gray-100 text-gray-800'
+      'waitlisted': 'bg-gray-100 text-gray-800',
+      'assessment_completed': 'bg-green-100 text-green-800'
     }
     return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800'
   }
@@ -220,6 +222,7 @@ export default function FellowshipAdmin() {
     shortlisted: applications.filter(app => app.shortlisted).length,
     submitted: applications.filter(app => app.status === 'submitted').length,
     under_review: applications.filter(app => app.status === 'under_review').length,
+    assessment_completed: applications.filter(app => app.status === 'assessment_completed').length,
     accepted: applications.filter(app => app.status === 'accepted').length
   }
 
@@ -244,7 +247,7 @@ export default function FellowshipAdmin() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-8">
           <div className="bg-white rounded-lg shadow p-6">
             <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
             <div className="text-gray-600">Total Applications</div>
@@ -260,6 +263,10 @@ export default function FellowshipAdmin() {
           <div className="bg-white rounded-lg shadow p-6">
             <div className="text-2xl font-bold text-yellow-600">{stats.under_review}</div>
             <div className="text-gray-600">Under Review</div>
+          </div>
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="text-2xl font-bold text-green-600">{stats.assessment_completed}</div>
+            <div className="text-gray-600">Assessment Completed</div>
           </div>
           <div className="bg-white rounded-lg shadow p-6">
             <div className="text-2xl font-bold text-green-600">{stats.accepted}</div>
@@ -293,6 +300,7 @@ export default function FellowshipAdmin() {
                 <option value="submitted">Submitted</option>
                 <option value="under_review">Under Review</option>
                 <option value="assessment_invited">Assessment Invited</option>
+                <option value="assessment_completed">Assessment Completed</option>
                 <option value="interviewed">Interviewed</option>
                 <option value="accepted">Accepted</option>
                 <option value="rejected">Rejected</option>
@@ -391,7 +399,7 @@ export default function FellowshipAdmin() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     <input
                       type="checkbox"
-                      checked={selectedApplications.length > 0 && selectedApplications.length === filteredApplications.filter(app => app.shortlisted && app.status !== 'assessment_invited').length}
+                      checked={selectedApplications.length > 0 && selectedApplications.length === filteredApplications.filter(app => app.shortlisted && !['assessment_invited', 'assessment_completed'].includes(app.status)).length}
                       onChange={(e) => {
                         if (e.target.checked) {
                           selectAllShortlisted()
@@ -423,7 +431,7 @@ export default function FellowshipAdmin() {
                 {filteredApplications.map((application) => (
                   <tr key={application.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
-                      {application.shortlisted && application.status !== 'assessment_invited' && (
+                      {application.shortlisted && !['assessment_invited', 'assessment_completed'].includes(application.status) && (
                         <input
                           type="checkbox"
                           checked={selectedApplications.includes(application.id)}
