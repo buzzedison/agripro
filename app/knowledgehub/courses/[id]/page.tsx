@@ -6,13 +6,14 @@ import { client } from '@/app/lib/client'
 import { urlForImage } from '@/lib/image'
 
 type Props = {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params
   const course = await client.fetch(`
     *[_type == "course" && _id == $id][0]
-  `, { id: params.id })
+  `, { id })
 
   return {
     title: `${course.title} - Courses`,
@@ -21,9 +22,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function CoursePage({ params }: Props) {
+  const { id } = await params
   const course = await client.fetch(`
     *[_type == "course" && _id == $id][0]
-  `, { id: params.id })
+  `, { id })
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">

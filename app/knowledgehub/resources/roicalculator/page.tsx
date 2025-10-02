@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Calculator, TrendingUp, DollarSign, BarChart3, FileText, Settings } from 'lucide-react';
 import EnhancedROICalculator from './components/EnhancedROICalculator';
 import CropsCalculator from './components/CropsCalculator';
@@ -254,12 +255,12 @@ export default function ROICalculatorPage() {
               >
                 Start Enhanced Calculator
               </button>
-              <a 
+              <Link 
                 href="/knowledgehub/experts"
                 className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-green-600 transition-colors"
               >
                 Consult Our Experts
-              </a>
+              </Link>
             </div>
           </div>
         </div>

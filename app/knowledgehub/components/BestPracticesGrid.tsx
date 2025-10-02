@@ -118,18 +118,20 @@ export default function BestPracticesGrid({ practices }: { practices: BestPracti
                 {practice.pdfAttachments && practice.pdfAttachments.length > 0 && (
                   <div className="flex gap-2">
                     {practice.pdfAttachments.slice(0, 2).map((pdf, index) => (
-                      <a
-                        key={index}
-                        href={pdf.asset.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center text-sm text-gray-500 hover:text-green-600 border border-gray-200 hover:border-green-300 px-2 py-1 rounded transition-colors"
-                        title={pdf.title}
-                        onClick={(e) => e.stopPropagation()} // Prevent triggering the Link
-                      >
-                        <Download size={14} className="mr-1" />
-                        PDF
-                      </a>
+                      pdf?.asset?.url ? (
+                        <a
+                          key={index}
+                          href={pdf.asset.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center text-sm text-gray-500 hover:text-green-600 border border-gray-200 hover:border-green-300 px-2 py-1 rounded transition-colors"
+                          title={pdf.title}
+                          onClick={(e) => e.stopPropagation()} // Prevent triggering the Link
+                        >
+                          <Download size={14} className="mr-1" />
+                          PDF
+                        </a>
+                      ) : null
                     ))}
                     {practice.pdfAttachments.length > 2 && (
                       <span className="text-xs text-gray-400 self-center">

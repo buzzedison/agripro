@@ -21,16 +21,28 @@ interface Whitepaper {
   _id: string;
 }
 
-export default function WhitepaperPage({ params }: { params: { id: string } }) {
+export default function WhitepaperPage({ params }: { params: Promise<{ id: string }> }) {
   const [whitepaper, setWhitepaper] = useState<Whitepaper | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [whitepaperIdResolved, setWhitepaperIdResolved] = useState<string | null>(null);
+
+  // Resolve params on mount (Next.js 15 compatibility)
+  useEffect(() => {
+    const resolveParams = async () => {
+      const resolved = await params;
+      setWhitepaperIdResolved(resolved.id);
+    };
+    resolveParams();
+  }, [params]);
 
   useEffect(() => {
+    if (!whitepaperIdResolved) return;
+
     async function fetchWhitepaper() {
       try {
         setIsLoading(true);
-        console.log('Fetching whitepaper with ID:', params.id);
+        console.log('Fetching whitepaper with ID:', whitepaperIdResolved);
         
         // First try to get all whitepapers to debug
         const allWhitepapers = await client.fetch<Whitepaper[]>(`
@@ -48,7 +60,7 @@ export default function WhitepaperPage({ params }: { params: { id: string } }) {
         console.log('All whitepapers:', allWhitepapers.map(wp => ({ id: wp._id, title: wp.title })));
         
         // Then try to find the specific whitepaper
-        const fetchedWhitepaper = allWhitepapers.find(wp => wp._id === params.id);
+        const fetchedWhitepaper = allWhitepapers.find(wp => wp._id === whitepaperIdResolved);
         
         console.log('Fetched whitepaper:', fetchedWhitepaper);
         setWhitepaper(fetchedWhitepaper || null);
@@ -60,14 +72,8 @@ export default function WhitepaperPage({ params }: { params: { id: string } }) {
       }
     }
 
-    if (params.id) {
-      fetchWhitepaper();
-    } else {
-      console.error('No ID provided in params');
-      setError('No whitepaper ID provided');
-      setIsLoading(false);
-    }
-  }, [params.id]);
+    fetchWhitepaper();
+  }, [whitepaperIdResolved]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -77,7 +83,7 @@ export default function WhitepaperPage({ params }: { params: { id: string } }) {
           items={[
             { label: 'Knowledge Hub', href: '/knowledgehub' },
             { label: 'Whitepapers', href: '/knowledgehub/whitepapers' },
-            { label: whitepaper?.title || 'Loading...', href: `/knowledgehub/whitepapers/${params.id}` }
+            { label: whitepaper?.title || 'Loading...', href: `/knowledgehub/whitepapers/${whitepaperIdResolved || ''}` }
           ]} 
         />
         

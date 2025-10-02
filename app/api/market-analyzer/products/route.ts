@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 // GET - Retrieve agricultural products
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const { searchParams } = new URL(request.url);
     
     const category = searchParams.get('category');
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
 // POST - Create new agricultural product
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const body = await request.json();
     
     // Get authenticated user
@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
 // PUT - Update existing product
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const body = await request.json();
     const { id, ...updateData } = body;
 
@@ -191,7 +191,7 @@ export async function PUT(request: NextRequest) {
 // DELETE - Delete product
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 

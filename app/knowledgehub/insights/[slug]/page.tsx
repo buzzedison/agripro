@@ -10,13 +10,14 @@ import ArticleStats from '../../components/ArticleStats'
 import ArticleViewTracker from '../../components/ArticleViewTracker'
 
 type Props = {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params
   const insight = await client.fetch(`
     *[_type == "insight" && slug.current == $slug][0]
-  `, { slug: params.slug })
+  `, { slug })
 
   return {
     title: `${insight.title} - Knowledge Hub`,
@@ -129,6 +130,7 @@ const components = {
 
 
 export default async function InsightPage({ params }: Props) {
+  const { slug } = await params
   const insight = await client.fetch(`
     *[_type == "insight" && slug.current == $slug][0] {
       title,
@@ -138,13 +140,13 @@ export default async function InsightPage({ params }: Props) {
       publishedAt,
       image
     }
-  `, { slug: params.slug })
+  `, { slug })
 
   return (
     <article className="min-h-screen bg-gray-50">
       {/* View Tracker */}
       <ArticleViewTracker
-        articleId={insight._id || params.slug}
+        articleId={insight._id || slug}
         articleType="insight"
         articleTitle={insight.title}
       />
@@ -207,7 +209,7 @@ export default async function InsightPage({ params }: Props) {
 
           {/* Article Stats */}
           <ArticleStats
-            articleId={insight._id || params.slug}
+            articleId={insight._id || slug}
             articleType="insight"
             articleTitle={insight.title}
           />

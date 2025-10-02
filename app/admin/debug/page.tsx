@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import { useContentAccess } from '@/lib/hooks/useContentAccess'
 import { createClient } from '@/lib/supabase/client'
 
@@ -342,12 +343,12 @@ export default function AdminDebugPage() {
             >
               📊 Go to Knowledge Hub Analytics
             </a>
-            <a
+            <Link
               href="/admin/fellowship"
               className="block w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-center"
             >
               Go to Fellowship Admin
-            </a>
+            </Link>
             <a
               href="/knowledgehub"
               className="block w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-center"

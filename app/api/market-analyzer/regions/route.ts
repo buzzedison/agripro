@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 // GET - Retrieve regions and markets
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const { searchParams } = new URL(request.url);
     
     const country = searchParams.get('country');
@@ -95,7 +95,7 @@ export async function GET(request: NextRequest) {
 // POST - Create new region
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const body = await request.json();
     
     // Get authenticated user

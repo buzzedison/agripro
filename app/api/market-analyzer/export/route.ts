@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 // GET - Export price data and analytics
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const { searchParams } = new URL(request.url);
     
     const format = searchParams.get('format') || 'csv';
@@ -203,7 +203,7 @@ export async function GET(request: NextRequest) {
 // POST - Bulk export multiple datasets
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const body = await request.json();
     
     // Get authenticated user

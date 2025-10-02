@@ -8,13 +8,14 @@ import { format } from 'date-fns'
 import { ArrowLeft, Info, AlertTriangle, CheckCircle, XCircle, Lightbulb } from 'lucide-react'
 
 type Props = {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params
   const practice = await client.fetch(`
     *[_type == "bestPractices" && slug.current == $slug][0]
-  `, { slug: params.slug })
+  `, { slug })
 
   return {
     title: `${practice.title} - Best Practices`,
@@ -99,6 +100,7 @@ const portableTextComponents = {
 }
 
 export default async function BestPracticePage({ params }: Props) {
+  const { slug } = await params
   const practice = await client.fetch(`
     *[_type == "bestPractices" && slug.current == $slug][0] {
       title,
@@ -120,7 +122,7 @@ export default async function BestPracticePage({ params }: Props) {
       },
       "totalContributors": count(contributors)
     }
-  `, { slug: params.slug })
+  `, { slug })
 
   return (
     <div className="min-h-screen bg-gray-50">

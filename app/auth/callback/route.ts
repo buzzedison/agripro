@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   const next = searchParams.get('redirectTo') ?? '/knowledgehub'
 
   if (code) {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
       // Clear content view count on successful authentication

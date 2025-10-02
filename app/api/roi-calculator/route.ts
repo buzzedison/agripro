@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 // GET - Retrieve ROI calculations
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const { searchParams } = new URL(request.url);
     
     // Get authenticated user
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
 // POST - Create new ROI calculation
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const body = await request.json();
     
     // Get authenticated user
@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
 // PUT - Update existing ROI calculation
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const body = await request.json();
     const { id, ...updateData } = body;
 
@@ -217,7 +217,7 @@ export async function PUT(request: NextRequest) {
 // DELETE - Delete ROI calculation
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 

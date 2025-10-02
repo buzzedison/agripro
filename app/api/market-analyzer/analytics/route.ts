@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 // GET - Retrieve market analytics and intelligence
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const { searchParams } = new URL(request.url);
     
     const productId = searchParams.get('product_id');
@@ -195,7 +195,7 @@ export async function GET(request: NextRequest) {
 // POST - Generate and store analytics
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const body = await request.json();
     
     // Get authenticated user

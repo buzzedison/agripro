@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 // GET - Retrieve price records with filtering and analytics
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const { searchParams } = new URL(request.url);
     
     const productId = searchParams.get('product_id');
@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
 // POST - Create new price record
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const body = await request.json();
     
     // Get authenticated user
@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
 // PUT - Update existing price record
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const body = await request.json();
     const { id, ...updateData } = body;
 
@@ -264,7 +264,7 @@ export async function PUT(request: NextRequest) {
 // DELETE - Delete price record
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 

@@ -81,7 +81,7 @@ export const TabsList: React.FC<TabsListProps> = ({
   const hasTabChild = React.Children.toArray(children).some(
     (child) => React.isValidElement(child) && 
     // Check if it's a TabsTrigger by checking for role="tab" prop
-    (child.props.role === 'tab' || (child.type as any)?.displayName === 'TabsTrigger')
+    ((child.props as any)?.role === 'tab' || (child.type as any)?.displayName === 'TabsTrigger')
   );
 
   return (

@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 // GET - Retrieve user alerts
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     
     // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
 // POST - Create new alert
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const body = await request.json();
     
     // Get authenticated user
@@ -157,7 +157,7 @@ export async function POST(request: NextRequest) {
 // PUT - Update existing alert
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const body = await request.json();
     const { id, ...updateData } = body;
 
@@ -222,7 +222,7 @@ export async function PUT(request: NextRequest) {
 // DELETE - Delete alert
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -274,7 +274,7 @@ export async function DELETE(request: NextRequest) {
 // PATCH - Trigger alert (for testing or manual triggering)
 export async function PATCH(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const body = await request.json();
     const { id, action } = body;
 

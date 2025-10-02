@@ -9,9 +9,10 @@ const supabase = createClient(
 // GET - Fetch single fellowship application
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  segmentData: { params: Promise<{ id: string }> }
 ) {
   try {
+    const params = await segmentData.params
     const { data: application, error } = await supabase
       .from('fellowship_applications')
       .select('*')

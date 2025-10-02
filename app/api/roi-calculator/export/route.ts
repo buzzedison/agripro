@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 // GET - Export ROI calculation
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const format = searchParams.get('format') || 'json';
@@ -224,7 +224,7 @@ function convertToCSV(calculation: any): string {
 // POST - Bulk export multiple calculations
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const body = await request.json();
     const { calculationIds, format = 'json' } = body;
 
