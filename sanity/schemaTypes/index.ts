@@ -9,7 +9,8 @@ import research from '@/app/knowledgehub/schemas/research'
 import event from '../../app/knowledgehub/schemas/event'
 import video from '../../app/knowledgehub/schemas/video'
 import roiCalculation from '@/app/knowledgehub/schemas/roiCalculation'
+import author from '@/app/knowledgehub/schemas/author'
 
 export const schema: { types: SchemaTypeDefinition[] } = {
-  types: [bestPractices, expert, expertApplication, whitepaper, course, insight, research, event, video, roiCalculation],
+  types: [bestPractices, expert, expertApplication, author, whitepaper, course, insight, research, event, video, roiCalculation],
 }
