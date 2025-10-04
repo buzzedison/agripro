@@ -1,23 +1,139 @@
 import { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
+import { notFound } from 'next/navigation'
+import clsx from 'clsx'
 import { client } from '@/app/lib/client'
 import { urlForImage } from '@/lib/image'
 import { PortableText } from '@portabletext/react'
 import { format } from 'date-fns'
-import { ArrowLeft, Info, AlertTriangle, CheckCircle, XCircle, Lightbulb } from 'lucide-react'
+import {
+  ArrowLeft,
+  Info,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  Lightbulb,
+  Quote,
+  Sparkles
+} from 'lucide-react'
 import ArticleStats from '../../components/ArticleStats'
 import ArticleViewTracker from '../../components/ArticleViewTracker'
+import AuthorBadge, { type AuthorPerson } from '../../components/AuthorBadge'
 
-type Props = {
+interface Params {
   params: Promise<{ slug: string }>
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+type SanityPerson = {
+  _id: string
+  _type: 'author' | 'expert'
+  name?: string
+  role?: string
+  title?: string
+  expertise?: string
+  avatar?: any
+  image?: any
+  slug?: { current?: string }
+  expertProfile?: {
+    slug?: { current?: string }
+    title?: string
+    image?: any
+    name?: string
+  }
+  bio?: string
+  contact?: {
+    email?: string
+    linkedin?: string
+    twitter?: string
+    website?: string
+  }
+  specializations?: string[]
+  yearsOfExperience?: number
+}
+
+type InsightRecord = {
+  _id: string
+  title: string
+  excerpt?: string
+  content: any[]
+  category?: string
+  publishedAt?: string
+  heroImage?: any
+  image?: any
+  authors?: SanityPerson[]
+  contributors?: SanityPerson[]
+}
+
+type Person = {
+  id: string
+  type: 'author' | 'expert'
+  name: string
+  roleLabel?: string
+  avatar?: any
+  profileUrl?: string
+  bio?: string
+  contact?: {
+    email?: string
+    linkedin?: string
+    twitter?: string
+    website?: string
+  }
+  expertise?: string
+  specializations?: string[]
+  yearsOfExperience?: number
+}
+
+function mapSanityPerson(person?: SanityPerson | null): Person | null {
+  if (!person?._id) {
+    return null
+  }
+
+  const name = person.name ?? 'Unnamed contributor'
+  const roleLabel = person.role ?? person.title ?? person.expertise ?? person.expertProfile?.title
+  const avatar = person.avatar ?? person.image ?? person.expertProfile?.image
+
+  let profileUrl: string | undefined
+  if (person._type === 'expert' && person.slug?.current) {
+    profileUrl = `/knowledgehub/experts/${person.slug.current}`
+  } else if (person.expertProfile?.slug?.current) {
+    profileUrl = `/knowledgehub/experts/${person.expertProfile.slug.current}`
+  }
+
+  return {
+    id: person._id,
+    type: person._type,
+    name,
+    roleLabel: roleLabel ?? undefined,
+    avatar,
+    profileUrl,
+    bio: person.bio,
+    contact: person.contact,
+    expertise: person.expertise,
+    specializations: person.specializations,
+    yearsOfExperience: person.yearsOfExperience,
+  }
+}
+
+function getInitials(name: string) {
+  return name
+    .split(' ')
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase()
+}
+
+export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { slug } = await params
-  const insight = await client.fetch(`
+  const insight = await client.fetch<InsightRecord>(`
     *[_type == "insight" && slug.current == $slug][0]
   `, { slug })
+
+  if (!insight) {
+    notFound()
+  }
 
   return {
     title: `${insight.title} - Knowledge Hub`,
@@ -27,34 +143,66 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 const components = {
   block: {
-    h1: ({children}: any) => (
-      <h1 className="text-4xl font-bold mt-12 mb-6">{children}</h1>
+    h1: ({ children }: any) => (
+      <h1 className="mt-12 mb-6 text-4xl font-bold text-gray-900">{children}</h1>
     ),
-    h2: ({children}: any) => (
-      <h2 className="text-3xl font-bold mt-10 mb-5">{children}</h2>
+    h2: ({ children }: any) => (
+      <h2 className="mt-10 mb-5 text-3xl font-semibold text-gray-900">{children}</h2>
     ),
-    h3: ({children}: any) => (
-      <h3 className="text-2xl font-semibold mt-8 mb-4">{children}</h3>
+    h3: ({ children }: any) => (
+      <h3 className="mt-8 mb-4 text-2xl font-semibold text-gray-900">{children}</h3>
     ),
-    normal: ({children}: any) => (
-      <p className="text-gray-700 text-lg leading-relaxed mb-6">{children}</p>
+    normal: ({ children }: any) => (
+      <p className="mb-6 text-lg leading-relaxed text-gray-700">{children}</p>
     ),
-    blockquote: ({children}: any) => (
-      <blockquote className="border-l-4 border-green-500 pl-4 my-6 italic text-gray-700">
+    blockquote: ({ children }: any) => (
+      <blockquote className="my-8 border-l-4 border-green-500 bg-green-50/80 px-6 py-4 text-lg italic text-gray-700 shadow-sm">
         {children}
       </blockquote>
     ),
   },
   list: {
-    bullet: ({children}: any) => (
-      <ul className="list-disc pl-6 mb-6 space-y-2 text-gray-700">{children}</ul>
+    bullet: ({ children }: any) => (
+      <ul className="mb-6 list-disc space-y-2 pl-6 text-gray-700">{children}</ul>
     ),
-    number: ({children}: any) => (
-      <ol className="list-decimal pl-6 mb-6 space-y-2 text-gray-700">{children}</ol>
+    number: ({ children }: any) => (
+      <ol className="mb-6 list-decimal space-y-2 pl-6 text-gray-700">{children}</ol>
     ),
   },
   types: {
-    calloutBox: ({value}: any) => {
+    image: ({ value }: any) => {
+      if (!value?.asset) return null
+      const imageUrl = urlForImage(value).width(1600).height(1000).fit('max').url()
+      return (
+        <figure
+          className={clsx(
+            'my-10 overflow-hidden rounded-3xl bg-gray-100 shadow-sm',
+            value.fullWidth ? '-mx-6 md:-mx-12 lg:-mx-24' : ''
+          )}
+        >
+          <div
+            className={clsx(
+              'relative w-full overflow-hidden',
+              value.fullWidth ? 'h-[320px] md:h-[460px] lg:h-[520px]' : 'h-[260px] md:h-[360px]'
+            )}
+          >
+            <Image
+              src={imageUrl}
+              alt={value.alt || value.caption || 'Insight image'}
+              fill
+              sizes="(min-width: 1024px) 900px, 100vw"
+              className="object-cover"
+            />
+          </div>
+          {value.caption && (
+            <figcaption className="px-6 py-4 text-center text-sm text-gray-600">
+              {value.caption}
+            </figcaption>
+          )}
+        </figure>
+      )
+    },
+    calloutBox: ({ value }: any) => {
       const getCalloutStyle = (type: string) => {
         switch (type) {
           case 'warning':
@@ -123,96 +271,191 @@ const components = {
           </div>
         </div>
       )
-    }
-  }
+    },
+    quote: ({ value }: any) => (
+      <div className="my-10 rounded-3xl border border-green-100 bg-gradient-to-r from-green-50 via-white to-green-50 p-8 shadow-sm">
+        <Quote className="mb-4 h-6 w-6 text-green-600" />
+        <blockquote className="text-xl font-medium text-gray-800">“{value.quote}”</blockquote>
+        {value.attribution && (
+          <cite className="mt-3 block text-sm font-semibold text-gray-500">— {value.attribution}</cite>
+        )}
+      </div>
+    ),
+    statHighlight: ({ value }: any) => (
+      <div className="my-10 rounded-3xl border border-green-100 bg-white p-8 text-center shadow-sm">
+        <Sparkles className="mx-auto mb-4 h-6 w-6 text-green-600" />
+        <p className="text-5xl font-bold text-green-700">{value.value}</p>
+        {value.label && <p className="mt-2 text-sm font-semibold text-gray-600">{value.label}</p>}
+        {value.context && <p className="mt-3 text-sm text-gray-500">{value.context}</p>}
+      </div>
+    ),
+  },
 }
 
 
 
-export default async function InsightPage({ params }: Props) {
+export default async function InsightPage({ params }: Params) {
   const { slug } = await params
-  const insight = await client.fetch(`
+  const insight = await client.fetch<InsightRecord>(`
     *[_type == "insight" && slug.current == $slug][0] {
+      _id,
       title,
       excerpt,
       content,
       category,
       publishedAt,
-      image
+      heroImage,
+      image,
+      authors[]->{
+        _id,
+        _type,
+        name,
+        role,
+        title,
+        expertise,
+        specializations,
+        yearsOfExperience,
+        bio,
+        contact,
+        avatar,
+        image,
+        slug,
+        expertProfile->{
+          slug,
+          title,
+          image,
+          name
+        }
+      },
+      contributors[]->{
+        _id,
+        _type,
+        name,
+        role,
+        title,
+        expertise,
+        specializations,
+        yearsOfExperience,
+        bio,
+        contact,
+        avatar,
+        image,
+        slug,
+        expertProfile->{
+          slug,
+          title,
+          image,
+          name
+        }
+      }
     }
   `, { slug })
 
+  if (!insight) {
+    notFound()
+  }
+
+  const heroImage = insight.heroImage ?? insight.image
+  const authors = (insight.authors ?? []).map(mapSanityPerson).filter(Boolean) as Person[]
+  const contributors = (insight.contributors ?? []).map(mapSanityPerson).filter(Boolean) as Person[]
+
   return (
     <article className="min-h-screen bg-gray-50">
-      {/* View Tracker */}
       <ArticleViewTracker
         articleId={insight._id || slug}
         articleType="insight"
         articleTitle={insight.title}
       />
 
-      {/* Hero Section */}
-      <div className="bg-white border-b">
-        <div className="max-w-4xl mx-auto px-4 py-12">
-          {/* Back Button */}
+      <div className="bg-gradient-to-b from-white via-white to-gray-50">
+        <div className="mx-auto max-w-5xl px-4 pb-12 pt-10 md:px-6 lg:px-8">
           <Link
             href="/knowledgehub/insights"
-            className="inline-flex items-center gap-2 text-gray-600 hover:text-green-600 transition-colors mb-8 group"
+            className="group inline-flex items-center gap-2 text-sm font-medium text-gray-500 transition hover:text-green-600"
           >
-            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-            <span>Back to Insights</span>
+            <ArrowLeft className="h-4 w-4 transition group-hover:-translate-x-1" />
+            Back to Insights
           </Link>
 
-          <div className="mb-8">
-            <span className="inline-block px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium mb-4">
-              {insight.category}
-            </span>
-            <h1 className="text-4xl md:text-5xl font-bold mb-4 text-gray-900">
+          <div className="mt-6 flex flex-col gap-6 md:mt-10">
+            <div className="flex flex-wrap items-center gap-3">
+              {insight.category && (
+                <span className="inline-flex items-center rounded-full border border-green-100 bg-green-50 px-4 py-1 text-xs font-semibold uppercase tracking-wide text-green-700">
+                  {insight.category}
+                </span>
+              )}
+              {insight.publishedAt && (
+                <time className="text-sm text-gray-500">
+                  {format(new Date(insight.publishedAt), 'MMMM d, yyyy')}
+                </time>
+              )}
+            </div>
+
+            <h1 className="text-4xl font-bold tracking-tight text-gray-900 md:text-5xl lg:text-6xl">
               {insight.title}
             </h1>
-            <time className="text-gray-600">
-              {format(new Date(insight.publishedAt), 'MMMM d, yyyy')}
-            </time>
+
+            {(authors.length > 0 || contributors.length > 0) && (
+              <div className="space-y-4">
+                {authors.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">Written by</p>
+                    <div className="flex flex-wrap gap-4">
+                      {authors.map((author) => (
+                        <AuthorBadge key={author.id} person={author as AuthorPerson} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {contributors.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Contributors</p>
+                    <div className="flex flex-wrap gap-4">
+                      {contributors.map((contributor) => (
+                        <AuthorBadge key={contributor.id} person={{ ...(contributor as AuthorPerson) }} label="Contributor" />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
-          {insight.image && (
-            <div className="relative h-[400px] md:h-[500px] rounded-xl overflow-hidden">
+          {heroImage && (
+            <div className="relative mt-10 overflow-hidden rounded-[28px] border border-gray-100 shadow-xl">
+              <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-black/10 to-transparent" />
               <Image
-                src={urlForImage(insight.image).url()}
+                src={urlForImage(heroImage).width(1800).height(1000).fit('max').url()}
                 alt={insight.title}
-                fill
-                className="object-cover"
+                width={1600}
+                height={900}
                 priority
+                className="h-[320px] w-full object-cover md:h-[420px] lg:h-[520px]"
               />
             </div>
           )}
         </div>
       </div>
 
-      {/* Content Section */}
-      <div className="max-w-3xl mx-auto px-4 py-12">
-        <div className="bg-white rounded-xl p-8 md:p-12 shadow-sm">
+      <div className="mx-auto max-w-3xl px-4 py-12 md:px-6 lg:px-0">
+        <div className="rounded-3xl bg-white px-6 py-10 shadow-lg ring-1 ring-gray-100 md:px-10 md:py-14">
           {insight.excerpt && (
-            <div className="mb-8 border-b border-gray-100 pb-8">
-              <p className="text-xl text-gray-600 leading-relaxed">
-                {insight.excerpt}
-              </p>
+            <div className="mb-12 rounded-3xl border border-green-100 bg-green-50/40 p-6 text-lg leading-relaxed text-gray-700 shadow-sm">
+              {insight.excerpt}
             </div>
           )}
 
           <div className="prose prose-lg prose-green max-w-none">
-            <PortableText
-              value={insight.content}
-              components={components}
-            />
+            <PortableText value={insight.content} components={components} />
           </div>
 
-          {/* Article Stats */}
-          <ArticleStats
-            articleId={insight._id || slug}
-            articleType="insight"
-            articleTitle={insight.title}
-          />
+          <div className="mt-12 border-t border-gray-100 pt-8">
+            <ArticleStats
+              articleId={insight._id || slug}
+              articleType="insight"
+              articleTitle={insight.title}
+            />
+          </div>
         </div>
       </div>
     </article>
