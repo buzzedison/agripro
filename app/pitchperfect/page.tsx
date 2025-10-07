@@ -10,7 +10,6 @@ export const metadata: Metadata = {
 }
 
 const applyLink = 'https://airtable.com/app7rzeBLQmXIiBQ5/pagnDZiIp3GmyAPK0/form'
-const attendLink = 'https://www.theenterprisevillage.com/events/pitchperfect'
 
 const faqs = [
   {
@@ -171,9 +170,9 @@ export default function PitchPerfectPage() {
           <div className="absolute bottom-[-8rem] right-[-10rem] h-80 w-80 rounded-full bg-emerald-200/30 blur-3xl" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(12,115,60,0.08),_transparent_55%)]" />
         </div>
-        <div className="relative z-10 mx-auto grid max-w-6xl grid-cols-1 gap-12 px-4 py-24 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:py-32">
-          <div className="space-y-8">
-            <div className="space-y-4">
+        <div className="relative z-10 mx-auto grid max-w-6xl grid-cols-1 gap-10 px-4 py-16 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:py-20">
+          <div className="space-y-6">
+            <div className="space-y-3">
               <span className="inline-flex items-center gap-2 rounded-full bg-emerald-900/5 px-4 py-1 text-xs font-semibold uppercase tracking-[0.4em] text-emerald-800">
                 Presented by AgriPro
               </span>
@@ -184,7 +183,7 @@ export default function PitchPerfectPage() {
                 December 6 • The Enterprise Village, Dzorwulu. A tightly curated arena where traction-ready agripreneurs earn funding, blunt feedback, and direct venture studio backing to scale nationwide.
               </p>
             </div>
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-2">
               <HeroInfoCard
                 eyebrow="Why now"
                 title="Investment-grade clarity"
@@ -196,22 +195,22 @@ export default function PitchPerfectPage() {
                 copy="A joint activation combining AgriPro’s founder community with EV’s venture studio to accelerate the next wave of agrifood ventures."
               />
             </div>
-            <div className="space-y-5">
-              <div className="flex flex-wrap gap-4">
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-3">
                 <CTAButton href={applyLink} variant="primary">
                   Apply to Pitch
                 </CTAButton>
-                <CTAButton href={attendLink} variant="outline">
+                <CTAButton href={applyLink} variant="outline">
                   Grab an Observer Seat
                 </CTAButton>
               </div>
               <HeroChecklist />
             </div>
           </div>
-          <div className="space-y-6 rounded-4xl border border-emerald-900/10 bg-white/90 p-7 shadow-xl backdrop-blur">
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-700">Event Snapshot</p>
-              <h2 className="text-2xl font-semibold text-emerald-950">Build momentum that investors can feel</h2>
+          <div className="space-y-5 rounded-4xl border border-emerald-900/10 bg-white/90 p-6 shadow-xl backdrop-blur">
+            <div className="space-y-1.5">
+              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.35em] text-emerald-700">Event Snapshot</p>
+              <h2 className="text-xl font-semibold text-emerald-950 md:text-2xl">Build momentum that investors can feel</h2>
             </div>
             <dl className="space-y-3 text-sm text-gray-700">
               <SnapshotRow label="Applications close" value="November 30, 2025" />
@@ -385,7 +384,7 @@ export default function PitchPerfectPage() {
             <CTAButton href={applyLink} variant="primary">
               Apply to Pitch
             </CTAButton>
-            <CTAButton href={attendLink} variant="outline">
+            <CTAButton href={applyLink} variant="outline">
               Attend &amp; Learn
             </CTAButton>
           </div>
@@ -439,13 +438,18 @@ function HeroChecklist() {
     'Designed for traction-ready agribusiness founders',
   ]
   return (
-    <div className="rounded-3xl border border-white/20 bg-white/10 p-5 text-sm text-white/80">
-      <p className="text-xs font-semibold uppercase tracking-[0.35em] text-white/70">What to expect</p>
-      <ul className="mt-3 space-y-2">
+    <div className="rounded-3xl border border-emerald-900/10 bg-white p-5 text-sm text-emerald-900 shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-600">What to expect</p>
+      <ul className="mt-3 space-y-2.5">
         {points.map((point) => (
-          <li key={point} className="flex items-start gap-2">
-            <span className="mt-1 h-2 w-2 rounded-full bg-emerald-300" aria-hidden />
-            <span>{point}</span>
+          <li key={point} className="flex items-start gap-3">
+            <span
+              className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-emerald-600/15 text-xs font-semibold text-emerald-700 shadow-sm"
+              aria-hidden
+            >
+              →
+            </span>
+            <span className="leading-snug text-emerald-950">{point}</span>
           </li>
         ))}
       </ul>
