@@ -141,7 +141,7 @@ The Agripro Fellowship Track addresses Africa's $75B annual food import gap by d
 ## 3. Application Process & Timeline
 
 ### Phase 1: Digital Application
-**Deadline: September 20, 2025 (11:59 PM GMT)**
+**Deadline: October 24, 2025 (11:59 PM GMT)**
 
 **Required Components:**
 1. **Personal Information**
@@ -170,7 +170,7 @@ The Agripro Fellowship Track addresses Africa's $75B annual food import gap by d
    - Any special accommodations needed
 
 ### Phase 2: Virtual Assessment
-**Dates: September 20-28, 2025**
+**Dates: October 27-30, 2025**
 
 **Assessment Components:**
 1. **Case Study Analysis (90 minutes)**
@@ -889,11 +889,11 @@ A: Contact your references well in advance and follow up regularly. We only cont
 ### Important Deadlines (2025)
 
 **Application Timeline:**
-- Applications Open: August 25, 2025
-- Application Deadline: September 20, 2025 (11:59 PM GMT)
-- Virtual Assessments: September 20-28, 2025
-- Final Decisions: September 30, 2025
-- Program Launch: October 2, 2025
+- Applications Open: October 10, 2025
+- Application Deadline: October 24, 2025 (11:59 PM GMT)
+- Virtual Assessments: October 27-30, 2025
+- Final Decisions: October 31, 2025
+- Program Lunch: November 3, 2025
 
 **Preparation Recommendations:**
 - Start application 2-3 weeks before deadline

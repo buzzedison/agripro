@@ -39,7 +39,7 @@ export default function FellowshipConfirmation() {
               <div>
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">Virtual Assessment</h3>
                 <p className="text-gray-600 mb-2">
-                  <strong>September 20-28, 2025:</strong> Selected candidates will be invited to participate in virtual assessments 
+                  <strong>October 27-30, 2025:</strong> Selected candidates will be invited to participate in virtual assessments
                   including case studies and group tasks focused on real agribusiness scenarios.
                 </p>
               </div>
@@ -65,7 +65,7 @@ export default function FellowshipConfirmation() {
               <div>
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">Decision Notification</h3>
                 <p className="text-gray-600 mb-2">
-                  <strong>September 30, 2025:</strong> Final decisions will be communicated to all applicants.
+                  <strong>October 31, 2025:</strong> Final decisions will be communicated to all applicants.
                 </p>
               </div>
             </div>
@@ -77,7 +77,7 @@ export default function FellowshipConfirmation() {
               <div>
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">Program Launch</h3>
                 <p className="text-gray-600 mb-2">
-                  <strong>October 2, 2025:</strong> The fellowship program begins with the intensive launchpad phase.
+                  <strong>November 3, 2025:</strong> The fellowship program begins with the intensive launchpad phase.
                 </p>
               </div>
             </div>
@@ -102,10 +102,10 @@ export default function FellowshipConfirmation() {
               <h3 className="text-lg font-semibold text-blue-800">Key Dates</h3>
             </div>
             <ul className="text-sm text-gray-700 space-y-1">
-              <li><strong>Sept 20:</strong> Application deadline</li>
-              <li><strong>Sept 20-28:</strong> Assessments</li>
-              <li><strong>Sept 30:</strong> Final decisions</li>
-              <li><strong>Oct 2:</strong> Program launch</li>
+              <li><strong>Oct 24:</strong> Application deadline</li>
+              <li><strong>Oct 27-30:</strong> Assessments</li>
+              <li><strong>Oct 31:</strong> Final decisions</li>
+              <li><strong>Nov 3:</strong> Program lunch</li>
             </ul>
           </div>
         </div>

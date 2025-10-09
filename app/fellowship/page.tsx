@@ -360,11 +360,11 @@ export default function Fellowship() {
           
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
-              { icon: <FaCalendarAlt />, title: "Applications Open", date: "Aug 25" },
-              { icon: <FaClock />, title: "Deadline", date: "Sept 20 (11:59 PM GMT)" },
-              { icon: <FaCheckCircle />, title: "Assessments", date: "Sept 20–28" },
-              { icon: <FaStar />, title: "Final Decisions", date: "Sept 30" },
-              { icon: <FaGraduationCap />, title: "Program Launch", date: "Oct 2" }
+              { icon: <FaCalendarAlt />, title: "Application Opens", date: "Oct 10" },
+              { icon: <FaClock />, title: "Deadline", date: "Oct 24 (11:59 PM GMT)" },
+              { icon: <FaCheckCircle />, title: "Assessment", date: "Oct 27–30" },
+              { icon: <FaStar />, title: "Final Decision", date: "Oct 31" },
+              { icon: <FaGraduationCap />, title: "Program Lunch", date: "Nov 3" }
             ].map((milestone, index) => (
               <div key={index} className="bg-white p-6 rounded-xl shadow-sm text-center">
                 <div className="text-green-600 text-2xl mb-3">{milestone.icon}</div>

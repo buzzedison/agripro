@@ -53,6 +53,7 @@ export default defineType({
         { name: 'linkedin', title: 'LinkedIn', type: 'url' },
         { name: 'twitter', title: 'Twitter', type: 'url' },
         { name: 'website', title: 'Website', type: 'url' },
+        { name: 'phone', title: 'Phone', type: 'string' },
       ],
     },
     {

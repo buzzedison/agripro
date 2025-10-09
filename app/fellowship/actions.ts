@@ -360,9 +360,9 @@ ${data.careerGoals}
           <div style="background-color: #f0fdf4; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #16a34a;">
             <h3 style="color: #166534; margin: 0 0 15px 0;">What happens next?</h3>
             <ul style="color: #374151; margin: 0; padding-left: 20px;">
-              <li style="margin-bottom: 8px;"><strong>Assessment Phase:</strong> Sept 20–28, 2025</li>
-              <li style="margin-bottom: 8px;"><strong>Final Decisions:</strong> Sept 30, 2025</li>
-              <li style="margin-bottom: 8px;"><strong>Program Launch:</strong> Oct 2, 2025</li>
+              <li style="margin-bottom: 8px;"><strong>Assessment Phase:</strong> Oct 27–30, 2025</li>
+              <li style="margin-bottom: 8px;"><strong>Final Decisions:</strong> Oct 31, 2025</li>
+              <li style="margin-bottom: 8px;"><strong>Program Lunch:</strong> Nov 3, 2025</li>
             </ul>
           </div>
 

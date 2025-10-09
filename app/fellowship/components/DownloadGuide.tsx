@@ -172,7 +172,7 @@ export default function DownloadGuide() {
       addHeading('3. Application Process & Timeline')
       
       addHeading('Phase 1: Digital Application', 2)
-      addWrappedText('Deadline: September 20, 2025 (11:59 PM GMT)', 10, 'bold')
+      addWrappedText('Deadline: October 24, 2025 (11:59 PM GMT)', 10, 'bold')
       addWrappedText('• Complete online application form')
       addWrappedText('• Submit 3 essays (motivation, problem-solving, career goals)')
       addWrappedText('• Upload CV/resume and transcript')
@@ -180,18 +180,18 @@ export default function DownloadGuide() {
       addWrappedText('• Provide 2 professional/academic references')
 
       addHeading('Phase 2: Virtual Assessment', 2)
-      addWrappedText('Dates: September 20-28, 2025', 10, 'bold')
+      addWrappedText('Dates: October 27-30, 2025', 10, 'bold')
       addWrappedText('• Case study analysis (agricultural supply chain scenario)')
       addWrappedText('• Group collaboration task')
       addWrappedText('• Data interpretation exercise')
       addWrappedText('• 30-minute behavioral interview')
 
       addHeading('Phase 3: Final Panel & Placement', 2)
-      addWrappedText('Dates: September 28-30, 2025', 10, 'bold')
+      addWrappedText('Dates: October 31, 2025', 10, 'bold')
       addWrappedText('• Panel interview with program and partner representatives')
       addWrappedText('• Reference checks conducted')
       addWrappedText('• Placement matching based on skills and company needs')
-      addWrappedText('• Final decisions communicated September 30')
+      addWrappedText('• Final decisions communicated October 31')
 
       // Project Examples
       doc.addPage()
@@ -351,11 +351,11 @@ export default function DownloadGuide() {
       addWrappedText('Application Portal: https://agriprohub.com/fellowship/apply')
 
       addHeading('Important Deadlines (2025)', 2)
-      addWrappedText('• Applications Open: August 25, 2025')
-      addWrappedText('• Application Deadline: September 20, 2025 (11:59 PM GMT)')
-      addWrappedText('• Virtual Assessments: September 20-28, 2025')
-      addWrappedText('• Final Decisions: September 30, 2025')
-      addWrappedText('• Program Launch: October 2, 2025')
+      addWrappedText('• Applications Open: October 10, 2025')
+      addWrappedText('• Application Deadline: October 24, 2025 (11:59 PM GMT)')
+      addWrappedText('• Virtual Assessments: October 27-30, 2025')
+      addWrappedText('• Final Decisions: October 31, 2025')
+      addWrappedText('• Program Lunch: November 3, 2025')
 
       currentY += 20
       addWrappedText('This comprehensive guide provides all the information needed to understand and apply for the Agripro Fellowship Track. For the most current information and to submit your application, visit our website or contact the fellowship team directly.')

@@ -24,7 +24,7 @@ export default function FellowshipGuide() {
         <div className="grid md:grid-cols-2 gap-6 mb-12">
           <div className="bg-green-600 text-white p-6 rounded-xl text-center">
             <h3 className="text-xl font-bold mb-4">Ready to Apply?</h3>
-            <p className="mb-6">Applications are open until September 20, 2025</p>
+            <p className="mb-6">Applications are open until October 24, 2025</p>
             <Link 
               href="/fellowship/apply"
               className="inline-flex items-center px-6 py-3 bg-white text-green-700 font-bold rounded-lg hover:bg-green-50 transition-colors"
@@ -164,7 +164,7 @@ export default function FellowshipGuide() {
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">Phase 1: Digital Application</h3>
-                <p className="text-gray-600 mb-2"><strong>Deadline:</strong> September 20, 2025 (11:59 PM GMT)</p>
+                <p className="text-gray-600 mb-2"><strong>Deadline:</strong> October 24, 2025 (11:59 PM GMT)</p>
                 <ul className="text-gray-700 text-sm space-y-1">
                   <li>• Complete online application form</li>
                   <li>• Submit 3 essays (motivation, problem-solving, career goals)</li>
@@ -181,7 +181,7 @@ export default function FellowshipGuide() {
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">Phase 2: Virtual Assessment</h3>
-                <p className="text-gray-600 mb-2"><strong>Dates:</strong> September 20-28, 2025</p>
+                <p className="text-gray-600 mb-2"><strong>Dates:</strong> October 27-30, 2025</p>
                 <ul className="text-gray-700 text-sm space-y-1">
                   <li>• Case study analysis (agricultural supply chain scenario)</li>
                   <li>• Group collaboration task</li>
@@ -197,12 +197,12 @@ export default function FellowshipGuide() {
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">Phase 3: Final Panel & Placement</h3>
-                <p className="text-gray-600 mb-2"><strong>Dates:</strong> September 28-30, 2025</p>
+                <p className="text-gray-600 mb-2"><strong>Dates:</strong> October 31, 2025</p>
                 <ul className="text-gray-700 text-sm space-y-1">
                   <li>• Panel interview with Agripro and partner organization representatives</li>
                   <li>• Reference checks conducted</li>
                   <li>• Placement matching based on skills and company needs</li>
-                  <li>• Final decisions communicated September 30</li>
+                  <li>• Final decisions communicated October 31</li>
                 </ul>
               </div>
             </div>
