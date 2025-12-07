@@ -23,12 +23,26 @@ export default function AdminDashboard() {
     uniqueViewers: 0
   })
   const [statsLoading, setStatsLoading] = useState(true)
+  const [pendingSubmissions, setPendingSubmissions] = useState(0)
 
   useEffect(() => {
     if (user && !loading) {
       fetchStats()
+      fetchPendingSubmissions()
     }
   }, [user, loading])
+
+  const fetchPendingSubmissions = async () => {
+    try {
+      const response = await fetch('/api/admin/knowledge-hub/contributors/pending-count')
+      if (response.ok) {
+        const data = await response.json()
+        setPendingSubmissions(data.count || 0)
+      }
+    } catch (error) {
+      console.error('Error fetching pending submissions:', error)
+    }
+  }
 
   const fetchStats = async () => {
     try {
@@ -206,6 +220,39 @@ export default function AdminDashboard() {
             </div>
           </Link>
 
+          {/* Contributor Review */}
+          <Link
+            href="/admin/knowledge-hub/contributors"
+            className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6 group relative"
+          >
+            {pendingSubmissions > 0 && (
+              <span className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white shadow-lg">
+                {pendingSubmissions > 9 ? '9+' : pendingSubmissions}
+              </span>
+            )}
+            <div className="flex items-center mb-4">
+              <div className="flex-shrink-0">
+                <FaUserShield className="h-8 w-8 text-emerald-600 group-hover:text-emerald-700" />
+              </div>
+              <div className="ml-4">
+                <h3 className="text-lg font-semibold text-gray-900 group-hover:text-emerald-600">
+                  Contributor Review
+                </h3>
+                {pendingSubmissions > 0 && (
+                  <p className="text-xs text-amber-600 font-medium">
+                    {pendingSubmissions} submission{pendingSubmissions !== 1 ? 's' : ''} awaiting review
+                  </p>
+                )}
+              </div>
+            </div>
+            <p className="text-gray-600 text-sm">
+              Manage submitted articles, leave editorial feedback, and publish new Knowledge Hub content.
+            </p>
+            <div className="mt-4 flex items-center text-emerald-600 text-sm font-medium">
+              Open Review Queue →
+            </div>
+          </Link>
+
           {/* Fellowship Management */}
           <Link
             href="/admin/fellowship"
@@ -226,6 +273,29 @@ export default function AdminDashboard() {
             </p>
             <div className="mt-4 flex items-center text-blue-600 text-sm font-medium">
               Manage Applications →
+            </div>
+          </Link>
+
+          {/* Trade Management */}
+          <Link
+            href="/admin/trade"
+            className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6 group"
+          >
+            <div className="flex items-center mb-4">
+              <div className="flex-shrink-0">
+                <FaUsers className="h-8 w-8 text-teal-600 group-hover:text-teal-700" />
+              </div>
+              <div className="ml-4">
+                <h3 className="text-lg font-semibold text-gray-900 group-hover:text-teal-600">
+                  Trade & Vendors
+                </h3>
+              </div>
+            </div>
+            <p className="text-gray-600 text-sm">
+              Review vendor applications, manage marketplace listings, and approve verified vendors.
+            </p>
+            <div className="mt-4 flex items-center text-teal-600 text-sm font-medium">
+              Manage Vendors →
             </div>
           </Link>
 
@@ -335,7 +405,18 @@ export default function AdminDashboard() {
         {/* Quick Actions */}
         <div className="mt-8 bg-green-50 border border-green-200 rounded-lg p-6">
           <h3 className="text-lg font-semibold text-green-800 mb-4">Quick Actions</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <Link
+              href="/admin/knowledge-hub/contributors"
+              className="inline-flex items-center justify-center px-4 py-2 border border-emerald-400 rounded-lg text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 transition-colors relative"
+            >
+              Review Submissions
+              {pendingSubmissions > 0 && (
+                <span className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-white text-xs font-bold text-emerald-700">
+                  {pendingSubmissions > 9 ? '9+' : pendingSubmissions}
+                </span>
+              )}
+            </Link>
             <Link
               href="/admin/knowledge-hub"
               className="inline-flex items-center justify-center px-4 py-2 border border-green-300 rounded-lg text-sm font-medium text-green-700 bg-white hover:bg-green-50 transition-colors"

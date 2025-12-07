@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { urlForImage } from '@/lib/image';
 import { format } from 'date-fns';
-import { BookOpen, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 
 interface Insight {
   title: string;
@@ -17,72 +17,110 @@ interface Insight {
 }
 
 export default function InsightsSection({ insights }: { insights: Insight[] }) {
+  if (insights.length === 0) return null;
+
+  const featuredInsight = insights[0];
+  const secondaryInsights = insights.slice(1, 4);
+
+  const getImageUrl = (insight: Insight) => {
+    if (insight.heroImage?.asset) {
+      return urlForImage(insight.heroImage).width(1200).height(800).fit('crop').url();
+    }
+    if (insight.image) {
+      return urlForImage(insight.image).width(1200).height(800).fit('crop').url();
+    }
+    return null;
+  };
+
   return (
-    <section>
-      <div className="flex justify-between items-center mb-8">
-        <Link 
+    <section className="py-8">
+      {/* Section Header */}
+      <div className="flex items-center justify-between mb-10 border-b-2 border-green-700 pb-4">
+        <div>
+          <h2 className="text-sm font-bold uppercase tracking-widest text-green-700">Latest Insights</h2>
+        </div>
+        <Link
           href="/knowledgehub/insights"
-          className="text-green-600 hover:text-green-700 font-medium"
+          className="text-sm font-medium text-gray-600 hover:text-green-700 flex items-center gap-1 transition-colors"
         >
-          View all insights →
+          View All
+          <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {insights.slice(0, 3).map((insight) => (
-          <Link
-            href={`/knowledgehub/insights/${insight.slug.current}`}
-            key={insight.slug.current}
-            className="group relative overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition hover:-translate-y-1 hover:border-green-200 hover:shadow-lg"
-          >
-            <div className="relative h-56 w-full overflow-hidden">
-              {insight.heroImage?.asset ? (
+
+      {/* Featured + Secondary Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Featured Article - Takes 7 columns */}
+        <article className="lg:col-span-7 group">
+          <Link href={`/knowledgehub/insights/${featuredInsight.slug.current}`} className="block">
+            {getImageUrl(featuredInsight) && (
+              <div className="relative aspect-[16/10] w-full overflow-hidden mb-6">
                 <Image
-                  src={urlForImage(insight.heroImage).width(1200).height(630).fit('crop').url()}
-                  alt={insight.title}
+                  src={getImageUrl(featuredInsight)!}
+                  alt={featuredInsight.title}
                   fill
-                  className="object-cover transition duration-500 group-hover:scale-105"
+                  className="object-cover transition-transform duration-500 group-hover:scale-105"
+                  priority
                 />
-              ) : insight.image ? (
-                <Image
-                  src={urlForImage(insight.image).width(1200).height(630).fit('crop').url()}
-                  alt={insight.title}
-                  fill
-                  className="object-cover transition duration-500 group-hover:scale-105"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center bg-gray-100">
-                  <BookOpen className="h-10 w-10 text-gray-400" />
-                </div>
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-              <div className="absolute inset-x-0 bottom-0 flex items-center justify-between px-5 pb-4">
-                <span className="inline-flex items-center rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-green-700">
-                  {insight.category || 'Insight'}
+              </div>
+            )}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 text-xs">
+                <span className="font-bold uppercase tracking-wide text-green-700">
+                  {featuredInsight.category || 'Insight'}
                 </span>
-                <span className="text-xs font-medium text-white/80">
-                  {format(new Date(insight.publishedAt), 'MMM d, yyyy')}
+                <span className="text-gray-400">|</span>
+                <span className="text-gray-500">
+                  {format(new Date(featuredInsight.publishedAt), 'MMMM d, yyyy')}
                 </span>
               </div>
-            </div>
-            <div className="flex flex-col gap-3 px-5 pb-5 pt-6">
-              <h3 className="text-xl font-semibold text-gray-900 transition group-hover:text-green-700">
-                {insight.title}
+              <h3 className="text-3xl lg:text-4xl font-bold text-gray-900 leading-tight group-hover:text-green-700 transition-colors">
+                {featuredInsight.title}
               </h3>
-              <p className="line-clamp-3 text-sm text-gray-600">
-                {insight.excerpt || 'Read the latest analysis from our knowledge team.'}
+              <p className="text-lg text-gray-600 leading-relaxed line-clamp-3">
+                {featuredInsight.excerpt || 'Read the latest analysis from our knowledge team.'}
               </p>
-              <div className="flex items-center justify-between pt-3 text-sm text-green-700">
-                <span className="inline-flex items-center font-semibold">
-                  Read insight
-                  <ArrowRight className="ml-2 h-4 w-4 transition group-hover:translate-x-1" />
-                </span>
-                <span className="text-xs uppercase tracking-wide text-gray-400">Insights</span>
-              </div>
+              <span className="inline-flex items-center text-sm font-semibold text-green-700 mt-2 group-hover:underline">
+                Read Full Article
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </span>
             </div>
           </Link>
-        ))}
+        </article>
+
+        {/* Secondary Articles - Takes 5 columns */}
+        <div className="lg:col-span-5 flex flex-col divide-y divide-gray-200">
+          {secondaryInsights.map((insight, index) => (
+            <article key={insight.slug.current} className={`group py-6 ${index === 0 ? 'pt-0' : ''}`}>
+              <Link href={`/knowledgehub/insights/${insight.slug.current}`} className="flex gap-5">
+                {getImageUrl(insight) && (
+                  <div className="relative w-28 h-28 flex-shrink-0 overflow-hidden">
+                    <Image
+                      src={getImageUrl(insight)!}
+                      alt={insight.title}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                )}
+                <div className="flex flex-col justify-center">
+                  <div className="flex items-center gap-2 text-xs mb-2">
+                    <span className="font-bold uppercase tracking-wide text-green-700">
+                      {insight.category || 'Insight'}
+                    </span>
+                  </div>
+                  <h4 className="text-base font-bold text-gray-900 leading-snug line-clamp-2 group-hover:text-green-700 transition-colors">
+                    {insight.title}
+                  </h4>
+                  <span className="text-xs text-gray-500 mt-2">
+                    {format(new Date(insight.publishedAt), 'MMM d, yyyy')}
+                  </span>
+                </div>
+              </Link>
+            </article>
+          ))}
+        </div>
       </div>
     </section>
   );
-} 
+}

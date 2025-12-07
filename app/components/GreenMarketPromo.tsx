@@ -1,88 +1,109 @@
+'use client'
+
 import Link from 'next/link'
-import Image from 'next/image'
-import { FaLeaf } from 'react-icons/fa'
+import { FaLeaf, FaStore, FaGlobe, FaShieldAlt, FaArrowRight } from 'react-icons/fa'
+import { motion } from 'framer-motion'
+
+const features = [
+  { icon: FaGlobe, text: 'Trade Across Africa' },
+  { icon: FaShieldAlt, text: 'Verified Sellers' },
+  { icon: FaLeaf, text: 'Sustainable Products' },
+]
 
 export default function GreenMarketPromo() {
   return (
-    <section className="py-16 bg-gradient-to-br from-green-50 via-white to-green-50">
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-          <div className="grid md:grid-cols-2 gap-8 items-center">
-            {/* Content */}
-            <div className="p-8 md:p-12">
-              <div className="inline-flex items-center gap-2 bg-green-100 px-4 py-2 rounded-full mb-6">
-                <FaLeaf className="text-green-600" />
-                <span className="text-green-800 font-medium">Coming March 2025</span>
-              </div>
-              
-              <h2 className="text-3xl md:text-4xl font-bold text-green-800 mb-4">
-                Accra Green Market
-              </h2>
-              
-              <p className="text-gray-600 mb-6 text-lg">
-                Join us for Ghana&apos;s largest sustainable marketplace. Connect with eco-conscious vendors, learn from experts, and be part of the green revolution.
-              </p>
-              
-              <div className="space-y-4 mb-8">
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="text-gray-700">Sustainable Products & Services</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="text-gray-700">Expert Workshops & Talks</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="text-gray-700">Networking Opportunities</span>
-                </div>
-              </div>
-              
-              <div className="flex flex-wrap gap-4">
-                <Link 
-                  href="/greenmarket"
-                  className="inline-flex items-center px-6 py-3 bg-green-600 text-white rounded-full hover:bg-green-700 transition-colors"
-                >
-                  Learn More
-                  <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                  </svg>
-                </Link>
-                <Link 
-                  href="/greenmarket/vendors"
-                  className="inline-flex items-center px-6 py-3 bg-white text-green-600 border-2 border-green-600 rounded-full hover:bg-green-50 transition-colors"
-                >
-                  Become a Vendor
-                </Link>
-              </div>
+    <section className="py-20 bg-gradient-to-br from-green-900 via-emerald-900 to-teal-900 relative overflow-hidden">
+      {/* Background decoration */}
+      <div className="absolute inset-0 opacity-20">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-green-400 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-emerald-400 rounded-full blur-3xl" />
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 relative z-10">
+        <div className="grid lg:grid-cols-2 gap-12 items-center">
+          {/* Content */}
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full mb-6">
+              <FaStore className="text-green-400" />
+              <span className="text-green-300 font-medium">Africa&apos;s Agricultural Marketplace</span>
             </div>
-            
-            {/* Image */}
-            <div className="relative h-64 md:h-full min-h-[400px]">
-              <Image
-                src="/images/greenpromo.jpg"
-                alt="Accra Green Market"
-                fill
-                className="object-cover"
-                priority
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-green-900/40 to-transparent">
-                <div className="absolute bottom-8 left-8 right-8 bg-white/90 backdrop-blur-sm p-4 rounded-lg">
-                  <div className="flex items-center gap-4">
-                    <div className="bg-green-100 p-2 rounded-full">
-                      <span className="text-2xl">🌱</span>
-                    </div>
-                    <div>
-                      <p className="font-medium text-green-800">The Enterprise Village, Dzorwulu</p>
-                      <p className="text-sm text-green-600">March 2025</p>
-                    </div>
-                  </div>
+
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 leading-tight">
+              Green Market
+              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-400">
+                Buy & Sell Across Africa
+              </span>
+            </h2>
+
+            <p className="text-xl text-green-100/90 mb-8 leading-relaxed">
+              Connect with verified sellers and buyers across the African continent.
+              Trade fresh produce, livestock, and sustainable agricultural products.
+            </p>
+
+            {/* Features */}
+            <div className="flex flex-wrap gap-4 mb-8">
+              {features.map((feature, index) => (
+                <div
+                  key={index}
+                  className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full"
+                >
+                  <feature.icon className="w-4 h-4 text-green-400" />
+                  <span className="text-white text-sm font-medium">{feature.text}</span>
                 </div>
-              </div>
+              ))}
             </div>
-          </div>
+
+            {/* CTAs */}
+            <div className="flex flex-wrap gap-4">
+              <Link
+                href="/greenmarket/marketplace"
+                className="inline-flex items-center gap-2 px-8 py-4 bg-white text-green-800 rounded-2xl font-semibold hover:bg-green-50 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+              >
+                Browse Marketplace
+                <FaArrowRight className="w-4 h-4" />
+              </Link>
+              <Link
+                href="/greenmarket/vendors"
+                className="inline-flex items-center gap-2 px-8 py-4 bg-white/10 backdrop-blur-md text-white border border-white/30 rounded-2xl font-semibold hover:bg-white/20 transition-all"
+              >
+                <FaStore className="w-5 h-5" />
+                Start Selling
+              </Link>
+            </div>
+          </motion.div>
+
+          {/* Stats Cards */}
+          <motion.div
+            initial={{ opacity: 0, x: 30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="grid grid-cols-2 gap-4"
+          >
+            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 text-center border border-white/10">
+              <p className="text-4xl font-bold text-white mb-1">20+</p>
+              <p className="text-green-200">African Countries</p>
+            </div>
+            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 text-center border border-white/10">
+              <p className="text-4xl font-bold text-white mb-1">1K+</p>
+              <p className="text-green-200">Products Listed</p>
+            </div>
+            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 text-center border border-white/10">
+              <p className="text-4xl font-bold text-white mb-1">100%</p>
+              <p className="text-green-200">Verified Sellers</p>
+            </div>
+            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 text-center border border-white/10">
+              <p className="text-4xl font-bold text-white mb-1">Free</p>
+              <p className="text-green-200">To Join</p>
+            </div>
+          </motion.div>
         </div>
       </div>
     </section>
   )
-} 
+}

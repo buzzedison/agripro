@@ -29,7 +29,9 @@ export function useContentAccess(): ContentAccessState {
       try {
         const { data: { user }, error } = await supabase.auth.getUser();
         if (error) {
-          console.error('Auth error:', error);
+          if ((error as { name?: string }).name !== 'AuthSessionMissingError') {
+            console.error('Auth error:', error);
+          }
           setUser(null);
         } else {
           setUser(user);

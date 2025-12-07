@@ -2,29 +2,36 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
-import { FaBars, FaTimes } from 'react-icons/fa';
-import { MessageSquare, Search, ArrowLeft } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Menu, X, MessageSquare, ArrowLeft, BookOpen, FileText, Lightbulb, Video, Users } from 'lucide-react';
 import ChatbotDialog from './chatbot/ChatbotDialog';
 
 const navigation = [
-  { name: 'Best Practices', href: '/knowledgehub/practices' },
-  { name: 'Whitepapers', href: '/knowledgehub/whitepapers' },
-  { name: 'Insights', href: '/knowledgehub/insights' },
-  { name: 'Videos', href: '/knowledgehub/videos' }, // Changed from 'Back to AgriPro'
+  { name: 'Best Practices', href: '/knowledgehub/practices', icon: BookOpen },
+  { name: 'Whitepapers', href: '/knowledgehub/whitepapers', icon: FileText },
+  { name: 'Insights', href: '/knowledgehub/insights', icon: Lightbulb },
+  { name: 'Videos', href: '/knowledgehub/videos', icon: Video },
+  { name: 'Contributor Portal', href: '/knowledgehub/contributors', icon: Users },
 ];
 
 export default function KnowledgeHubNavbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  // Track scroll for navbar styling
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 10);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   // Prevent background scroll when mobile menu is open
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      if (isOpen) {
-        document.body.style.overflow = 'hidden';
-      } else {
-        document.body.style.overflow = '';
-      }
+      document.body.style.overflow = isOpen ? 'hidden' : '';
     }
     return () => {
       if (typeof window !== 'undefined') {
@@ -37,140 +44,152 @@ export default function KnowledgeHubNavbar() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
-      if (url.searchParams.has('chatbot') && url.searchParams.get('chatbot') === 'open') {
+      if (url.searchParams.get('chatbot') === 'open') {
         setIsChatOpen(true);
       }
     }
   }, []);
 
   return (
-    <nav className="bg-white shadow-lg">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-20">
-          <Link href="/knowledgehub">
-            <div className="flex items-center">
+    <>
+      <nav className={`sticky top-0 z-50 bg-white transition-shadow duration-300 ${scrolled ? 'shadow-md' : 'shadow-sm'}`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16 lg:h-20">
+            {/* Logo */}
+            <Link href="/knowledgehub" className="flex items-center gap-3 flex-shrink-0">
               <motion.img
                 src="/images/logo.png"
                 alt="AgriPro Logo"
-                className="h-10 w-auto sm:h-12"
+                className="h-9 w-auto lg:h-11"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               />
-              <div className="ml-2 sm:ml-3">
-                <h1 className="text-base sm:text-xl font-bold text-green-800 leading-tight">Knowledge Hub</h1>
-                <p className="text-[10px] sm:text-xs text-gray-500 leading-tight">Africa&apos;s Agribusiness Knowledge Platform</p>
+              <div className="hidden sm:block">
+                <h1 className="text-lg lg:text-xl font-bold text-green-800 leading-tight">Knowledge Hub</h1>
+                <p className="text-[10px] lg:text-xs text-gray-500 leading-tight">Africa&apos;s Agribusiness Platform</p>
               </div>
+            </Link>
+
+            {/* Desktop Navigation */}
+            <div className="hidden lg:flex items-center gap-1">
+              {navigation.map((item) => {
+                const isContributorLink = item.href === '/knowledgehub/contributors';
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isContributorLink
+                        ? 'bg-green-600 text-white hover:bg-green-700'
+                        : 'text-gray-600 hover:text-green-700 hover:bg-green-50'
+                      }`}
+                  >
+                    {item.name}
+                  </Link>
+                );
+              })}
             </div>
-          </Link>
 
-          {/* Desktop navigation */}
-          <div className="hidden md:flex items-center space-x-8">
-            {navigation.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className="text-gray-600 hover:text-green-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+            {/* Desktop Actions */}
+            <div className="hidden lg:flex items-center gap-3">
+              <button
+                onClick={() => setIsChatOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
+                aria-label="Open AI Assistant"
               >
-                {item.name}
+                <MessageSquare className="w-4 h-4" />
+                Ask AI
+              </button>
+              <Link
+                href="/"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                aria-label="Back to AgriPro"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                AgriPro
               </Link>
-            ))}
-            
-            {/* Chatbot Button for Desktop */}
-            <button
-              onClick={() => setIsChatOpen(true)}
-              className="bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center space-x-2 hover:bg-green-700 transition-colors"
-              aria-label="Open AI Assistant"
-            >
-              <MessageSquare className="w-4 h-4" />
-              <span>Ask AI</span>
-            </button>
+            </div>
 
-            {/* Back to AgriPro Button for Desktop (formerly Advanced Search) */}
-            <Link
-              href="/"
-              className="bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center space-x-2 hover:bg-green-800 transition-colors"
-              aria-label="Back to AgriPro"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Back to AgriPro</span>
-            </Link>
-          </div>
-
-          {/* Mobile menu button */}
-          <div className="md:hidden flex items-center">
-            <button
-              onClick={() => setIsChatOpen(true)}
-              className="bg-green-600 text-white p-2 rounded-md mr-2"
-              aria-label="Open AI Assistant"
-            >
-              <MessageSquare className="w-5 h-5" />
-            </button>
-            
-            <Link
-              href="/"
-              className="bg-green-700 text-white p-2 rounded-md mr-2"
-              aria-label="Back to AgriPro"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Link>
-            
-            <button
-              onClick={() => setIsOpen(!isOpen)}
-              className="text-gray-500 hover:text-green-600 focus:outline-none"
-            >
-              {isOpen ? (
-                <FaTimes className="h-6 w-6" />
-              ) : (
-                <FaBars className="h-6 w-6" />
-              )}
-            </button>
+            {/* Mobile Actions */}
+            <div className="flex lg:hidden items-center gap-2">
+              <button
+                onClick={() => setIsChatOpen(true)}
+                className="p-2 text-green-700 bg-green-50 rounded-lg"
+                aria-label="Open AI Assistant"
+              >
+                <MessageSquare className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="p-2 text-gray-600 hover:text-green-700 rounded-lg hover:bg-gray-100 transition-colors"
+                aria-label={isOpen ? 'Close menu' : 'Open menu'}
+              >
+                {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      </nav>
 
-      {/* Mobile menu overlay and dropdown */}
-      {/* Overlay */}
-      {isOpen && (
-        <div className="fixed inset-0 z-30 bg-black bg-opacity-30 transition-opacity md:hidden" onClick={() => setIsOpen(false)} />
-      )}
-      {/* Dropdown */}
-      <div className={`fixed top-0 left-0 right-0 z-40 md:hidden transition-transform duration-300 ${isOpen ? 'translate-y-0' : '-translate-y-full'} w-full`}>
-        <div className="mx-2 mt-2 rounded-xl shadow-2xl bg-gradient-to-br from-green-50 to-green-100 px-4 pt-4 pb-6 space-y-2 relative">
-          {/* Close Button */}
-          <button
-            onClick={() => setIsOpen(false)}
-            className="absolute top-2 right-2 text-green-700 hover:text-green-900 rounded-full p-2 focus:outline-none bg-white/70 shadow"
-            aria-label="Close menu"
-          >
-            <FaTimes className="h-6 w-6" />
-          </button>
-          {navigation.map((item) => (
-            <Link
-              key={item.name}
-              href={item.href}
-              className="text-gray-700 hover:text-green-600 block px-4 py-3 rounded-lg text-base font-medium text-center transition-colors"
+      {/* Mobile Menu Overlay */}
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm lg:hidden"
               onClick={() => setIsOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.2 }}
+              className="fixed top-16 left-0 right-0 z-50 lg:hidden"
             >
-              {item.name}
-            </Link>
-          ))}
-          {/* Back to AgriPro Link in Mobile Menu (formerly Advanced Search) */}
-          <Link
-            href="/"
-            className="text-gray-700 hover:text-green-600 px-4 py-3 rounded-lg text-base font-medium flex items-center justify-center transition-colors"
-            onClick={() => setIsOpen(false)}
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to AgriPro
-          </Link>
-        </div>
-      </div>
-      
+              <div className="mx-4 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+                <div className="p-2">
+                  {navigation.map((item) => {
+                    const Icon = item.icon;
+                    const isContributorLink = item.href === '/knowledgehub/contributors';
+                    return (
+                      <Link
+                        key={item.name}
+                        href={item.href}
+                        onClick={() => setIsOpen(false)}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium transition-colors ${isContributorLink
+                            ? 'bg-green-600 text-white'
+                            : 'text-gray-700 hover:bg-green-50 hover:text-green-700'
+                          }`}
+                      >
+                        <Icon className="w-5 h-5" />
+                        {item.name}
+                      </Link>
+                    );
+                  })}
+                </div>
+                <div className="border-t border-gray-100 p-2">
+                  <Link
+                    href="/"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                  >
+                    <ArrowLeft className="w-5 h-5" />
+                    Back to AgriPro
+                  </Link>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       {/* Chatbot Dialog */}
-      <ChatbotDialog 
-        isOpen={isChatOpen} 
-        onCloseDialog={() => setIsChatOpen(false)} 
+      <ChatbotDialog
+        isOpen={isChatOpen}
+        onCloseDialog={() => setIsChatOpen(false)}
       />
-    </nav>
+    </>
   );
 }

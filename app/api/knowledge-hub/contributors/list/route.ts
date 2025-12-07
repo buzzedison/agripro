@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-import { client } from '@/sanity/lib/client'
+import { createClient } from 'next-sanity'
+import { apiVersion, dataset, projectId } from '@/sanity/env'
+
+// Use fresh client without CDN cache for contributor data
+const client = createClient({
+  projectId,
+  dataset,
+  apiVersion,
+  useCdn: false,
+})
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url)

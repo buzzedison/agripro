@@ -8,13 +8,13 @@ import { urlForImage } from '@/lib/image';
 import KnowledgeHubNavbar from '../components/KnowledgeHubNavbar';
 import KnowledgeHubFooter from '../components/KnowledgeHubFooter';
 import Breadcrumb from '../components/Breadcrumb';
-import { 
-  MapPin, 
-  Star, 
-  Clock, 
-  Award, 
-  Users, 
-  MessageCircle, 
+import {
+  MapPin,
+  Star,
+  Clock,
+  Award,
+  Users,
+  MessageCircle,
   Filter,
   Search,
   ChevronDown,
@@ -103,7 +103,7 @@ export default function ExpertsPage() {
         featured,
         status
       }`;
-      
+
       const data = await client.fetch(query);
       setExperts(data);
     } catch (error) {
@@ -115,19 +115,20 @@ export default function ExpertsPage() {
 
   const filteredExperts = experts.filter(expert => {
     const matchesSearch = expert.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         expert.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         expert.expertise.toLowerCase().includes(searchTerm.toLowerCase());
-    
+      expert.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      expert.expertise?.toLowerCase().includes(searchTerm.toLowerCase());
+
     const matchesExpertise = !selectedExpertise || expert.expertise === selectedExpertise;
-    const matchesLocation = !selectedLocation || expert.location.country === selectedLocation;
+    const matchesLocation = !selectedLocation || expert.location?.country === selectedLocation;
     const matchesConsulting = !consultingOnly || expert.availableForConsulting;
-    
+
     return matchesSearch && matchesExpertise && matchesLocation && matchesConsulting;
   });
 
   const getLocationString = (location: Expert['location']) => {
+    if (!location) return 'Location not specified';
     const parts = [location.city, location.state, location.country].filter(Boolean);
-    return parts.join(', ');
+    return parts.length > 0 ? parts.join(', ') : 'Location not specified';
   };
 
   if (loading) {
@@ -157,13 +158,13 @@ export default function ExpertsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <KnowledgeHubNavbar />
-      
+
       <main className="max-w-7xl mx-auto px-4 py-8">
-        <Breadcrumb 
+        <Breadcrumb
           items={[
             { label: 'Knowledge Hub', href: '/knowledgehub' },
             { label: 'Experts', href: '/knowledgehub/experts' }
-          ]} 
+          ]}
         />
 
         {/* Header */}
@@ -174,11 +175,11 @@ export default function ExpertsPage() {
                 Agricultural Experts
               </h1>
               <p className="text-xl text-gray-600 max-w-3xl">
-                Connect with leading agricultural professionals and specialists. Get expert advice, 
+                Connect with leading agricultural professionals and specialists. Get expert advice,
                 consulting services, and insights from our verified network of agricultural experts.
               </p>
             </div>
-            
+
             <div className="flex flex-col sm:flex-row gap-4">
               <Link
                 href="/knowledgehub/experts/apply"
@@ -210,7 +211,7 @@ export default function ExpertsPage() {
                 />
               </div>
             </div>
-            
+
             <button
               onClick={() => setShowFilters(!showFilters)}
               className="flex items-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
@@ -239,7 +240,7 @@ export default function ExpertsPage() {
                     ))}
                   </select>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Location
@@ -250,12 +251,12 @@ export default function ExpertsPage() {
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   >
                     <option value="">All Locations</option>
-                    {Array.from(new Set(experts.map(e => e.location.country))).map(country => (
+                    {Array.from(new Set(experts.filter(e => e.location?.country).map(e => e.location.country))).map(country => (
                       <option key={country} value={country}>{country}</option>
                     ))}
                   </select>
                 </div>
-                
+
                 <div className="flex items-end">
                   <label className="flex items-center">
                     <input
@@ -283,7 +284,7 @@ export default function ExpertsPage() {
               </div>
             </div>
           </div>
-          
+
           <div className="bg-white rounded-lg p-6 shadow-sm">
             <div className="flex items-center">
               <Award className="text-blue-600 mr-3" size={24} />
@@ -295,7 +296,7 @@ export default function ExpertsPage() {
               </div>
             </div>
           </div>
-          
+
           <div className="bg-white rounded-lg p-6 shadow-sm">
             <div className="flex items-center">
               <MessageCircle className="text-purple-600 mr-3" size={24} />
@@ -307,13 +308,13 @@ export default function ExpertsPage() {
               </div>
             </div>
           </div>
-          
+
           <div className="bg-white rounded-lg p-6 shadow-sm">
             <div className="flex items-center">
               <Globe className="text-orange-600 mr-3" size={24} />
               <div>
                 <p className="text-2xl font-bold text-gray-900">
-                  {new Set(experts.map(e => e.location.country)).size}
+                  {new Set(experts.filter(e => e.location?.country).map(e => e.location.country)).size}
                 </p>
                 <p className="text-sm text-gray-600">Countries</p>
               </div>
@@ -338,7 +339,7 @@ export default function ExpertsPage() {
                   Featured Expert
                 </div>
               )}
-              
+
               <div className="p-6">
                 <div className="flex items-start gap-4 mb-4">
                   <div className="relative">
@@ -359,7 +360,7 @@ export default function ExpertsPage() {
                       </div>
                     )}
                   </div>
-                  
+
                   <div className="flex-1">
                     <h3 className="font-bold text-lg text-gray-900 mb-1">
                       {expert.name}
@@ -372,22 +373,22 @@ export default function ExpertsPage() {
                     </p>
                   </div>
                 </div>
-                
+
                 <p className="text-gray-600 text-sm mb-4 line-clamp-3">
                   {expert.bio}
                 </p>
-                
+
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center text-sm text-gray-500">
                     <Clock size={14} className="mr-2" />
                     {expert.yearsOfExperience} years experience
                   </div>
-                  
+
                   <div className="flex items-center text-sm text-gray-500">
                     <MapPin size={14} className="mr-2" />
                     {getLocationString(expert.location)}
                   </div>
-                  
+
                   {expert.languages && expert.languages.length > 0 && (
                     <div className="flex items-center text-sm text-gray-500">
                       <Globe size={14} className="mr-2" />
@@ -396,7 +397,7 @@ export default function ExpertsPage() {
                     </div>
                   )}
                 </div>
-                
+
                 {expert.specializations && expert.specializations.length > 0 && (
                   <div className="mb-4">
                     <div className="flex flex-wrap gap-1">
@@ -416,7 +417,7 @@ export default function ExpertsPage() {
                     </div>
                   </div>
                 )}
-                
+
                 <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                   <div className="flex gap-2">
                     <a
@@ -426,7 +427,7 @@ export default function ExpertsPage() {
                     >
                       <Mail size={16} />
                     </a>
-                    
+
                     {expert.contact.linkedin && (
                       <a
                         href={expert.contact.linkedin}
@@ -438,7 +439,7 @@ export default function ExpertsPage() {
                         <Linkedin size={16} />
                       </a>
                     )}
-                    
+
                     {expert.contact.website && (
                       <a
                         href={expert.contact.website}
@@ -451,7 +452,7 @@ export default function ExpertsPage() {
                       </a>
                     )}
                   </div>
-                  
+
                   <Link
                     href={`/knowledgehub/experts/${expert.slug.current}`}
                     className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"

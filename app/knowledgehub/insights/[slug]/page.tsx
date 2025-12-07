@@ -15,11 +15,15 @@ import {
   XCircle,
   Lightbulb,
   Quote,
-  Sparkles
+  Sparkles,
+  Clock,
+  Bookmark,
+  Calendar
 } from 'lucide-react'
 import ArticleStats from '../../components/ArticleStats'
 import ArticleViewTracker from '../../components/ArticleViewTracker'
 import AuthorBadge, { type AuthorPerson } from '../../components/AuthorBadge'
+import ShareButtons from './ShareButtons'
 
 interface Params {
   params: Promise<{ slug: string }>
@@ -63,6 +67,24 @@ type InsightRecord = {
   image?: any
   authors?: SanityPerson[]
   contributors?: SanityPerson[]
+  tags?: string[]
+  topics?: string[]
+}
+
+function calculateReadingTime(content: any[]): number {
+  if (!Array.isArray(content)) return 3
+  
+  const text = content
+    .filter(block => block._type === 'block')
+    .map(block => 
+      block.children
+        ?.map((child: any) => child.text || '')
+        .join('') || ''
+    )
+    .join(' ')
+  
+  const wordCount = text.split(/\s+/).filter(Boolean).length
+  return Math.max(1, Math.ceil(wordCount / 200))
 }
 
 type Person = {
@@ -347,7 +369,9 @@ export default async function InsightPage({ params }: Params) {
           image,
           name
         }
-      }
+      },
+      tags,
+      topics
     }
   `, { slug })
 
@@ -358,104 +382,246 @@ export default async function InsightPage({ params }: Params) {
   const heroImage = insight.heroImage ?? insight.image
   const authors = (insight.authors ?? []).map(mapSanityPerson).filter(Boolean) as Person[]
   const contributors = (insight.contributors ?? []).map(mapSanityPerson).filter(Boolean) as Person[]
+  const readingTime = calculateReadingTime(insight.content)
+  const allTags = [...(insight.tags || []), ...(insight.topics || [])].slice(0, 5)
 
   return (
-    <article className="min-h-screen bg-gray-50">
+    <article className="min-h-screen bg-white">
       <ArticleViewTracker
         articleId={insight._id || slug}
         articleType="insight"
         articleTitle={insight.title}
       />
 
-      <div className="bg-gradient-to-b from-white via-white to-gray-50">
-        <div className="mx-auto max-w-5xl px-4 pb-12 pt-10 md:px-6 lg:px-8">
-          <Link
-            href="/knowledgehub/insights"
-            className="group inline-flex items-center gap-2 text-sm font-medium text-gray-500 transition hover:text-green-600"
-          >
-            <ArrowLeft className="h-4 w-4 transition group-hover:-translate-x-1" />
-            Back to Insights
-          </Link>
+      {/* Hero Section */}
+      <header className="relative">
+        {/* Background gradient */}
+        <div className="absolute inset-0 bg-gradient-to-b from-green-50/50 via-white to-white" />
+        
+        <div className="relative mx-auto max-w-4xl px-4 pt-8 md:px-6 lg:px-8">
+          {/* Navigation */}
+          <nav className="flex items-center justify-between pb-8">
+            <Link
+              href="/knowledgehub/insights"
+              className="group inline-flex items-center gap-2 text-sm font-medium text-gray-500 transition hover:text-green-700"
+            >
+              <ArrowLeft className="h-4 w-4 transition group-hover:-translate-x-1" />
+              <span>All Insights</span>
+            </Link>
+          </nav>
 
-          <div className="mt-6 flex flex-col gap-6 md:mt-10">
-            <div className="flex flex-wrap items-center gap-3">
-              {insight.category && (
-                <span className="inline-flex items-center rounded-full border border-green-100 bg-green-50 px-4 py-1 text-xs font-semibold uppercase tracking-wide text-green-700">
-                  {insight.category}
-                </span>
-              )}
-              {insight.publishedAt && (
-                <time className="text-sm text-gray-500">
-                  {format(new Date(insight.publishedAt), 'MMMM d, yyyy')}
-                </time>
-              )}
+          {/* Category & Meta */}
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            {insight.category && (
+              <span className="font-bold uppercase tracking-widest text-green-700">
+                {insight.category}
+              </span>
+            )}
+            {insight.category && insight.publishedAt && (
+              <span className="text-gray-300">|</span>
+            )}
+            {insight.publishedAt && (
+              <time className="flex items-center gap-1.5 text-gray-500">
+                <Calendar className="h-3.5 w-3.5" />
+                {format(new Date(insight.publishedAt), 'MMMM d, yyyy')}
+              </time>
+            )}
+            <span className="text-gray-300">|</span>
+            <span className="flex items-center gap-1.5 text-gray-500">
+              <Clock className="h-3.5 w-3.5" />
+              {readingTime} min read
+            </span>
+          </div>
+
+          {/* Title */}
+          <h1 className="mt-6 text-3xl font-bold leading-tight tracking-tight text-gray-900 md:text-4xl lg:text-5xl">
+            {insight.title}
+          </h1>
+
+          {/* Excerpt */}
+          {insight.excerpt && (
+            <p className="mt-6 text-xl leading-relaxed text-gray-600">
+              {insight.excerpt}
+            </p>
+          )}
+
+          {/* Author Section */}
+          {authors.length > 0 && (
+            <div className="mt-8 flex items-center gap-4 border-t border-gray-100 pt-8">
+              <div className="flex -space-x-3">
+                {authors.slice(0, 3).map((author) => (
+                  <div
+                    key={author.id}
+                    className="relative h-12 w-12 overflow-hidden rounded-full border-2 border-white bg-green-100 shadow-sm"
+                  >
+                    {author.avatar ? (
+                      <Image
+                        src={urlForImage(author.avatar).width(96).height(96).url()}
+                        alt={author.name}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-green-700">
+                        {author.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900">
+                  {authors.map(a => a.name).join(', ')}
+                </p>
+                {authors[0]?.roleLabel && (
+                  <p className="text-sm text-gray-500">{authors[0].roleLabel}</p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Hero Image */}
+        {heroImage && (
+          <div className="mx-auto mt-10 max-w-5xl px-4 md:px-6 lg:px-8">
+            <div className="relative aspect-[2/1] overflow-hidden rounded-2xl shadow-2xl">
+              <Image
+                src={urlForImage(heroImage).width(1800).height(900).fit('crop').url()}
+                alt={insight.title}
+                fill
+                priority
+                className="object-cover"
+              />
+            </div>
+          </div>
+        )}
+      </header>
+
+      {/* Content Section */}
+      <div className="mx-auto max-w-4xl px-4 py-12 md:px-6 lg:px-8">
+        <div className="grid gap-12 lg:grid-cols-[1fr_200px]">
+          {/* Main Content */}
+          <div className="min-w-0">
+            <div className="prose prose-lg prose-gray max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-h2:mt-12 prose-h2:text-2xl prose-h3:mt-8 prose-h3:text-xl prose-p:leading-relaxed prose-a:text-green-700 prose-a:no-underline hover:prose-a:underline prose-strong:text-gray-900 prose-blockquote:border-green-500 prose-blockquote:bg-green-50/50 prose-blockquote:py-1 prose-blockquote:not-italic">
+              <PortableText value={insight.content} components={components} />
             </div>
 
-            <h1 className="text-4xl font-bold tracking-tight text-gray-900 md:text-5xl lg:text-6xl">
-              {insight.title}
-            </h1>
+            {/* Tags */}
+            {allTags.length > 0 && (
+              <div className="mt-12 border-t border-gray-100 pt-8">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-gray-400">Topics</p>
+                <div className="flex flex-wrap gap-2">
+                  {allTags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full bg-gray-100 px-4 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-green-100 hover:text-green-800"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
 
-            {(authors.length > 0 || contributors.length > 0) && (
-              <div className="space-y-4">
-                {authors.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">Written by</p>
-                    <div className="flex flex-wrap gap-4">
-                      {authors.map((author) => (
-                        <AuthorBadge key={author.id} person={author as AuthorPerson} />
-                      ))}
-                    </div>
+            {/* Article Stats */}
+            <div className="mt-8 border-t border-gray-100 pt-8">
+              <ArticleStats
+                articleId={insight._id || slug}
+                articleType="insight"
+                articleTitle={insight.title}
+              />
+            </div>
+
+            {/* Author Bio Card */}
+            {authors.length > 0 && authors[0].bio && (
+              <div className="mt-12 rounded-2xl bg-gray-50 p-6 md:p-8">
+                <div className="flex items-start gap-4">
+                  <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-full bg-green-100">
+                    {authors[0].avatar ? (
+                      <Image
+                        src={urlForImage(authors[0].avatar).width(128).height(128).url()}
+                        alt={authors[0].name}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-lg font-semibold text-green-700">
+                        {authors[0].name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                      </div>
+                    )}
                   </div>
-                )}
-                {contributors.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Contributors</p>
-                    <div className="flex flex-wrap gap-4">
-                      {contributors.map((contributor) => (
-                        <AuthorBadge key={contributor.id} person={{ ...(contributor as AuthorPerson) }} label="Contributor" />
-                      ))}
-                    </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Written by</p>
+                    <h3 className="mt-1 text-lg font-bold text-gray-900">{authors[0].name}</h3>
+                    {authors[0].roleLabel && (
+                      <p className="text-sm text-green-700">{authors[0].roleLabel}</p>
+                    )}
+                    <p className="mt-3 text-sm leading-relaxed text-gray-600">{authors[0].bio}</p>
+                    {authors[0].profileUrl && (
+                      <Link
+                        href={authors[0].profileUrl}
+                        className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-green-700 hover:underline"
+                      >
+                        View profile
+                        <ArrowLeft className="h-3.5 w-3.5 rotate-180" />
+                      </Link>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
             )}
           </div>
 
-          {heroImage && (
-            <div className="relative mt-10 overflow-hidden rounded-[28px] border border-gray-100 shadow-xl">
-              <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-black/10 to-transparent" />
-              <Image
-                src={urlForImage(heroImage).width(1800).height(1000).fit('max').url()}
-                alt={insight.title}
-                width={1600}
-                height={900}
-                priority
-                className="h-[320px] w-full object-cover md:h-[420px] lg:h-[520px]"
-              />
+          {/* Sidebar - Sticky */}
+          <aside className="hidden lg:block">
+            <div className="sticky top-8 space-y-6">
+              {/* Share Section */}
+              <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-gray-400">Share</p>
+                <ShareButtons 
+                  title={insight.title} 
+                  url={`${process.env.NEXT_PUBLIC_SITE_URL || ''}/knowledgehub/insights/${slug}`} 
+                />
+              </div>
+
+              {/* Quick Stats */}
+              <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-gray-400">Article Info</p>
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <Clock className="h-4 w-4 text-gray-400" />
+                    <span>{readingTime} min read</span>
+                  </div>
+                  {insight.publishedAt && (
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <Calendar className="h-4 w-4 text-gray-400" />
+                      <span>{format(new Date(insight.publishedAt), 'MMM d, yyyy')}</span>
+                    </div>
+                  )}
+                  {insight.category && (
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <Bookmark className="h-4 w-4 text-gray-400" />
+                      <span>{insight.category}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-          )}
+          </aside>
         </div>
       </div>
 
-      <div className="mx-auto max-w-3xl px-4 py-12 md:px-6 lg:px-0">
-        <div className="rounded-3xl bg-white px-6 py-10 shadow-lg ring-1 ring-gray-100 md:px-10 md:py-14">
-          {insight.excerpt && (
-            <div className="mb-12 rounded-3xl border border-green-100 bg-green-50/40 p-6 text-lg leading-relaxed text-gray-700 shadow-sm">
-              {insight.excerpt}
-            </div>
-          )}
-
-          <div className="prose prose-lg prose-green max-w-none">
-            <PortableText value={insight.content} components={components} />
-          </div>
-
-          <div className="mt-12 border-t border-gray-100 pt-8">
-            <ArticleStats
-              articleId={insight._id || slug}
-              articleType="insight"
-              articleTitle={insight.title}
-            />
-          </div>
+      {/* Back to top / More articles CTA */}
+      <div className="border-t border-gray-100 bg-gray-50 py-12">
+        <div className="mx-auto max-w-4xl px-4 text-center md:px-6 lg:px-8">
+          <p className="text-sm text-gray-500">Enjoyed this insight?</p>
+          <Link
+            href="/knowledgehub/insights"
+            className="mt-2 inline-flex items-center gap-2 text-lg font-semibold text-green-700 hover:underline"
+          >
+            Explore more insights
+            <ArrowLeft className="h-4 w-4 rotate-180" />
+          </Link>
         </div>
       </div>
     </article>

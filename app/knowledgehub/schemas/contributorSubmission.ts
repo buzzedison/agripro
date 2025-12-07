@@ -166,6 +166,12 @@ export default defineType({
       readOnly: true,
     }),
     defineField({
+      name: 'contributorName',
+      type: 'string',
+      title: 'Contributor Name',
+      description: 'Display name for the contributor',
+    }),
+    defineField({
       name: 'primaryAuthor',
       type: 'reference',
       title: 'Primary Author',

@@ -117,7 +117,8 @@ export default function KnowledgeHub() {
   const [error, setError] = useState<string | null>(null);
   const [showPaywall, setShowPaywall] = useState(false);
   const [paywallContentType, setPaywallContentType] = useState('content');
-  
+  const [isSticky, setIsSticky] = useState(false);
+
   const { user, loading: authLoading, contentViewCount, hasReachedLimit, canAccessContent, incrementViewCount } = useContentAccess();
 
   useEffect(() => {
@@ -125,7 +126,7 @@ export default function KnowledgeHub() {
       try {
         setIsLoading(true);
         setError(null);
-        
+
         const [bestPractices, experts, whitepapers, insights, researchPapers] = await Promise.all([
           client.fetch<BestPractice[]>(`*[_type == "bestPractices"] {
             title, summary, category, image, slug, publishedAt, lastUpdated,
@@ -190,6 +191,22 @@ export default function KnowledgeHub() {
 
     fetchData();
   }, []);
+
+  // Sticky header observation
+  useEffect(() => {
+    const handleScroll = () => {
+      const heroHeight = document.getElementById('hero-section')?.offsetHeight || 500;
+      if (window.scrollY > heroHeight - 80) {
+        setIsSticky(true);
+      } else {
+        setIsSticky(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   // Add state to track current filters
   const [currentFilters, setCurrentFilters] = useState<{
     category: string[];
@@ -203,42 +220,36 @@ export default function KnowledgeHub() {
 
   const handleSearch = (query: string) => {
     if (query.trim() === '') {
-      // If search is empty, apply current filters to show filtered data
       handleFilter(currentFilters);
     } else {
-      // Use current filters when searching
-      const shouldShowInsights = currentFilters.contentType.length === 0 || currentFilters.contentType.includes('Articles');
-      const shouldShowBestPractices = currentFilters.contentType.length === 0 || currentFilters.contentType.includes('Best Practices');
-      const shouldShowWhitepapers = currentFilters.contentType.length === 0 || currentFilters.contentType.includes('Whitepapers');
-      const shouldShowResearchPapers = currentFilters.contentType.length === 0 || currentFilters.contentType.includes('Research Papers');
-      const shouldShowExperts = currentFilters.contentType.length === 0 || currentFilters.contentType.includes('Expert Insights');
-      
-      setFilteredData({
-        insights: shouldShowInsights ? filterAndSearchContent<Insight>(data.insights, query, currentFilters) : [],
-        bestPractices: shouldShowBestPractices ? filterAndSearchContent<BestPractice>(data.bestPractices, query, currentFilters) : [],
-        whitepapers: shouldShowWhitepapers ? filterAndSearchContent<Whitepaper>(data.whitepapers, query, currentFilters) : [],
-        researchPapers: shouldShowResearchPapers ? filterAndSearchContent<ResearchPaper>(data.researchPapers, query, currentFilters) : [],
-        experts: shouldShowExperts ? data.experts : []
-      });
+      filterData(query, currentFilters);
     }
   };
-  
+
   const handleFilter = (filters: { category: string[], contentType: string[], date: string }) => {
-    // Update current filters state
     setCurrentFilters(filters);
-    
+    filterData('', filters);
+
+    // Optional: Scroll to content top when filtering if sticky
+    const contentTop = document.getElementById('knowledge-content');
+    if (contentTop && window.scrollY > contentTop.offsetTop) {
+      window.scrollTo({ top: contentTop.offsetTop - 100, behavior: 'smooth' });
+    }
+  };
+
+  const filterData = (query: string, filters: { category: string[], contentType: string[], date: string }) => {
     // Map content types to actual data sections
-    const shouldShowInsights = filters.contentType.length === 0 || filters.contentType.includes('Articles');
-    const shouldShowBestPractices = filters.contentType.length === 0 || filters.contentType.includes('Best Practices');
-    const shouldShowWhitepapers = filters.contentType.length === 0 || filters.contentType.includes('Whitepapers');
-    const shouldShowResearchPapers = filters.contentType.length === 0 || filters.contentType.includes('Research Papers');
-    const shouldShowExperts = filters.contentType.length === 0 || filters.contentType.includes('Expert Insights');
-    
+    const shouldShowInsights = filters.contentType.length === 0 || filters.contentType.includes('Articles') || filters.contentType.includes('All');
+    const shouldShowBestPractices = filters.contentType.length === 0 || filters.contentType.includes('Best Practices') || filters.contentType.includes('All');
+    const shouldShowWhitepapers = filters.contentType.length === 0 || filters.contentType.includes('Whitepapers') || filters.contentType.includes('All');
+    const shouldShowResearchPapers = filters.contentType.length === 0 || filters.contentType.includes('Research Papers') || filters.contentType.includes('All');
+    const shouldShowExperts = filters.contentType.length === 0 || filters.contentType.includes('Expert Insights') || filters.contentType.includes('All');
+
     setFilteredData({
-      insights: shouldShowInsights ? filterAndSearchContent<Insight>(data.insights, '', filters) : [],
-      bestPractices: shouldShowBestPractices ? filterAndSearchContent<BestPractice>(data.bestPractices, '', filters) : [],
-      whitepapers: shouldShowWhitepapers ? filterAndSearchContent<Whitepaper>(data.whitepapers, '', filters) : [],
-      researchPapers: shouldShowResearchPapers ? filterAndSearchContent<ResearchPaper>(data.researchPapers, '', filters) : [],
+      insights: shouldShowInsights ? filterAndSearchContent<Insight>(data.insights, query, filters) : [],
+      bestPractices: shouldShowBestPractices ? filterAndSearchContent<BestPractice>(data.bestPractices, query, filters) : [],
+      whitepapers: shouldShowWhitepapers ? filterAndSearchContent<Whitepaper>(data.whitepapers, query, filters) : [],
+      researchPapers: shouldShowResearchPapers ? filterAndSearchContent<ResearchPaper>(data.researchPapers, query, filters) : [],
       experts: shouldShowExperts ? data.experts : []
     });
   };
@@ -251,8 +262,8 @@ export default function KnowledgeHub() {
           <div className="max-w-md mx-auto text-center py-20">
             <h2 className="text-2xl font-bold text-red-600 mb-4">Something went wrong</h2>
             <p className="text-gray-700 mb-6">{error}</p>
-            <button 
-              onClick={() => window.location.reload()} 
+            <button
+              onClick={() => window.location.reload()}
               className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
             >
               Try Again
@@ -282,116 +293,102 @@ export default function KnowledgeHub() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen bg-gray-50">
       <KnowledgeHubNavbar />
-      <div className="flex-grow">
+
+      <main>
         <HeroSection />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <AccessBanner />
-          
-          <div className="mb-10 bg-white p-6 rounded-xl shadow-sm">
-            <SearchAndFilter 
+
+        {/* Search & Filter Section */}
+        <div className="bg-white border-b border-gray-100 py-6">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <SearchAndFilter
               onSearch={handleSearch}
               onFilter={handleFilter}
             />
           </div>
-          
-          {/* Moved Insights Section to the top */}
-          {filteredData.insights.length > 0 && (
-            <div className="mb-16">
-              <h2 className="text-3xl font-bold text-black mb-8 flex items-center">
-                <span className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center text-white mr-3">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                  </svg>
-                </span>
-                Latest Insights
-              </h2>
-              <InsightsSection insights={filteredData.insights} />
-            </div>
-          )}
-          
-          {/* Tools Section */}
-          <div className="mb-16">
-            <h2 className="text-3xl font-bold text-black mb-8 flex items-center">
-              <span className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center text-white mr-3">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-                </svg>
-              </span>
-              Agricultural Tools
-            </h2>
-            <ToolsSection />
-          </div>
+        </div>
 
-          {/* Best Practices Section - Now full width */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <AccessBanner />
+
+          {/* No results state */}
+          {filteredData.insights.length === 0 &&
+            filteredData.bestPractices.length === 0 &&
+            filteredData.whitepapers.length === 0 &&
+            filteredData.researchPapers.length === 0 &&
+            filteredData.experts.length === 0 && (
+              <div className="text-center py-16 bg-white rounded-xl shadow-sm border border-gray-100 mt-8">
+                <div className="inline-block p-4 rounded-full bg-green-50 text-green-600 mb-4">
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900">No resources found</h3>
+                <p className="text-gray-500 mt-2">Try adjusting your search or filters.</p>
+                <button
+                  onClick={() => handleFilter({ category: [], contentType: [], date: 'all' })}
+                  className="mt-4 text-green-600 font-medium hover:underline"
+                >
+                  Clear all filters
+                </button>
+              </div>
+            )}
+
+          {/* Insights Section */}
+          {filteredData.insights.length > 0 && (
+            <InsightsSection insights={filteredData.insights} />
+          )}
+
+          {/* Tools Section - Temporarily hidden for cleaner layout */}
+          {/* <ToolsSection /> */}
+
+          {/* Best Practices Section */}
           {filteredData.bestPractices.length > 0 && (
-            <div className="mb-16">
-              <h2 className="text-3xl font-bold text-black mb-8 flex items-center">
-                <span className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center text-white mr-3">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                </span>
-                Best Practices
-              </h2>
-              <BestPracticesGrid practices={filteredData.bestPractices} />
-            </div>
+            <BestPracticesGrid practices={filteredData.bestPractices} />
           )}
-          
-          {(filteredData.whitepapers.length > 0 || filteredData.experts.length > 0) && (
-            <div className="grid grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-2 lg:gap-12 mb-10 sm:mb-16">
-              {filteredData.whitepapers.length > 0 && (
-                <div>
-                  <h2 className="text-3xl font-bold text-black mb-8 flex items-center">
-                    <span className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center text-white mr-3">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-                      </svg>
-                    </span>
-                    Whitepapers
-                  </h2>
-                  <WhitepapersSection whitepapers={filteredData.whitepapers} />
-                </div>
-              )}
-              {filteredData.experts.length > 0 && (
-                <div>
-                  <h2 className="text-3xl font-bold text-black mb-8 flex items-center">
-                    <span className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center text-white mr-3">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
-                      </svg>
-                    </span>
-                    Expert Insights
-                  </h2>
-                  <ExpertsSection experts={filteredData.experts} />
-                </div>
-              )}
-            </div>
+
+          {/* Whitepapers Section */}
+          {filteredData.whitepapers.length > 0 && (
+            <section className="py-8">
+              <div className="flex items-center justify-between mb-10 border-b-2 border-green-700 pb-4">
+                <h2 className="text-sm font-bold uppercase tracking-widest text-green-700">Whitepapers</h2>
+              </div>
+              <WhitepapersSection whitepapers={filteredData.whitepapers} />
+            </section>
           )}
-          
+
+          {/* Expert Contributors Section - Full Width */}
+          {filteredData.experts.length > 0 && (
+            <section className="py-8">
+              <div className="flex items-center justify-between mb-10 border-b-2 border-green-700 pb-4">
+                <h2 className="text-sm font-bold uppercase tracking-widest text-green-700">Expert Contributors</h2>
+              </div>
+              <ExpertsSection experts={filteredData.experts} />
+            </section>
+          )}
+
           {/* Research Papers Section */}
           {filteredData.researchPapers.length > 0 && (
-            <div className="mb-16">
-              <h2 className="text-3xl font-bold text-black mb-8 flex items-center">
-                <span className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center text-white mr-3">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" />
-                  </svg>
-                </span>
-                Research Papers
-              </h2>
+            <section className="py-8">
+              <div className="flex items-center justify-between mb-10 border-b-2 border-green-700 pb-4">
+                <h2 className="text-sm font-bold uppercase tracking-widest text-green-700">Research Papers</h2>
+              </div>
               <ResearchPapersSection researchPapers={filteredData.researchPapers} />
-            </div>
+            </section>
           )}
-          
-          <div className="bg-gradient-to-r from-green-600 to-green-800 rounded-2xl p-4 sm:p-8 shadow-lg text-white">
+
+          <div className="bg-gradient-to-r from-green-700 to-green-900 rounded-2xl p-4 sm:p-8 shadow-xl text-white overflow-hidden relative">
+            <div className="absolute top-0 right-0 p-10 opacity-10">
+              <svg width="200" height="200" viewBox="0 0 20 20" fill="white">
+                <path d="M10 2a8 8 0 100 16 8 8 0 000-16z" />
+              </svg>
+            </div>
             <NewsletterCTA />
           </div>
         </div>
-      </div>
+      </main>
+
       <KnowledgeHubFooter />
-      <PaywallModal 
+      <PaywallModal
         isOpen={showPaywall}
         onClose={() => setShowPaywall(false)}
         contentType={paywallContentType}

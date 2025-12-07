@@ -75,6 +75,16 @@ export async function POST(request: NextRequest) {
 
     await patch.commit()
 
+    // Get the linked insight slug for published articles
+    let insightSlug: string | undefined
+    if (status === 'published' && linkedInsightId) {
+      const linkedInsight = await client.fetch(
+        `*[_type == "insight" && _id == $id][0]{ "slug": slug.current }`,
+        { id: linkedInsightId }
+      )
+      insightSlug = linkedInsight?.slug
+    }
+
     if (existing.supabaseUserEmail) {
       await sendContributorStatusEmail({
         to: existing.supabaseUserEmail,
@@ -82,7 +92,7 @@ export async function POST(request: NextRequest) {
         title: existing.title,
         reviewer,
         note,
-        insightSlug: linkedInsightId ? existing.slug?.current : undefined,
+        insightSlug,
       })
     }
 

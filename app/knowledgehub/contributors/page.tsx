@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { ExternalLink } from 'lucide-react'
 
 type SubmissionStatus = 'draft' | 'submitted' | 'approved' | 'rejected' | 'published'
 
@@ -126,6 +127,9 @@ export default function ContributorPortalPage() {
         <div className="flex gap-3">
           <Button asChild>
             <Link href="/auth/login?redirect=/knowledgehub/contributors">Sign in</Link>
+          </Button>
+          <Button asChild variant="secondary">
+            <Link href="/auth/signup?redirectTo=/knowledgehub/contributors">Create account</Link>
           </Button>
           <Button asChild variant="outline">
             <Link href="/knowledgehub">Back to Knowledge Hub</Link>
@@ -289,66 +293,73 @@ function SubmissionSection({
 
   return (
     <ul className="space-y-4">
-      {submissions.map((submission) => (
-        <li
-          key={submission._id}
-          className="rounded-3xl border border-emerald-900/10 bg-white p-6 shadow-sm"
-        >
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-lg font-semibold text-emerald-950">{submission.title}</h3>
-                <Badge variant="outline">
-                  {submissionTypeLabels[submission.submissionType] || submission.submissionType}
-                </Badge>
-              </div>
-              <p className="text-sm text-muted-foreground">{submission.excerpt}</p>
-              <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                <span
-                  className={cn(
-                    'inline-flex items-center gap-1 rounded-full px-3 py-1 font-medium',
-                    statusClass(submission.status)
-                  )}
-                >
-                  {statusDescription[submission.status]}
-                </span>
-                {submission.submittedAt ? (
-                  <span>Submitted {new Date(submission.submittedAt).toLocaleDateString()}</span>
-                ) : null}
-                {submission.contentSnapshot ? (
-                  <span className="hidden max-w-xs truncate text-xs text-muted-foreground sm:inline">
-                    {submission.contentSnapshot}
-                  </span>
-                ) : null}
-                {submission.draftWordCount ? (
-                  <span className="text-xs text-muted-foreground">
-                    {submission.draftWordCount} words
-                  </span>
-                ) : null}
-                {submission.publishedAt && submission.linkedInsight?.slug ? (
-                  <Link
-                    href={`/knowledgehub/insights/${submission.linkedInsight.slug}`}
-                    className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 font-medium text-emerald-700"
-                  >
-                    View live
-                  </Link>
-                ) : null}
-              </div>
-            </div>
+      {submissions.map((submission) => {
+        const isEditable = submission.status === 'draft' || submission.status === 'rejected'
+        const openHref = `/knowledgehub/contributors/write?draft=${submission._id}`
+        const buttonLabel = isEditable ? 'Edit draft' : 'View submission'
 
-            <div className="flex gap-3">
-              {onOpenNotes && submission.reviewNotes?.length ? (
-                <Button variant="outline" onClick={() => onOpenNotes(submission)}>
-                  View notes
+        return (
+          <li
+            key={submission._id}
+            className="rounded-3xl border border-emerald-900/10 bg-white p-6 shadow-sm"
+          >
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-lg font-semibold text-emerald-950">{submission.title}</h3>
+                  <Badge variant="outline">
+                    {submissionTypeLabels[submission.submissionType] || submission.submissionType}
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">{submission.excerpt}</p>
+                <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                  <span
+                    className={cn(
+                      'inline-flex items-center gap-1 rounded-full px-3 py-1 font-medium',
+                      statusClass(submission.status)
+                    )}
+                  >
+                    {statusDescription[submission.status]}
+                  </span>
+                  {submission.submittedAt ? (
+                    <span>Submitted {new Date(submission.submittedAt).toLocaleDateString()}</span>
+                  ) : null}
+                  {submission.contentSnapshot ? (
+                    <span className="hidden max-w-xs truncate text-xs text-muted-foreground sm:inline">
+                      {submission.contentSnapshot}
+                    </span>
+                  ) : null}
+                  {submission.draftWordCount ? (
+                    <span className="text-xs text-muted-foreground">{submission.draftWordCount} words</span>
+                  ) : null}
+                  {submission.publishedAt && submission.linkedInsight?.slug ? (
+                    <Link
+                      href={`/knowledgehub/insights/${submission.linkedInsight.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1 font-medium text-white hover:bg-emerald-700 transition-colors"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      View published article
+                    </Link>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                {onOpenNotes && submission.reviewNotes?.length ? (
+                  <Button variant="outline" onClick={() => onOpenNotes(submission)}>
+                    View notes
+                  </Button>
+                ) : null}
+                <Button asChild variant="secondary">
+                  <Link href={openHref}>{buttonLabel}</Link>
                 </Button>
-              ) : null}
-              <Button asChild variant="secondary">
-                <Link href={`/knowledgehub/contributors/${submission._id}`}>Open</Link>
-              </Button>
+              </div>
             </div>
-          </div>
-        </li>
-      ))}
+          </li>
+        )
+      })}
     </ul>
   )
 }
@@ -369,4 +380,3 @@ function statusClass(status: SubmissionStatus) {
       return 'bg-gray-100 text-gray-600'
   }
 }
-

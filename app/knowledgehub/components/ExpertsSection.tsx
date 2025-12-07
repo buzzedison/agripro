@@ -1,8 +1,9 @@
 'use client';
 
 import Image from 'next/image';
-import { urlForImage } from '@/lib/image';
 import Link from 'next/link';
+import { urlForImage } from '@/lib/image';
+import { ArrowRight } from 'lucide-react';
 
 interface Expert {
   name: string;
@@ -13,42 +14,46 @@ interface Expert {
 }
 
 export default function ExpertsSection({ experts }: { experts: Expert[] }) {
+  // Show only first 4 experts (one row on lg screens)
+  const displayedExperts = experts.slice(0, 4);
+
   return (
     <section>
-      <div className="flex justify-between items-center mb-8">
-        <Link href="/knowledgehub/experts" className="text-green-600 hover:text-green-800">
-          View all experts →
-        </Link>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {experts.map((expert) => (
-          <div key={expert.name} className="bg-white rounded-xl p-6 shadow-md">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="relative h-16 w-16 rounded-full overflow-hidden">
-                {expert.image && (
-                  <Image
-                    src={urlForImage(expert.image).url()}
-                    alt={expert.name}
-                    fill
-                    className="object-cover"
-                  />
-                )}
-              </div>
-              <div>
-                <h3 className="font-semibold text-lg">{expert.name}</h3>
-                <p className="text-green-600">{expert.expertise}</p>
-              </div>
+      {/* Expert Cards - Single Row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        {displayedExperts.map((expert) => (
+          <div
+            key={expert.name}
+            className="group text-center"
+          >
+            <div className="relative w-24 h-24 mx-auto mb-4 rounded-full overflow-hidden border-2 border-gray-100 group-hover:border-green-500 transition-colors">
+              {expert.image && (
+                <Image
+                  src={urlForImage(expert.image).url()}
+                  alt={expert.name}
+                  fill
+                  className="object-cover"
+                />
+              )}
             </div>
-            <p className="text-gray-600 line-clamp-3 mb-4">{expert.bio}</p>
-            <button 
-              onClick={() => window.location.href = `mailto:${expert.contact.email}`}
-              className="text-green-600 font-medium hover:text-green-700"
-            >
-              Contact Expert →
-            </button>
+            <h3 className="font-bold text-gray-900 group-hover:text-green-700 transition-colors">
+              {expert.name}
+            </h3>
+            <p className="text-sm text-green-700 font-medium mb-1">{expert.expertise}</p>
           </div>
         ))}
       </div>
+
+      {/* View All Link */}
+      <div className="mt-8 text-center">
+        <Link
+          href="/knowledgehub/experts"
+          className="inline-flex items-center text-sm font-semibold text-green-700 hover:text-green-800 transition-colors"
+        >
+          View All Expert Contributors
+          <ArrowRight className="ml-2 h-4 w-4" />
+        </Link>
+      </div>
     </section>
   );
-} 
+}

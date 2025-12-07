@@ -72,6 +72,16 @@ export default function KnowledgeHubFooter() {
                 </Link>
               </li>
               <li>
+                <Link href="/knowledgehub/contributors" className="text-gray-300 hover:text-white">
+                  Contributor Portal
+                </Link>
+              </li>
+              <li>
+                <Link href="/knowledgehub/experts/apply" className="text-gray-300 hover:text-white">
+                  Become an Expert
+                </Link>
+              </li>
+              <li>
                 <Link href="/knowledgehub/whitepapers" className="text-gray-300 hover:text-white">
                   Whitepapers
                 </Link>

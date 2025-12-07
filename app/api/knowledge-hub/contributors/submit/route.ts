@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto'
 
 import { getSanityWriteClient } from '@/sanity/lib/serverClient'
 import { client as readClient } from '@/sanity/lib/client'
+import { sendAdminNewSubmissionEmail } from '@/lib/resend/contributor'
 
 const writeClient = getSanityWriteClient()
 
@@ -18,8 +19,9 @@ type IncomingBody = {
   submissionNotes?: string
   supabaseUserId: string
   supabaseUserEmail: string
+  contributorName?: string
   isFinal?: boolean
-  coverImage?: any
+  coverImageAssetId?: string | null
 }
 
 export async function POST(request: NextRequest) {
@@ -38,8 +40,9 @@ export async function POST(request: NextRequest) {
       submissionNotes,
       supabaseUserId,
       supabaseUserEmail,
+      contributorName,
       isFinal = false,
-      coverImage,
+      coverImageAssetId = null,
     } = body
 
     if (!title || !excerpt || !(contentBlocks?.length || contentText) || !supabaseUserId || !supabaseUserEmail) {
@@ -57,6 +60,16 @@ export async function POST(request: NextRequest) {
 
     const primaryAuthorRef = await findContributorReferenceByEmail(supabaseUserEmail)
 
+    const coverImage = coverImageAssetId
+      ? {
+          _type: 'image',
+          asset: {
+            _type: 'reference',
+            _ref: coverImageAssetId,
+          },
+        }
+      : null
+
     const baseDoc = {
       title,
       slug: { current: slug },
@@ -71,7 +84,8 @@ export async function POST(request: NextRequest) {
       tags,
       supabaseUserId,
       supabaseUserEmail,
-      coverImage: coverImage || null,
+      contributorName: contributorName || null,
+      coverImage,
       submittedAt: status === 'submitted' ? now : null,
       ...(primaryAuthorRef ? { primaryAuthor: primaryAuthorRef } : {}),
     }
@@ -85,6 +99,18 @@ export async function POST(request: NextRequest) {
       }
 
       const created = await writeClient.create(document)
+
+      // Send admin notification if this is a final submission
+      if (isFinal) {
+        sendAdminNewSubmissionEmail({
+          contributorEmail: supabaseUserEmail,
+          title,
+          submissionType,
+          excerpt,
+          submissionId: created._id,
+        }).catch((err) => console.error('Failed to send admin notification:', err))
+      }
+
       return NextResponse.json({ success: true, submissionId: created._id })
     }
 
@@ -105,6 +131,17 @@ export async function POST(request: NextRequest) {
     })
 
     await patch.commit()
+
+    // Send admin notification if this is a final submission (and wasn't already submitted)
+    if (isFinal && existing.status !== 'submitted') {
+      sendAdminNewSubmissionEmail({
+        contributorEmail: supabaseUserEmail,
+        title,
+        submissionType,
+        excerpt,
+        submissionId,
+      }).catch((err) => console.error('Failed to send admin notification:', err))
+    }
 
     return NextResponse.json({ success: true, submissionId })
   } catch (error) {

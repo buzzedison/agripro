@@ -1,12 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Search,
   FileText,
-  BookOpenCheck,
+  BookOpen, // Changed from BookOpenCheck for cleaner icon
   Newspaper,
-  Award,
   Users,
-  Settings2 // Replaced Filter icon
+  LayoutGrid, // For "All"
+  Award
 } from 'lucide-react';
 
 type FilterOption = {
@@ -16,89 +16,97 @@ type FilterOption = {
 };
 
 const contentTypeIcons: { [key: string]: React.ElementType } = {
+  'All': LayoutGrid,
   'Articles': FileText,
   'Best Practices': Award,
   'Whitepapers': Newspaper,
-  'Research Papers': BookOpenCheck,
+  'Research Papers': BookOpen,
   'Expert Insights': Users,
 };
 
-export default function SearchAndFilter({ 
-  onSearch, 
-  onFilter 
-}: { 
+export default function SearchAndFilter({
+  onSearch,
+  onFilter,
+  className = ""
+}: {
   onSearch: (query: string) => void;
   onFilter: (filters: FilterOption) => void;
+  className?: string;
 }) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeType, setActiveType] = useState('All');
   const [filters, setFilters] = useState<FilterOption>({
-    category: [], // Kept in state for potential future use, but UI removed for now
-    contentType: [],
-    date: 'all' // Kept in state for potential future use, but UI removed for now
+    category: [],
+    contentType: [], // Empty means all in the parent logic, but we track UI selection
+    date: 'all'
   });
 
-  // const categories = ['Agriculture', 'Technology', 'Sustainability', 'Business', 'Innovation']; // UI Removed
-  const contentTypes = ['Articles', 'Best Practices', 'Whitepapers', 'Research Papers', 'Expert Insights'];
-  // const dateOptions = ['all', 'today', 'this-week', 'this-month', 'this-year']; // UI Removed
+  const contentTypes = ['All', 'Articles', 'Best Practices', 'Whitepapers', 'Research Papers', 'Expert Insights'];
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSearch(searchQuery);
-  };
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onSearch(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery, onSearch]);
 
-  const handleFilterChange = (type: keyof FilterOption, value: string) => {
-    const newFilters = { ...filters };
-    if (type === 'date') {
-      newFilters.date = value;
-    } else {
-      const array = newFilters[type] as string[];
-      const index = array.indexOf(value);
-      if (index === -1) {
-        array.push(value);
-      } else {
-        array.splice(index, 1);
-      }
-    }
+  const handleTypeChange = (type: string) => {
+    setActiveType(type);
+
+    // Convert UI selection to filter format
+    // If 'All', send empty array to show everything
+    const newContentType = type === 'All' ? [] : [type];
+
+    const newFilters = {
+      ...filters,
+      contentType: newContentType
+    };
+
     setFilters(newFilters);
     onFilter(newFilters);
   };
 
   return (
-    <div className="w-full bg-white rounded-lg shadow-sm p-4 mb-8">
-      <form onSubmit={handleSearch} className="flex flex-col sm:flex-row items-center gap-4 mb-4">
-        <div className="flex-1 relative w-full">
+    <div className={`w-full bg-white/80 backdrop-blur-md rounded-2xl shadow-sm border border-gray-100 p-4 ${className}`}>
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+
+        {/* Filter Tabs - Scrollable on mobile */}
+        <div className="w-full md:w-auto overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
+          <div className="flex items-center gap-2">
+            {contentTypes.map((type) => {
+              const IconComponent = contentTypeIcons[type] || LayoutGrid;
+              const isActive = activeType === type;
+
+              return (
+                <button
+                  key={type}
+                  onClick={() => handleTypeChange(type)}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold transition-all whitespace-nowrap
+                    ${isActive
+                      ? 'bg-green-600 text-white shadow-md transform scale-105'
+                      : 'bg-gray-50 text-gray-600 hover:bg-green-50 hover:text-green-700'
+                    }`}
+                >
+                  <IconComponent size={16} />
+                  {type}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Search Bar */}
+        <div className="relative w-full md:w-72 lg:w-96 flex-shrink-0">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search assets or start creating..."
-            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 focus:outline-none text-base autocomplete-off"
-            autoComplete="off"
+            placeholder="Search resources..."
+            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-transparent focus:bg-white focus:border-green-500 rounded-full focus:ring-2 focus:ring-green-200 transition-all outline-none text-sm"
           />
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+          <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
         </div>
-        {/* The camera icon from the image is not implemented as its function is unclear in this context */}
-      </form>
-
-      <div className="flex flex-wrap gap-2 items-center">
-        {contentTypes.map((type) => {
-          const IconComponent = contentTypeIcons[type] || Settings2; // Fallback icon
-          const isSelected = filters.contentType.includes(type);
-          return (
-            <button
-              key={type}
-              type="button"
-              onClick={() => handleFilterChange('contentType', type)}
-              className={`flex items-center gap-2 px-4 py-2 border rounded-full text-sm font-medium transition-colors
-                          ${isSelected 
-                            ? 'bg-green-600 text-white border-green-600'
-                            : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'}`}
-            >
-              <IconComponent size={16} />
-              {type}
-            </button>
-          );
-        })}
       </div>
     </div>
   );
