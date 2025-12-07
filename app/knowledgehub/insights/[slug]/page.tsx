@@ -73,16 +73,16 @@ type InsightRecord = {
 
 function calculateReadingTime(content: any[]): number {
   if (!Array.isArray(content)) return 3
-  
+
   const text = content
     .filter(block => block._type === 'block')
-    .map(block => 
+    .map(block =>
       block.children
         ?.map((child: any) => child.text || '')
         .join('') || ''
     )
     .join(' ')
-  
+
   const wordCount = text.split(/\s+/).filter(Boolean).length
   return Math.max(1, Math.ceil(wordCount / 200))
 }
@@ -273,7 +273,7 @@ const components = {
       }
 
       const style = getCalloutStyle(value.type)
-      
+
       return (
         <div className={`${style.container} rounded-lg p-4 my-6`}>
           <div className="flex gap-3">
@@ -397,8 +397,8 @@ export default async function InsightPage({ params }: Params) {
       <header className="relative">
         {/* Background gradient */}
         <div className="absolute inset-0 bg-gradient-to-b from-green-50/50 via-white to-white" />
-        
-        <div className="relative mx-auto max-w-4xl px-4 pt-8 md:px-6 lg:px-8">
+
+        <div className="relative mx-auto max-w-5xl px-4 pt-8 md:px-6 lg:px-8">
           {/* Navigation */}
           <nav className="flex items-center justify-between pb-8">
             <Link
@@ -483,7 +483,7 @@ export default async function InsightPage({ params }: Params) {
 
         {/* Hero Image */}
         {heroImage && (
-          <div className="mx-auto mt-10 max-w-5xl px-4 md:px-6 lg:px-8">
+          <div className="mx-auto mt-10 max-w-6xl px-4 md:px-6 lg:px-8">
             <div className="relative aspect-[2/1] overflow-hidden rounded-2xl shadow-2xl">
               <Image
                 src={urlForImage(heroImage).width(1800).height(900).fit('crop').url()}
@@ -498,7 +498,7 @@ export default async function InsightPage({ params }: Params) {
       </header>
 
       {/* Content Section */}
-      <div className="mx-auto max-w-4xl px-4 py-12 md:px-6 lg:px-8">
+      <div className="mx-auto max-w-5xl px-4 py-12 md:px-6 lg:px-8">
         <div className="grid gap-12 lg:grid-cols-[1fr_200px]">
           {/* Main Content */}
           <div className="min-w-0">
@@ -578,9 +578,9 @@ export default async function InsightPage({ params }: Params) {
               {/* Share Section */}
               <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
                 <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-gray-400">Share</p>
-                <ShareButtons 
-                  title={insight.title} 
-                  url={`${process.env.NEXT_PUBLIC_SITE_URL || ''}/knowledgehub/insights/${slug}`} 
+                <ShareButtons
+                  title={insight.title}
+                  url={`${process.env.NEXT_PUBLIC_SITE_URL || ''}/knowledgehub/insights/${slug}`}
                 />
               </div>
 
@@ -613,7 +613,7 @@ export default async function InsightPage({ params }: Params) {
 
       {/* Back to top / More articles CTA */}
       <div className="border-t border-gray-100 bg-gray-50 py-12">
-        <div className="mx-auto max-w-4xl px-4 text-center md:px-6 lg:px-8">
+        <div className="mx-auto max-w-5xl px-4 text-center md:px-6 lg:px-8">
           <p className="text-sm text-gray-500">Enjoyed this insight?</p>
           <Link
             href="/knowledgehub/insights"
