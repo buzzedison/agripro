@@ -49,6 +49,7 @@ const navigation = [
       { name: 'Our Impact', href: '/impact' },
       { name: 'TrustBridge', href: '/impact/trustbridge' },
       { name: 'Ayeeko', href: '/impact/ayeeko' },
+      { name: 'Clubs', href: '/clubs' },
     ]
   },
 ];

@@ -223,6 +223,7 @@ interface Post {
         is_verified: boolean;
     };
     user_has_liked?: boolean;
+    user_has_reposted?: boolean;
 }
 
 interface Comment {
@@ -341,6 +342,14 @@ export default function FeedPage() {
 
             const likedPostIds = new Set(likesData?.map(l => l.post_id) || []);
 
+            // Check which posts the user has reposted
+            const { data: repostsData } = await supabase
+                .from('post_reposts')
+                .select('post_id')
+                .eq('user_id', userId);
+
+            const repostedPostIds = new Set(repostsData?.map(r => r.post_id) || []);
+
             const postsWithProfiles = postsData.map(post => ({
                 ...post,
                 profile: profilesMap.get(post.user_id) || {
@@ -351,7 +360,8 @@ export default function FeedPage() {
                     is_verified: false,
                     profile_incomplete: true,
                 },
-                user_has_liked: likedPostIds.has(post.id)
+                user_has_liked: likedPostIds.has(post.id),
+                user_has_reposted: repostedPostIds.has(post.id)
             }));
 
             setPosts(postsWithProfiles);
@@ -546,6 +556,32 @@ export default function FeedPage() {
             setPosts(posts.map(p =>
                 p.id === postId
                     ? { ...p, likes_count: p.likes_count + (isLiked ? 1 : -1), user_has_liked: isLiked }
+                    : p
+            ));
+        }
+    };
+
+    const handleRepost = async (postId: string, isReposted: boolean) => {
+        if (!user) return;
+
+        // Optimistic update
+        setPosts(posts.map(p =>
+            p.id === postId
+                ? { ...p, reposts_count: p.reposts_count + (isReposted ? -1 : 1), user_has_reposted: !isReposted }
+                : p
+        ));
+
+        try {
+            if (isReposted) {
+                await supabase.from('post_reposts').delete().eq('post_id', postId).eq('user_id', user.id);
+            } else {
+                await supabase.from('post_reposts').insert({ post_id: postId, user_id: user.id });
+            }
+        } catch (err) {
+            // Revert on error
+            setPosts(posts.map(p =>
+                p.id === postId
+                    ? { ...p, reposts_count: p.reposts_count + (isReposted ? 1 : -1), user_has_reposted: isReposted }
                     : p
             ));
         }
@@ -1062,8 +1098,15 @@ export default function FeedPage() {
                                                     <MessageCircle className="w-5 h-5" />
                                                     <span className="text-sm font-medium">{post.comments_count || ''}</span>
                                                 </button>
-                                                <button className="flex items-center gap-2 px-3 py-1.5 text-gray-500 hover:text-green-500 hover:bg-green-50 rounded-lg transition-colors">
-                                                    <Repeat2 className="w-5 h-5" />
+                                                <button
+                                                    onClick={() => handleRepost(post.id, post.user_has_reposted || false)}
+                                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${post.user_has_reposted
+                                                        ? 'text-green-500 bg-green-50'
+                                                        : 'text-gray-500 hover:text-green-500 hover:bg-green-50'
+                                                        }`}
+                                                >
+                                                    <Repeat2 className={`w-5 h-5 ${post.user_has_reposted ? 'stroke-[2.5px]' : ''}`} />
+                                                    <span className="text-sm font-medium">{post.reposts_count || ''}</span>
                                                 </button>
                                                 <button className="flex items-center gap-2 px-3 py-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
                                                     <Bookmark className="w-5 h-5" />
