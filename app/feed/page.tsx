@@ -11,8 +11,193 @@ import {
     Heart, MessageCircle, Repeat2, Share, MoreHorizontal,
     Image as ImageIcon, Send, Loader2, Users, TrendingUp,
     Search, MapPin, CheckCircle, X, Bookmark, Smile, Camera,
-    ChevronDown, ChevronUp, Trash2
+    ChevronDown, ChevronUp, Trash2, Edit3, AlertTriangle,
+    Play, ExternalLink, Volume2, VolumeX, Maximize2
 } from 'lucide-react';
+import LinkPreview, { extractUrls, parseContentWithLinks } from '../components/LinkPreview';
+
+// Video URL detection helpers
+function isVideoUrl(url: string): boolean {
+    if (!url) return false;
+    const videoExtensions = /\.(mp4|webm|ogg|mov|avi|mkv)(\?.*)?$/i;
+    const youtubeRegex = /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)/i;
+    const vimeoRegex = /vimeo\.com\/(?:video\/)?(\d+)/i;
+    return videoExtensions.test(url) || youtubeRegex.test(url) || vimeoRegex.test(url);
+}
+
+function getVideoType(url: string): 'youtube' | 'vimeo' | 'direct' | null {
+    if (!url) return null;
+    if (/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)/i.test(url)) return 'youtube';
+    if (/vimeo\.com/i.test(url)) return 'vimeo';
+    if (/\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(url)) return 'direct';
+    return null;
+}
+
+function getYouTubeId(url: string): string | null {
+    const match = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    return match ? match[1] : null;
+}
+
+function getVimeoId(url: string): string | null {
+    const match = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+    return match ? match[1] : null;
+}
+
+// Extract video URL from post content
+function extractVideoUrl(content: string): string | null {
+    const urls = extractUrls(content);
+    for (const url of urls) {
+        if (isVideoUrl(url)) return url;
+    }
+    return null;
+}
+
+// Inline Video Player Component
+function InlineVideoPlayer({ url }: { url: string }) {
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [isMuted, setIsMuted] = useState(true);
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const videoType = getVideoType(url);
+
+    const handlePlayPause = () => {
+        if (videoRef.current) {
+            if (isPlaying) {
+                videoRef.current.pause();
+            } else {
+                videoRef.current.play();
+            }
+            setIsPlaying(!isPlaying);
+        }
+    };
+
+    const toggleMute = () => {
+        if (videoRef.current) {
+            videoRef.current.muted = !isMuted;
+            setIsMuted(!isMuted);
+        }
+    };
+
+    if (videoType === 'youtube') {
+        const videoId = getYouTubeId(url);
+        if (!videoId) return null;
+
+        return (
+            <div className="relative rounded-xl overflow-hidden mb-3 bg-black group">
+                <div className="relative aspect-video">
+                    <iframe
+                        src={`https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`}
+                        title="YouTube video"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        className="absolute inset-0 w-full h-full"
+                    />
+                </div>
+                <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="absolute top-3 right-3 bg-black/70 hover:bg-black/90 text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    Open on YouTube
+                </a>
+            </div>
+        );
+    }
+
+    if (videoType === 'vimeo') {
+        const videoId = getVimeoId(url);
+        if (!videoId) return null;
+
+        return (
+            <div className="relative rounded-xl overflow-hidden mb-3 bg-black group">
+                <div className="relative aspect-video">
+                    <iframe
+                        src={`https://player.vimeo.com/video/${videoId}?title=0&byline=0&portrait=0`}
+                        title="Vimeo video"
+                        allow="autoplay; fullscreen; picture-in-picture"
+                        allowFullScreen
+                        className="absolute inset-0 w-full h-full"
+                    />
+                </div>
+                <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="absolute top-3 right-3 bg-black/70 hover:bg-black/90 text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    Open on Vimeo
+                </a>
+            </div>
+        );
+    }
+
+    if (videoType === 'direct') {
+        return (
+            <div className="relative rounded-xl overflow-hidden mb-3 bg-black group">
+                <video
+                    ref={videoRef}
+                    src={url}
+                    className="w-full max-h-[500px] object-contain"
+                    muted={isMuted}
+                    playsInline
+                    loop
+                    onPlay={() => setIsPlaying(true)}
+                    onPause={() => setIsPlaying(false)}
+                    onClick={handlePlayPause}
+                />
+
+                {/* Play overlay when paused */}
+                {!isPlaying && (
+                    <button
+                        onClick={handlePlayPause}
+                        className="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/40 transition-colors"
+                    >
+                        <div className="w-16 h-16 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
+                            <Play className="w-8 h-8 text-gray-900 ml-1" fill="currentColor" />
+                        </div>
+                    </button>
+                )}
+
+                {/* Controls overlay */}
+                <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={handlePlayPause}
+                                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors"
+                            >
+                                {isPlaying ? (
+                                    <span className="text-sm font-bold">❚❚</span>
+                                ) : (
+                                    <Play className="w-4 h-4 ml-0.5" fill="currentColor" />
+                                )}
+                            </button>
+                            <button
+                                onClick={toggleMute}
+                                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors"
+                            >
+                                {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                            </button>
+                        </div>
+                        <a
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 text-white text-xs font-medium hover:underline"
+                        >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            Open video
+                        </a>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    return null;
+}
 
 // Emoji picker data
 const emojiCategories = {
@@ -91,6 +276,15 @@ export default function FeedPage() {
     const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
     const [loadingComments, setLoadingComments] = useState<Set<string>>(new Set());
     const [submittingComment, setSubmittingComment] = useState<Set<string>>(new Set());
+    const [postMenuOpen, setPostMenuOpen] = useState<string | null>(null);
+    const [deleteModal, setDeleteModal] = useState<{ open: boolean; postId: string | null }>({ open: false, postId: null });
+    const [editModal, setEditModal] = useState<{ open: boolean; post: Post | null }>({ open: false, post: null });
+    const [editContent, setEditContent] = useState('');
+    const [saving, setSaving] = useState(false);
+    // Comment edit/delete state
+    const [editCommentModal, setEditCommentModal] = useState<{ open: boolean; comment: Comment | null; postId: string | null }>({ open: false, comment: null, postId: null });
+    const [editCommentContent, setEditCommentContent] = useState('');
+    const [commentMenuOpen, setCommentMenuOpen] = useState<string | null>(null);
 
     useEffect(() => {
         checkAuth();
@@ -150,11 +344,12 @@ export default function FeedPage() {
             const postsWithProfiles = postsData.map(post => ({
                 ...post,
                 profile: profilesMap.get(post.user_id) || {
-                    full_name: 'Unknown',
+                    full_name: 'AgriPro Member',
                     avatar_url: null,
                     user_type: 'farmer',
                     organization_name: null,
                     is_verified: false,
+                    profile_incomplete: true,
                 },
                 user_has_liked: likedPostIds.has(post.id)
             }));
@@ -207,7 +402,7 @@ export default function FeedPage() {
             const commentsWithProfiles = commentsData.map(comment => ({
                 ...comment,
                 profile: profilesMap.get(comment.user_id) || {
-                    full_name: 'Unknown',
+                    full_name: 'AgriPro Member',
                     avatar_url: null,
                     is_verified: false,
                 }
@@ -363,6 +558,7 @@ export default function FeedPage() {
         setSubmittingComment(prev => new Set(prev).add(postId));
 
         try {
+            // Insert the comment without trying to join profiles (no FK relationship exists)
             const { data, error } = await supabase
                 .from('post_comments')
                 .insert({
@@ -370,31 +566,41 @@ export default function FeedPage() {
                     user_id: user.id,
                     content
                 })
-                .select(`
-          *,
-          profile:profiles!user_id (
-            full_name, avatar_url, is_verified
-          )
-        `)
+                .select('*')
                 .single();
 
-            if (error) throw error;
+            if (error) {
+                console.error('Supabase comment error:', error.message, error.code, error.details);
+                throw error;
+            }
 
-            setPostComments(prev => ({
-                ...prev,
-                [postId]: [...(prev[postId] || []), data]
-            }));
+            if (data) {
+                // Construct the comment with current user's profile data
+                const commentWithProfile: Comment = {
+                    ...data,
+                    profile: {
+                        full_name: profile?.full_name || 'Unknown',
+                        avatar_url: profile?.avatar_url || null,
+                        is_verified: profile?.is_verified || false,
+                    }
+                };
 
-            // Update comment count
-            setPosts(posts.map(p =>
-                p.id === postId
-                    ? { ...p, comments_count: p.comments_count + 1 }
-                    : p
-            ));
+                setPostComments(prev => ({
+                    ...prev,
+                    [postId]: [...(prev[postId] || []), commentWithProfile]
+                }));
 
-            setCommentInputs(prev => ({ ...prev, [postId]: '' }));
-        } catch (err) {
-            console.error('Error commenting:', err);
+                // Update comment count
+                setPosts(posts.map(p =>
+                    p.id === postId
+                        ? { ...p, comments_count: p.comments_count + 1 }
+                        : p
+                ));
+
+                setCommentInputs(prev => ({ ...prev, [postId]: '' }));
+            }
+        } catch (err: any) {
+            console.error('Error commenting:', err?.message || err?.code || JSON.stringify(err));
         } finally {
             setSubmittingComment(prev => {
                 const next = new Set(prev);
@@ -405,14 +611,118 @@ export default function FeedPage() {
     };
 
     const handleDeletePost = async (postId: string) => {
-        if (!confirm('Are you sure you want to delete this post?')) return;
-
+        setSaving(true);
         try {
             await supabase.from('posts').delete().eq('id', postId);
             setPosts(posts.filter(p => p.id !== postId));
+            setDeleteModal({ open: false, postId: null });
         } catch (err) {
             console.error('Error deleting post:', err);
+        } finally {
+            setSaving(false);
         }
+    };
+
+    const handleEditPost = async () => {
+        if (!editModal.post || !editContent.trim()) return;
+
+        setSaving(true);
+        try {
+            const { error } = await supabase
+                .from('posts')
+                .update({ content: editContent.trim() })
+                .eq('id', editModal.post.id);
+
+            if (error) throw error;
+
+            setPosts(posts.map(p =>
+                p.id === editModal.post!.id
+                    ? { ...p, content: editContent.trim() }
+                    : p
+            ));
+            setEditModal({ open: false, post: null });
+            setEditContent('');
+        } catch (err) {
+            console.error('Error editing post:', err);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const openEditModal = (post: Post) => {
+        setEditContent(post.content);
+        setEditModal({ open: true, post });
+        setPostMenuOpen(null);
+    };
+
+    const openDeleteModal = (postId: string) => {
+        setDeleteModal({ open: true, postId });
+        setPostMenuOpen(null);
+    };
+
+    const handleEditComment = async () => {
+        if (!editCommentModal.comment || !editCommentContent.trim() || !editCommentModal.postId) return;
+
+        setSaving(true);
+        try {
+            const { error } = await supabase
+                .from('post_comments')
+                .update({ content: editCommentContent.trim() })
+                .eq('id', editCommentModal.comment.id);
+
+            if (error) throw error;
+
+            // Update comment in state
+            setPostComments(prev => ({
+                ...prev,
+                [editCommentModal.postId!]: prev[editCommentModal.postId!]?.map(c =>
+                    c.id === editCommentModal.comment!.id
+                        ? { ...c, content: editCommentContent.trim() }
+                        : c
+                ) || []
+            }));
+
+            setEditCommentModal({ open: false, comment: null, postId: null });
+            setEditCommentContent('');
+        } catch (err) {
+            console.error('Error editing comment:', err);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDeleteComment = async (commentId: string, postId: string) => {
+        try {
+            const { error } = await supabase
+                .from('post_comments')
+                .delete()
+                .eq('id', commentId);
+
+            if (error) throw error;
+
+            // Remove comment from state
+            setPostComments(prev => ({
+                ...prev,
+                [postId]: prev[postId]?.filter(c => c.id !== commentId) || []
+            }));
+
+            // Update comment count
+            setPosts(posts.map(p =>
+                p.id === postId
+                    ? { ...p, comments_count: Math.max(p.comments_count - 1, 0) }
+                    : p
+            ));
+
+            setCommentMenuOpen(null);
+        } catch (err) {
+            console.error('Error deleting comment:', err);
+        }
+    };
+
+    const openEditCommentModal = (comment: Comment, postId: string) => {
+        setEditCommentContent(comment.content);
+        setEditCommentModal({ open: true, comment, postId });
+        setCommentMenuOpen(null);
     };
 
     const handleFollow = async (targetUserId: string) => {
@@ -660,23 +970,74 @@ export default function FeedPage() {
                                                     </p>
                                                 </div>
                                                 {post.user_id === user?.id && (
-                                                    <button
-                                                        onClick={() => handleDeletePost(post.id)}
-                                                        className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
+                                                    <div className="relative">
+                                                        <button
+                                                            onClick={() => setPostMenuOpen(postMenuOpen === post.id ? null : post.id)}
+                                                            className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+                                                        >
+                                                            <MoreHorizontal className="w-5 h-5" />
+                                                        </button>
+
+                                                        <AnimatePresence>
+                                                            {postMenuOpen === post.id && (
+                                                                <motion.div
+                                                                    initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                                    exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                                                                    className="absolute right-0 top-full mt-1 w-36 bg-white rounded-xl shadow-lg border border-gray-200 py-1 z-50"
+                                                                >
+                                                                    <button
+                                                                        onClick={() => openEditModal(post)}
+                                                                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                                                    >
+                                                                        <Edit3 className="w-4 h-4" />
+                                                                        Edit post
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => openDeleteModal(post.id)}
+                                                                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                                                                    >
+                                                                        <Trash2 className="w-4 h-4" />
+                                                                        Delete post
+                                                                    </button>
+                                                                </motion.div>
+                                                            )}
+                                                        </AnimatePresence>
+                                                    </div>
                                                 )}
                                             </div>
 
                                             {/* Post Content */}
-                                            <p className="text-gray-900 whitespace-pre-wrap mb-3 text-[15px] leading-relaxed">{post.content}</p>
+                                            <p className="text-gray-900 whitespace-pre-wrap mb-3 text-[15px] leading-relaxed">
+                                                {parseContentWithLinks(post.content)}
+                                            </p>
 
-                                            {/* Post Image */}
+                                            {/* Video Player - if video URL found in content */}
+                                            {(() => {
+                                                const videoUrl = extractVideoUrl(post.content);
+                                                if (videoUrl) {
+                                                    return <InlineVideoPlayer url={videoUrl} />;
+                                                }
+                                                return null;
+                                            })()}
+
+                                            {/* Link Preview - skip if it's a video URL */}
+                                            {extractUrls(post.content)
+                                                .filter(url => !isVideoUrl(url))
+                                                .slice(0, 1)
+                                                .map((url) => (
+                                                    <LinkPreview key={url} url={url} />
+                                                ))}
+
+                                            {/* Post Image or Video */}
                                             {post.image_url && (
-                                                <div className="rounded-xl overflow-hidden mb-3 bg-gray-100">
-                                                    <img src={post.image_url} alt="" className="w-full max-h-[500px] object-cover" />
-                                                </div>
+                                                isVideoUrl(post.image_url) ? (
+                                                    <InlineVideoPlayer url={post.image_url} />
+                                                ) : (
+                                                    <div className="rounded-xl overflow-hidden mb-3 bg-gray-100">
+                                                        <img src={post.image_url} alt="" className="w-full max-h-[500px] object-cover" />
+                                                    </div>
+                                                )
                                             )}
 
                                             {/* Post Actions */}
@@ -775,16 +1136,53 @@ export default function FeedPage() {
                                                                             </div>
                                                                         </Link>
                                                                         <div className="flex-1 bg-white rounded-xl px-3 py-2">
-                                                                            <div className="flex items-center gap-1.5">
-                                                                                <Link href={`/connect/${comment.user_id}`} className="text-sm font-semibold text-gray-900 hover:underline">
-                                                                                    {comment.profile?.full_name}
-                                                                                </Link>
-                                                                                {comment.profile?.is_verified && (
-                                                                                    <CheckCircle className="w-3 h-3 text-green-500" />
+                                                                            <div className="flex items-center justify-between">
+                                                                                <div className="flex items-center gap-1.5">
+                                                                                    <Link href={`/connect/${comment.user_id}`} className="text-sm font-semibold text-gray-900 hover:underline">
+                                                                                        {comment.profile?.full_name}
+                                                                                    </Link>
+                                                                                    {comment.profile?.is_verified && (
+                                                                                        <CheckCircle className="w-3 h-3 text-green-500" />
+                                                                                    )}
+                                                                                    <span className="text-xs text-gray-400">
+                                                                                        · {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
+                                                                                    </span>
+                                                                                </div>
+                                                                                {comment.user_id === user?.id && (
+                                                                                    <div className="relative">
+                                                                                        <button
+                                                                                            onClick={() => setCommentMenuOpen(commentMenuOpen === comment.id ? null : comment.id)}
+                                                                                            className="p-1 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100"
+                                                                                        >
+                                                                                            <MoreHorizontal className="w-4 h-4" />
+                                                                                        </button>
+                                                                                        <AnimatePresence>
+                                                                                            {commentMenuOpen === comment.id && (
+                                                                                                <motion.div
+                                                                                                    initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                                                                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                                                                    exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                                                                                                    className="absolute right-0 top-full mt-1 w-32 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50"
+                                                                                                >
+                                                                                                    <button
+                                                                                                        onClick={() => openEditCommentModal(comment, post.id)}
+                                                                                                        className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+                                                                                                    >
+                                                                                                        <Edit3 className="w-3.5 h-3.5" />
+                                                                                                        Edit
+                                                                                                    </button>
+                                                                                                    <button
+                                                                                                        onClick={() => handleDeleteComment(comment.id, post.id)}
+                                                                                                        className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50"
+                                                                                                    >
+                                                                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                                                                        Delete
+                                                                                                    </button>
+                                                                                                </motion.div>
+                                                                                            )}
+                                                                                        </AnimatePresence>
+                                                                                    </div>
                                                                                 )}
-                                                                                <span className="text-xs text-gray-400">
-                                                                                    · {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
-                                                                                </span>
                                                                             </div>
                                                                             <p className="text-sm text-gray-700 mt-0.5">{comment.content}</p>
                                                                         </div>
@@ -884,6 +1282,193 @@ export default function FeedPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Delete Confirmation Modal */}
+            <AnimatePresence>
+                {deleteModal.open && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+                        onClick={() => setDeleteModal({ open: false, postId: null })}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full">
+                                <AlertTriangle className="w-6 h-6 text-red-600" />
+                            </div>
+                            <h3 className="text-lg font-bold text-center text-gray-900 mb-2">
+                                Delete Post?
+                            </h3>
+                            <p className="text-sm text-gray-500 text-center mb-6">
+                                This action cannot be undone. Your post will be permanently removed.
+                            </p>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setDeleteModal({ open: false, postId: null })}
+                                    className="flex-1 px-4 py-2.5 text-gray-700 font-medium bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={() => deleteModal.postId && handleDeletePost(deleteModal.postId)}
+                                    disabled={saving}
+                                    className="flex-1 px-4 py-2.5 text-white font-medium bg-red-600 rounded-xl hover:bg-red-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                                >
+                                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                                    Delete
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Edit Post Modal */}
+            <AnimatePresence>
+                {editModal.open && editModal.post && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+                        onClick={() => setEditModal({ open: false, post: null })}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="bg-white rounded-2xl shadow-xl max-w-lg w-full overflow-hidden"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                                <h3 className="text-lg font-bold text-gray-900">Edit Post</h3>
+                                <button
+                                    onClick={() => setEditModal({ open: false, post: null })}
+                                    className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                            <div className="p-6">
+                                <div className="flex gap-3 mb-4">
+                                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">
+                                        {profile?.avatar_url ? (
+                                            <Image src={profile.avatar_url} alt="" width={40} height={40} className="object-cover" />
+                                        ) : (
+                                            <span className="text-lg font-bold text-gray-400">
+                                                {profile?.full_name?.charAt(0)}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-gray-900">{profile?.full_name}</p>
+                                        <p className="text-xs text-gray-500">Editing post</p>
+                                    </div>
+                                </div>
+                                <textarea
+                                    value={editContent}
+                                    onChange={(e) => setEditContent(e.target.value)}
+                                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                                    rows={5}
+                                    placeholder="What's on your mind?"
+                                />
+                                {editModal.post.image_url && (
+                                    <div className="mt-3 rounded-xl overflow-hidden bg-gray-100">
+                                        <img
+                                            src={editModal.post.image_url}
+                                            alt=""
+                                            className="w-full max-h-48 object-cover opacity-50"
+                                        />
+                                        <p className="text-xs text-center text-gray-500 py-2">
+                                            Image cannot be edited
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50">
+                                <button
+                                    onClick={() => setEditModal({ open: false, post: null })}
+                                    className="flex-1 px-4 py-2.5 text-gray-700 font-medium bg-white border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleEditPost}
+                                    disabled={saving || !editContent.trim()}
+                                    className="flex-1 px-4 py-2.5 text-white font-medium bg-green-600 rounded-xl hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                                >
+                                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                                    Save Changes
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Edit Comment Modal */}
+            <AnimatePresence>
+                {editCommentModal.open && editCommentModal.comment && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+                        onClick={() => setEditCommentModal({ open: false, comment: null, postId: null })}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                                <h3 className="text-lg font-bold text-gray-900">Edit Comment</h3>
+                                <button
+                                    onClick={() => setEditCommentModal({ open: false, comment: null, postId: null })}
+                                    className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                            <div className="p-6">
+                                <textarea
+                                    value={editCommentContent}
+                                    onChange={(e) => setEditCommentContent(e.target.value)}
+                                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                                    rows={4}
+                                    placeholder="Edit your comment..."
+                                    autoFocus
+                                />
+                            </div>
+                            <div className="flex gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50">
+                                <button
+                                    onClick={() => setEditCommentModal({ open: false, comment: null, postId: null })}
+                                    className="flex-1 px-4 py-2.5 text-gray-700 font-medium bg-white border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleEditComment}
+                                    disabled={saving || !editCommentContent.trim()}
+                                    className="flex-1 px-4 py-2.5 text-white font-medium bg-green-600 rounded-xl hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                                >
+                                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                                    Save
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

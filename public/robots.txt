@@ -1,0 +1,21 @@
+# AgriPro Robots.txt
+# https://agripro.com
+
+User-agent: *
+Allow: /
+
+# Disallow admin and auth pages from indexing
+Disallow: /admin/*
+Disallow: /auth/*
+Disallow: /api/*
+Disallow: /studio/*
+
+# Allow specific public APIs if needed
+Allow: /api/trade/vendors
+Allow: /api/trade/categories
+
+# Sitemap
+Sitemap: https://agripro.com/sitemap.xml
+
+# Crawl delay (optional, be gentle with the server)
+Crawl-delay: 1

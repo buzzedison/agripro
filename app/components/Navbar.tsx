@@ -5,10 +5,10 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, ChevronDown, ArrowRight, MessageSquare, BookOpen, Users, ShoppingBag, Sprout, User, LogOut, LayoutDashboard, Home } from 'lucide-react';
+import { Menu, X, ChevronDown, ArrowRight, MessageSquare, BookOpen, Users, ShoppingBag, Sprout, User, LogOut, LayoutDashboard, Home, Heart } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
-// Four Pillars: Knowledge, Connect, Trade, Grow
+// Four Pillars: Knowledge, Connect, Trade, Grow + Impact
 const navigation = [
   {
     name: 'Knowledge',
@@ -38,6 +38,17 @@ const navigation = [
       { name: 'Farm Smart Program', href: '/farm-smart' },
       { name: 'Green Market', href: '/greenmarket' },
       { name: 'AgriPro Fellowship', href: '/fellowship' },
+    ]
+  },
+  {
+    name: 'Impact',
+    href: '/impact',
+    icon: Heart,
+    description: 'Our initiatives & investments',
+    submenu: [
+      { name: 'Our Impact', href: '/impact' },
+      { name: 'TrustBridge', href: '/impact/trustbridge' },
+      { name: 'Ayeeko', href: '/impact/ayeeko' },
     ]
   },
 ];
