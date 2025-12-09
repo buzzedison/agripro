@@ -15,7 +15,7 @@ function LoginPageContent() {
   
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get('redirectTo') || '/knowledgehub';
+  const redirectTo = searchParams.get('redirectTo') || '/feed';
   const supabase = createClient();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -30,7 +30,14 @@ function LoginPageContent() {
       });
 
       if (error) {
-        setError(error.message);
+        // Check if error is related to email confirmation
+        if (error.message.toLowerCase().includes('email not confirmed') ||
+            error.message.toLowerCase().includes('confirm your email') ||
+            error.message.toLowerCase().includes('verify your email')) {
+          setError('Please verify your email address. Check your inbox for a confirmation link, or sign up again to receive a new one.');
+        } else {
+          setError(error.message);
+        }
       } else {
         // Clear content view count on successful login
         document.cookie = 'content_views=0; max-age=0';
@@ -76,7 +83,7 @@ function LoginPageContent() {
             Sign in to your account
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Access premium content in the Knowledge Hub
+            Welcome back to AgriProHub
           </p>
         </div>
 

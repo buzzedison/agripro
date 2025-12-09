@@ -19,7 +19,7 @@ function SignUpPageContent() {
   
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get('redirectTo') || '/knowledgehub';
+  const redirectTo = searchParams.get('redirectTo') || '/feed';
   const supabase = createClient();
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -40,19 +40,28 @@ function SignUpPageContent() {
     }
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             full_name: fullName,
+            user_type: 'farmer', // Default user type
           },
         },
       });
 
       if (error) {
-        setError(error.message);
+        // Check if error is related to user already existing
+        if (error.message.toLowerCase().includes('already registered') ||
+            error.message.toLowerCase().includes('user already exists')) {
+          setError('This email is already registered. If you haven\'t confirmed your email yet, please check your inbox for the confirmation link, or try logging in.');
+        } else {
+          setError(error.message);
+        }
       } else {
+        // Supabase may return success even if user exists (for security)
+        // Show success message either way
         setSuccess(true);
       }
     } catch (err) {
@@ -126,7 +135,7 @@ function SignUpPageContent() {
             Create your account
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Join the Knowledge Hub for unlimited access to premium content
+            Join AgriProHub to connect with the agricultural community and access premium resources
           </p>
         </div>
 
