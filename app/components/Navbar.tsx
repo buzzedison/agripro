@@ -5,8 +5,10 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, ChevronDown, ArrowRight, MessageSquare, BookOpen, Users, ShoppingBag, Sprout, User, LogOut, LayoutDashboard, Home, Heart } from 'lucide-react';
+import { Menu, X, ChevronDown, ArrowRight, MessageSquare, BookOpen, Users, ShoppingBag, Sprout, User, LogOut, LayoutDashboard, Home, Heart, Bell } from 'lucide-react';
+import NotificationBell from '@/components/NotificationBell';
 import { createClient } from '@/lib/supabase/client';
+import { nameToSlug } from '@/lib/utils/mentions';
 
 // Four Pillars: Knowledge, Connect, Trade, Grow + Impact
 const navigation = [
@@ -59,22 +61,34 @@ export default function Navbar() {
   const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null);
   const [scrolled, setScrolled] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [profile, setProfile] = useState<{ full_name: string } | null>(null);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const supabase = createClient();
 
-  // Check auth state
+  // Check auth state and fetch profile
   useEffect(() => {
     const checkUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
+      
+      if (user) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', user.id)
+          .single();
+        setProfile(profileData);
+      }
+      
       setLoading(false);
     };
     checkUser();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      if (!session?.user) setProfile(null);
     });
 
     return () => subscription.unsubscribe();
@@ -180,6 +194,9 @@ export default function Navbar() {
                 AI
               </Link>
 
+              {/* Notification Bell - only show when logged in */}
+              {!loading && user && <NotificationBell />}
+
               {loading ? (
                 <div className="w-20 h-10 bg-gray-100 rounded-full animate-pulse" />
               ) : user ? (
@@ -217,7 +234,7 @@ export default function Navbar() {
                         Dashboard
                       </Link>
                       <Link
-                        href="/connect/profile"
+                        href={profile?.full_name ? `/connect/${nameToSlug(profile.full_name)}` : '/connect/profile/edit'}
                         onClick={() => setUserMenuOpen(false)}
                         className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600"
                       >
@@ -257,12 +274,15 @@ export default function Navbar() {
             {/* Mobile Actions */}
             <div className="flex lg:hidden items-center gap-2">
               {!loading && user && (
-                <Link
-                  href="/connect/dashboard"
-                  className="p-2 text-gray-600 hover:text-green-600 rounded-lg"
-                >
-                  <LayoutDashboard className="w-5 h-5" />
-                </Link>
+                <>
+                  <NotificationBell />
+                  <Link
+                    href="/connect/dashboard"
+                    className="p-2 text-gray-600 hover:text-green-600 rounded-lg"
+                  >
+                    <LayoutDashboard className="w-5 h-5" />
+                  </Link>
+                </>
               )}
               <button
                 onClick={() => setIsOpen(!isOpen)}

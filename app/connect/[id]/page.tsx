@@ -87,17 +87,15 @@ export default function ProfilePage() {
     const [followLoading, setFollowLoading] = useState(false);
 
     useEffect(() => {
-        fetchProfile();
-        checkCurrentUser();
+        const init = async () => {
+            // Get current user first
+            const { data: { user } } = await supabase.auth.getUser();
+            setCurrentUser(user);
+            // Then fetch profile (which will check follow status)
+            await fetchProfile(user);
+        };
+        init();
     }, [params.id]);
-
-    const checkCurrentUser = async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        setCurrentUser(user);
-        if (user && params.id) {
-            checkFollowStatus(user.id, params.id as string);
-        }
-    };
 
     const checkFollowStatus = async (userId: string, profileId: string) => {
         const { data } = await supabase
@@ -109,22 +107,93 @@ export default function ProfilePage() {
         setIsFollowing(!!data);
     };
 
-    const fetchProfile = async () => {
+    const fetchProfile = async (user?: any) => {
         setLoading(true);
         setError(null);
 
-        const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', params.id)
-            .single();
+        const identifier = params.id as string;
+        
+        // Reserved route names that shouldn't be treated as profile slugs
+        const reservedRoutes = ['profile', 'dashboard', 'directory', 'onboarding', 'edit'];
+        if (reservedRoutes.includes(identifier.toLowerCase())) {
+            setError('Profile not found');
+            setLoading(false);
+            return;
+        }
+        
+        // Check if it's a UUID or a name-based slug
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
+        
+        let data = null;
+        let error = null;
+        
+        if (isUUID) {
+            // Lookup by ID
+            const result = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', identifier)
+                .single();
+            data = result.data;
+            error = result.error;
+        } else {
+            // Lookup by name slug (convert slug back to name pattern)
+            // Slug format: "john-doe" -> search for names containing "john" and "doe"
+            const nameSearch = identifier.replace(/-/g, ' ');
+            
+            // Try exact match first (case-insensitive)
+            let result = await supabase
+                .from('profiles')
+                .select('*')
+                .ilike('full_name', nameSearch)
+                .maybeSingle();
+            
+            // If no exact match, try with wildcard
+            if (!result.data) {
+                result = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .ilike('full_name', `%${nameSearch}%`)
+                    .maybeSingle();
+            }
+            
+            // If still no match, try matching each word
+            if (!result.data) {
+                const words = nameSearch.split(' ').filter(w => w.length > 0);
+                if (words.length > 0) {
+                    // Search for profiles where name contains all words
+                    const { data: profiles } = await supabase
+                        .from('profiles')
+                        .select('*');
+                    
+                    // Find profile where all words match
+                    const matchedProfile = profiles?.find(p => {
+                        const fullNameLower = p.full_name.toLowerCase();
+                        return words.every(word => fullNameLower.includes(word.toLowerCase()));
+                    });
+                    
+                    if (matchedProfile) {
+                        data = matchedProfile;
+                    }
+                }
+            }
+            
+            if (!data) {
+                data = result.data;
+                error = result.error;
+            }
+        }
 
-        if (error) {
-            console.error('Error fetching profile:', error);
+        if (error || !data) {
+            console.error('Error fetching profile:', error || 'No profile found');
             setError('Profile not found');
         } else {
             setProfile(data);
-            fetchStats(params.id as string);
+            fetchStats(data.id);
+            // Check follow status with the actual profile ID
+            if (user) {
+                checkFollowStatus(user.id, data.id);
+            }
         }
 
         setLoading(false);

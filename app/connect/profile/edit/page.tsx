@@ -53,11 +53,13 @@ export default function EditProfilePage() {
     const router = useRouter();
     const supabase = createClient();
     const avatarInputRef = useRef<HTMLInputElement>(null);
+    const coverInputRef = useRef<HTMLInputElement>(null);
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
     const [uploadingAvatar, setUploadingAvatar] = useState(false);
+    const [uploadingCover, setUploadingCover] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [user, setUser] = useState<any>(null);
 
@@ -78,6 +80,7 @@ export default function EditProfilePage() {
         website: '',
         linkedin: '',
         avatar_url: '',
+        header_url: '',
         youtube_url: '',
     });
 
@@ -121,6 +124,7 @@ export default function EditProfilePage() {
                 website: data.website || '',
                 linkedin: data.linkedin || '',
                 avatar_url: data.avatar_url || '',
+                header_url: data.header_url || '',
                 youtube_url: data.youtube_url || '',
             });
         }
@@ -163,6 +167,45 @@ export default function EditProfilePage() {
 
     const removeAvatar = () => {
         setFormData(prev => ({ ...prev, avatar_url: '' }));
+    };
+
+    const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !user) return;
+
+        setUploadingCover(true);
+        setError(null);
+
+        try {
+            // Delete old cover if exists
+            if (formData.header_url) {
+                const oldPath = formData.header_url.split('/').slice(-2).join('/');
+                await supabase.storage.from('covers').remove([oldPath]);
+            }
+
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${user.id}/cover_${Date.now()}.${fileExt}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('covers')
+                .upload(fileName, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('covers')
+                .getPublicUrl(fileName);
+
+            setFormData(prev => ({ ...prev, header_url: publicUrl }));
+        } catch (err: any) {
+            setError('Failed to upload cover photo: ' + (err.message || 'Unknown error'));
+        } finally {
+            setUploadingCover(false);
+        }
+    };
+
+    const removeCover = () => {
+        setFormData(prev => ({ ...prev, header_url: '' }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -324,6 +367,68 @@ export default function EditProfilePage() {
                             </div>
                             <p className="mt-2 text-sm text-gray-500">
                                 JPG, PNG or GIF. Max 5MB.
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Cover Photo */}
+                <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+                    <h2 className="text-lg font-bold text-gray-900 mb-1">Cover Photo</h2>
+                    <p className="text-sm text-gray-500 mb-4">Add a banner image for your profile (recommended: 1500x500px)</p>
+
+                    <div className="relative">
+                        <div className="w-full h-40 rounded-xl bg-gradient-to-r from-green-100 to-green-50 flex items-center justify-center overflow-hidden border border-gray-200">
+                            {formData.header_url ? (
+                                <Image
+                                    src={formData.header_url}
+                                    alt="Cover"
+                                    fill
+                                    className="object-cover"
+                                />
+                            ) : (
+                                <div className="text-center text-gray-400">
+                                    <Camera className="w-8 h-8 mx-auto mb-2" />
+                                    <span className="text-sm">No cover photo</span>
+                                </div>
+                            )}
+                            {uploadingCover && (
+                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                    <Loader2 className="w-8 h-8 animate-spin text-white" />
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="mt-4">
+                            <input
+                                ref={coverInputRef}
+                                type="file"
+                                accept="image/*"
+                                onChange={handleCoverUpload}
+                                className="hidden"
+                            />
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => coverInputRef.current?.click()}
+                                    disabled={uploadingCover}
+                                    className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 disabled:opacity-50 transition-colors"
+                                >
+                                    <Camera className="w-4 h-4" />
+                                    {formData.header_url ? 'Change Cover' : 'Upload Cover'}
+                                </button>
+                                {formData.header_url && (
+                                    <button
+                                        type="button"
+                                        onClick={removeCover}
+                                        className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                )}
+                            </div>
+                            <p className="mt-2 text-sm text-gray-500">
+                                JPG, PNG or GIF. Max 5MB. Recommended size: 1500x500 pixels.
                             </p>
                         </div>
                     </div>

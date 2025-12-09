@@ -15,6 +15,8 @@ import {
     Play, ExternalLink, Volume2, VolumeX, Maximize2, Quote
 } from 'lucide-react';
 import LinkPreview, { extractUrls, parseContentWithLinks } from '../components/LinkPreview';
+import { parseContentWithLinksAndHashtags, extractHashtags } from '@/lib/utils/hashtags';
+import { parseContentWithAll, extractMentions, nameToSlug } from '@/lib/utils/mentions';
 
 // Video URL detection helpers
 function isVideoUrl(url: string): boolean {
@@ -236,6 +238,7 @@ interface Post {
     };
     user_has_liked?: boolean;
     user_has_reposted?: boolean;
+    mentioned_users?: Map<string, string>; // Map of full_name -> user_id
 }
 
 interface Comment {
@@ -316,10 +319,34 @@ export default function FeedPage() {
     const [showCommentEmoji, setShowCommentEmoji] = useState<string | null>(null);
     const [commentImageInputRef] = useState<Record<string, HTMLInputElement | null>>({});
     const [commentImages, setCommentImages] = useState<Record<string, { file: File; preview: string } | null>>({});
+    // Hashtag state
+    const [selectedHashtag, setSelectedHashtag] = useState<string | null>(null);
+    const [trendingHashtags, setTrendingHashtags] = useState<any[]>([]);
+    const [loadingTrending, setLoadingTrending] = useState(false);
+    // Bookmark state
+    const [bookmarkedPostIds, setBookmarkedPostIds] = useState<Set<string>>(new Set());
+    const [bookmarkingPost, setBookmarkingPost] = useState<string | null>(null);
+    // Mention autocomplete state
+    const [mentionSuggestions, setMentionSuggestions] = useState<any[]>([]);
+    const [showMentionDropdown, setShowMentionDropdown] = useState(false);
+    const [mentionSearchQuery, setMentionSearchQuery] = useState('');
+    const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
         checkAuth();
+        fetchTrendingHashtags();
+        fetchBookmarkedPosts();
     }, []);
+
+    // Fetch posts by hashtag when selectedHashtag changes
+    useEffect(() => {
+        if (selectedHashtag && user) {
+            fetchPostsByHashtag(selectedHashtag);
+        } else if (!selectedHashtag && user) {
+            fetchPosts(user.id);
+        }
+    }, [selectedHashtag, user]);
 
     const checkAuth = async () => {
         const { data: { user } } = await supabase.auth.getUser();
@@ -380,6 +407,94 @@ export default function FeedPage() {
 
             const repostedPostIds = new Set(repostsData?.map(r => r.post_id) || []);
 
+            // Fetch mentioned users for all posts
+            const postIds = postsData.map(p => p.id);
+            const postMentionsMap = new Map<string, Map<string, string>>();
+            
+            // Try to get mentions from post_mentions table first
+            try {
+                const { data: mentionsData } = await supabase
+                    .from('post_mentions')
+                    .select('post_id, mentioned_user_id')
+                    .in('post_id', postIds);
+
+                // Get profiles for mentioned users
+                const mentionedUserIds = [...new Set(mentionsData?.map(m => m.mentioned_user_id) || [])];
+                
+                if (mentionedUserIds.length > 0) {
+                    const { data: mentionedProfiles } = await supabase
+                        .from('profiles')
+                        .select('id, full_name')
+                        .in('id', mentionedUserIds);
+                    
+                    const mentionedProfilesMap = new Map(mentionedProfiles?.map(p => [p.id, p]) || []);
+
+                    // Build mentioned users map per post
+                    mentionsData?.forEach(mention => {
+                        const profile = mentionedProfilesMap.get(mention.mentioned_user_id);
+                        if (profile) {
+                            if (!postMentionsMap.has(mention.post_id)) {
+                                postMentionsMap.set(mention.post_id, new Map());
+                            }
+                            postMentionsMap.get(mention.post_id)!.set(profile.full_name, profile.id);
+                        }
+                    });
+                }
+            } catch (mentionError) {
+                // Table might not exist yet, fall through to extract from content
+                console.log('post_mentions table not available, extracting from content');
+            }
+
+            // Fallback: Extract mentions from content and look up users
+            // This handles posts created before the mentions table existed
+            const mentionRegex = /@([a-zA-Z][a-zA-Z0-9\s]+?)(?=\s|$|[^\w])/g;
+            const allMentionNames = new Set<string>();
+            postsData.forEach(post => {
+                if (!postMentionsMap.has(post.id)) {
+                    const matches = post.content.matchAll(mentionRegex);
+                    for (const match of matches) {
+                        allMentionNames.add(match[1].trim());
+                    }
+                }
+            });
+
+            // Look up users by name if we have mentions not in the table
+            if (allMentionNames.size > 0) {
+                // Use ilike for case-insensitive partial matching
+                const mentionNamesArray = Array.from(allMentionNames);
+                const { data: usersByName } = await supabase
+                    .from('profiles')
+                    .select('id, full_name');
+
+                // Build a map for flexible matching
+                const allProfiles = usersByName || [];
+
+                // Add to posts that don't have mentions from the table
+                postsData.forEach(post => {
+                    if (!postMentionsMap.has(post.id)) {
+                        const matches = post.content.matchAll(mentionRegex);
+                        const postMentions = new Map<string, string>();
+                        for (const match of matches) {
+                            const mentionName = match[1].trim().toLowerCase();
+                            // Find matching user - try exact match first, then partial
+                            const matchedUser = allProfiles.find(u => {
+                                const fullNameLower = u.full_name.toLowerCase();
+                                return fullNameLower === mentionName ||
+                                       fullNameLower.startsWith(mentionName) ||
+                                       mentionName.startsWith(fullNameLower);
+                            });
+                            if (matchedUser) {
+                                // Store with full_name as key for proper slug generation
+                                postMentions.set(matchedUser.full_name, matchedUser.id);
+                            }
+                        }
+                        if (postMentions.size > 0) {
+                            postMentionsMap.set(post.id, postMentions);
+                        }
+                    }
+                });
+            }
+
             const postsWithProfiles = postsData.map(post => ({
                 ...post,
                 profile: profilesMap.get(post.user_id) || {
@@ -391,12 +506,132 @@ export default function FeedPage() {
                     profile_incomplete: true,
                 },
                 user_has_liked: likedPostIds.has(post.id),
-                user_has_reposted: repostedPostIds.has(post.id)
+                user_has_reposted: repostedPostIds.has(post.id),
+                mentioned_users: postMentionsMap.get(post.id) || new Map()
             }));
 
             setPosts(postsWithProfiles);
         } else {
             setPosts([]);
+        }
+    };
+
+    const fetchPostsByHashtag = async (hashtag: string) => {
+        if (!user) return;
+
+        setLoading(true);
+        try {
+            const response = await fetch(`/api/feed/hashtags?tag=${encodeURIComponent(hashtag)}`);
+            const data = await response.json();
+
+            if (data.posts && data.posts.length > 0) {
+                // Check which posts the user has liked
+                const { data: likesData } = await supabase
+                    .from('post_likes')
+                    .select('post_id')
+                    .eq('user_id', user.id);
+
+                const likedPostIds = new Set(likesData?.map(l => l.post_id) || []);
+
+                // Check which posts the user has reposted
+                const { data: repostsData } = await supabase
+                    .from('post_reposts')
+                    .select('post_id')
+                    .eq('user_id', user.id);
+
+                const repostedPostIds = new Set(repostsData?.map(r => r.post_id) || []);
+
+                const postsWithLikes = data.posts.map((post: any) => ({
+                    ...post,
+                    user_has_liked: likedPostIds.has(post.id),
+                    user_has_reposted: repostedPostIds.has(post.id)
+                }));
+
+                setPosts(postsWithLikes);
+            } else {
+                setPosts([]);
+            }
+        } catch (error) {
+            console.error('Error fetching posts by hashtag:', error);
+            setPosts([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchTrendingHashtags = async () => {
+        setLoadingTrending(true);
+        try {
+            const response = await fetch('/api/feed/trending');
+            const data = await response.json();
+            setTrendingHashtags(data.hashtags || []);
+        } catch (error) {
+            console.error('Error fetching trending hashtags:', error);
+            setTrendingHashtags([]);
+        } finally {
+            setLoadingTrending(false);
+        }
+    };
+
+    const fetchBookmarkedPosts = async () => {
+        try {
+            const response = await fetch('/api/feed/bookmarks');
+            const data = await response.json();
+            if (data.posts) {
+                const bookmarkedIds = new Set<string>(data.posts.map((p: any) => p.id));
+                setBookmarkedPostIds(bookmarkedIds);
+            }
+        } catch (error) {
+            console.error('Error fetching bookmarks:', error);
+        }
+    };
+
+    const handleBookmark = async (postId: string, isBookmarked: boolean) => {
+        if (!user) return;
+
+        setBookmarkingPost(postId);
+
+        // Optimistic update
+        setBookmarkedPostIds(prev => {
+            const newSet = new Set(prev);
+            if (isBookmarked) {
+                newSet.delete(postId);
+            } else {
+                newSet.add(postId);
+            }
+            return newSet;
+        });
+
+        try {
+            if (isBookmarked) {
+                // Remove bookmark
+                const response = await fetch(`/api/feed/bookmarks?postId=${postId}`, {
+                    method: 'DELETE'
+                });
+                if (!response.ok) throw new Error('Failed to remove bookmark');
+            } else {
+                // Add bookmark
+                const response = await fetch('/api/feed/bookmarks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ postId })
+                });
+                if (!response.ok) throw new Error('Failed to add bookmark');
+            }
+        } catch (error) {
+            console.error('Error bookmarking post:', error);
+            // Revert optimistic update on error
+            setBookmarkedPostIds(prev => {
+                const newSet = new Set(prev);
+                if (isBookmarked) {
+                    newSet.add(postId);
+                } else {
+                    newSet.delete(postId);
+                }
+                return newSet;
+            });
+        } finally {
+            setBookmarkingPost(null);
         }
     };
 
@@ -521,6 +756,93 @@ export default function FeedPage() {
         setShowEmojiPicker(false);
     };
 
+    const handlePostContentChange = async (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const value = e.target.value;
+        setNewPostContent(value);
+
+        // Detect @ mention
+        const cursorPosition = e.target.selectionStart;
+        const textBeforeCursor = value.substring(0, cursorPosition);
+        const mentionMatch = textBeforeCursor.match(/@([a-zA-Z][a-zA-Z0-9\s]*)$/);
+
+        if (mentionMatch) {
+            const query = mentionMatch[1];
+            setMentionSearchQuery(query);
+
+            if (query.length >= 1) {
+                // Search for users
+                try {
+                    const response = await fetch(`/api/feed/mentions?q=${encodeURIComponent(query)}`);
+                    if (!response.ok) {
+                        console.error('Mention search failed:', response.status);
+                        setShowMentionDropdown(false);
+                        return;
+                    }
+                    const data = await response.json();
+                    setMentionSuggestions(data.users || []);
+                    setShowMentionDropdown(data.users && data.users.length > 0);
+                    setSelectedMentionIndex(0);
+                } catch (error) {
+                    console.error('Error searching mentions:', error);
+                    setShowMentionDropdown(false);
+                    setMentionSuggestions([]);
+                }
+            } else {
+                setShowMentionDropdown(false);
+            }
+        } else {
+            setShowMentionDropdown(false);
+            setMentionSuggestions([]);
+        }
+    };
+
+    const insertMention = (user: any) => {
+        if (!textareaRef.current) return;
+
+        const cursorPosition = textareaRef.current.selectionStart;
+        const textBeforeCursor = newPostContent.substring(0, cursorPosition);
+        const textAfterCursor = newPostContent.substring(cursorPosition);
+
+        // Find the @ symbol position
+        const mentionMatch = textBeforeCursor.match(/@([a-zA-Z][a-zA-Z0-9\s]*)$/);
+        if (!mentionMatch) return;
+
+        const beforeMention = textBeforeCursor.substring(0, textBeforeCursor.lastIndexOf('@'));
+        const newContent = `${beforeMention}@${user.full_name} ${textAfterCursor}`;
+
+        setNewPostContent(newContent);
+        setShowMentionDropdown(false);
+        setMentionSuggestions([]);
+
+        // Focus back on textarea
+        setTimeout(() => {
+            if (textareaRef.current) {
+                const newCursorPos = beforeMention.length + user.full_name.length + 2;
+                textareaRef.current.focus();
+                textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
+            }
+        }, 0);
+    };
+
+    const handleMentionKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (!showMentionDropdown || mentionSuggestions.length === 0) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setSelectedMentionIndex(prev =>
+                prev < mentionSuggestions.length - 1 ? prev + 1 : prev
+            );
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setSelectedMentionIndex(prev => prev > 0 ? prev - 1 : 0);
+        } else if (e.key === 'Enter' && mentionSuggestions[selectedMentionIndex]) {
+            e.preventDefault();
+            insertMention(mentionSuggestions[selectedMentionIndex]);
+        } else if (e.key === 'Escape') {
+            setShowMentionDropdown(false);
+        }
+    };
+
     const handlePost = async () => {
         if ((!newPostContent.trim() && !newPostImage) || !user) return;
 
@@ -564,6 +886,48 @@ export default function FeedPage() {
                 throw insertError;
             }
 
+            // Save hashtags if any exist in the content
+            const hashtags = extractHashtags(newPostContent);
+            if (hashtags.length > 0 && newPost.id) {
+                try {
+                    await fetch('/api/feed/hashtags', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            postId: newPost.id,
+                            content: newPostContent
+                        })
+                    });
+                } catch (hashtagError) {
+                    console.error('Error saving hashtags:', hashtagError);
+                }
+            }
+
+            // Save mentions and get mentioned user data for display
+            let mentionedUsersMap = new Map<string, string>();
+            const mentions = extractMentions(newPostContent);
+            if (mentions.length > 0 && newPost.id) {
+                try {
+                    const mentionResponse = await fetch('/api/feed/mentions', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            postId: newPost.id,
+                            content: newPostContent
+                        })
+                    });
+                    const mentionData = await mentionResponse.json();
+                    // Build map from response
+                    if (mentionData.mentionedUsers) {
+                        mentionData.mentionedUsers.forEach((u: { full_name: string; id: string }) => {
+                            mentionedUsersMap.set(u.full_name, u.id);
+                        });
+                    }
+                } catch (mentionError) {
+                    console.error('Error saving mentions:', mentionError);
+                }
+            }
+
             // Add the post to the feed with current user's profile
             const postWithProfile: Post = {
                 ...newPost,
@@ -574,7 +938,8 @@ export default function FeedPage() {
                     organization_name: profile?.organization_name || null,
                     is_verified: profile?.is_verified || false,
                 },
-                user_has_liked: false
+                user_has_liked: false,
+                mentioned_users: mentionedUsersMap
             };
 
             setPosts([postWithProfile, ...posts]);
@@ -688,6 +1053,40 @@ export default function FeedPage() {
 
             setQuoteModal({ open: false, post: null });
             setQuoteContent('');
+
+            // Save hashtags if any exist in the quote content
+            const hashtags = extractHashtags(quoteContent);
+            if (hashtags.length > 0 && newPost.id) {
+                try {
+                    await fetch('/api/feed/hashtags', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            postId: newPost.id,
+                            content: quoteContent
+                        })
+                    });
+                } catch (hashtagError) {
+                    console.error('Error saving hashtags for quote post:', hashtagError);
+                }
+            }
+
+            // Save mentions if any exist in the quote content
+            const mentions = extractMentions(quoteContent);
+            if (mentions.length > 0 && newPost.id) {
+                try {
+                    await fetch('/api/feed/mentions', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            postId: newPost.id,
+                            content: quoteContent
+                        })
+                    });
+                } catch (mentionError) {
+                    console.error('Error saving mentions for quote post:', mentionError);
+                }
+            }
         } catch (err: any) {
             console.error('Error creating quote post:', err?.message || err);
         } finally {
@@ -844,6 +1243,25 @@ export default function FeedPage() {
                         ? { ...p, comments_count: p.comments_count + 1 }
                         : p
                 ));
+
+                // Save mentions for notifications if comment text includes any
+                if (content && data.id) {
+                    const mentions = extractMentions(content);
+                    if (mentions.length > 0) {
+                        try {
+                            await fetch('/api/feed/mentions', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    commentId: data.id,
+                                    content
+                                })
+                            });
+                        } catch (mentionError) {
+                            console.error('Error saving mentions for comment:', mentionError);
+                        }
+                    }
+                }
 
                 setCommentInputs(prev => ({ ...prev, [inputKey]: '' }));
                 setCommentImages(prev => ({ ...prev, [inputKey]: null }));
@@ -1051,7 +1469,7 @@ export default function FeedPage() {
                                             )}
                                         </div>
                                     </div>
-                                    <Link href={`/connect/${user?.id}`} className="block">
+                                    <Link href={`/connect/${profile?.full_name ? nameToSlug(profile.full_name) : user?.id}`} className="block">
                                         <h3 className="font-bold text-gray-900 hover:text-green-600">{profile?.full_name || 'Complete Profile'}</h3>
                                     </Link>
                                     {profile?.organization_name && (
@@ -1089,6 +1507,32 @@ export default function FeedPage() {
 
                     {/* Main Feed */}
                     <div className="lg:col-span-6 space-y-4">
+                        {/* Hashtag Filter Indicator */}
+                        {selectedHashtag && (
+                            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-2xl p-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <TrendingUp className="w-5 h-5 text-green-600" />
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-700">
+                                                Viewing posts tagged with
+                                            </p>
+                                            <p className="text-lg font-bold text-green-600">
+                                                #{selectedHashtag}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setSelectedHashtag(null)}
+                                        className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 rounded-lg text-sm font-medium transition-colors border border-gray-200"
+                                    >
+                                        <X className="w-4 h-4" />
+                                        Clear Filter
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Create Post */}
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
                             <div className="flex gap-3">
@@ -1101,14 +1545,61 @@ export default function FeedPage() {
                                         </span>
                                     )}
                                 </div>
-                                <div className="flex-1">
+                                <div className="flex-1 relative">
                                     <textarea
+                                        ref={textareaRef}
                                         value={newPostContent}
-                                        onChange={(e) => setNewPostContent(e.target.value)}
-                                        placeholder="Share an update, insight, or question..."
+                                        onChange={handlePostContentChange}
+                                        onKeyDown={handleMentionKeyDown}
+                                        placeholder="Share an update, insight, or question... (Use @ to mention, # for hashtags)"
                                         className="w-full px-0 py-2 text-gray-900 placeholder-gray-400 border-0 resize-none focus:ring-0 focus:outline-none text-[15px]"
                                         rows={3}
                                     />
+
+                                    {/* Mention Autocomplete Dropdown */}
+                                    {showMentionDropdown && mentionSuggestions.length > 0 && (
+                                        <div className="absolute left-0 top-full mt-1 w-full max-w-sm bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50 max-h-60 overflow-y-auto">
+                                            {mentionSuggestions.map((user, index) => (
+                                                <button
+                                                    key={user.id}
+                                                    onClick={() => insertMention(user)}
+                                                    className={`w-full flex items-center gap-3 px-4 py-2.5 transition-colors ${
+                                                        index === selectedMentionIndex
+                                                            ? 'bg-green-50 text-green-900'
+                                                            : 'text-gray-700 hover:bg-gray-50'
+                                                    }`}
+                                                >
+                                                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">
+                                                        {user.avatar_url ? (
+                                                            <Image
+                                                                src={user.avatar_url}
+                                                                alt=""
+                                                                width={40}
+                                                                height={40}
+                                                                className="object-cover"
+                                                            />
+                                                        ) : (
+                                                            <span className="text-sm font-bold text-gray-400">
+                                                                {user.full_name?.charAt(0)}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex-1 text-left">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <p className="font-semibold text-sm">{user.full_name}</p>
+                                                            {user.is_verified && (
+                                                                <CheckCircle className="w-4 h-4 text-green-600 fill-current" />
+                                                            )}
+                                                        </div>
+                                                        <p className="text-xs text-gray-500 capitalize">
+                                                            {user.user_type?.replace('_', ' ')}
+                                                            {user.organization_name && ` • ${user.organization_name}`}
+                                                        </p>
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
 
                                     {/* Image Preview */}
                                     {imagePreview && (
@@ -1211,7 +1702,7 @@ export default function FeedPage() {
                                         <div className="p-4">
                                             {/* Post Header */}
                                             <div className="flex items-start gap-3 mb-3">
-                                                <Link href={`/connect/${post.user_id}`} className="flex-shrink-0">
+                                                <Link href={`/connect/${post.profile?.full_name ? nameToSlug(post.profile.full_name) : post.user_id}`} className="flex-shrink-0">
                                                     <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
                                                         {post.profile?.avatar_url ? (
                                                             <Image src={post.profile.avatar_url} alt="" width={40} height={40} className="object-cover" />
@@ -1224,7 +1715,7 @@ export default function FeedPage() {
                                                 </Link>
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center gap-1.5">
-                                                        <Link href={`/connect/${post.user_id}`} className="font-bold text-gray-900 hover:underline truncate">
+                                                        <Link href={`/connect/${post.profile?.full_name ? nameToSlug(post.profile.full_name) : post.user_id}`} className="font-bold text-gray-900 hover:underline truncate">
                                                             {post.profile?.full_name}
                                                         </Link>
                                                         {post.profile?.is_verified && (
@@ -1275,7 +1766,18 @@ export default function FeedPage() {
 
                                             {/* Post Content */}
                                             <p className="text-gray-900 whitespace-pre-wrap mb-3 text-[15px] leading-relaxed">
-                                                {parseContentWithLinks(post.content)}
+                                                {parseContentWithAll(
+                                                    post.content,
+                                                    (hashtag) => {
+                                                        setSelectedHashtag(hashtag);
+                                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                    },
+                                                    (mention) => {
+                                                        // Fallback: Navigate to user profile search
+                                                        router.push(`/connect?search=${encodeURIComponent(mention)}`);
+                                                    },
+                                                    post.mentioned_users
+                                                )}
                                             </p>
 
                                             {/* Video Player - if video URL found in content */}
@@ -1422,8 +1924,16 @@ export default function FeedPage() {
                                                         )}
                                                     </AnimatePresence>
                                                 </div>
-                                                <button className="flex items-center gap-2 px-3 py-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-                                                    <Bookmark className="w-5 h-5" />
+                                                <button
+                                                    onClick={() => handleBookmark(post.id, bookmarkedPostIds.has(post.id))}
+                                                    disabled={bookmarkingPost === post.id}
+                                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${
+                                                        bookmarkedPostIds.has(post.id)
+                                                            ? 'text-yellow-600 bg-yellow-50'
+                                                            : 'text-gray-500 hover:text-yellow-600 hover:bg-yellow-50'
+                                                    }`}
+                                                >
+                                                    <Bookmark className={`w-5 h-5 ${bookmarkedPostIds.has(post.id) ? 'fill-current' : ''}`} />
                                                 </button>
                                             </div>
                                         </div>
@@ -1451,7 +1961,7 @@ export default function FeedPage() {
                                                                         <div className="flex px-4 py-3 hover:bg-gray-50/50 transition-colors">
                                                                             {/* Avatar Column with Thread Line */}
                                                                             <div className="flex flex-col items-center mr-3">
-                                                                                <Link href={`/connect/${comment.user_id}`} className="relative z-10">
+                                                                                <Link href={`/connect/${comment.profile?.full_name ? nameToSlug(comment.profile.full_name) : comment.user_id}`} className="relative z-10">
                                                                                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center overflow-hidden ring-2 ring-white">
                                                                                         {comment.profile?.avatar_url ? (
                                                                                             <Image src={comment.profile.avatar_url} alt="" width={40} height={40} className="object-cover" />
@@ -1473,7 +1983,7 @@ export default function FeedPage() {
                                                                                 {/* Header */}
                                                                                 <div className="flex items-center justify-between gap-2">
                                                                                     <div className="flex items-center gap-1 min-w-0">
-                                                                                        <Link href={`/connect/${comment.user_id}`} className="font-bold text-[15px] text-gray-900 hover:underline truncate">
+                                                                                        <Link href={`/connect/${comment.profile?.full_name ? nameToSlug(comment.profile.full_name) : comment.user_id}`} className="font-bold text-[15px] text-gray-900 hover:underline truncate">
                                                                                             {comment.profile?.full_name}
                                                                                         </Link>
                                                                                         {comment.profile?.is_verified && (
@@ -1522,7 +2032,18 @@ export default function FeedPage() {
                                                                                 </div>
 
                                                                                 {/* Comment Text */}
-                                                                                <p className="text-[15px] text-gray-900 mt-0.5 whitespace-pre-wrap break-words">{comment.content}</p>
+                                                                                <p className="text-[15px] text-gray-900 mt-0.5 whitespace-pre-wrap break-words">
+                                                                                    {parseContentWithAll(
+                                                                                        comment.content,
+                                                                                        (hashtag) => {
+                                                                                            setSelectedHashtag(hashtag);
+                                                                                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                                                        },
+                                                                                        (mention) => {
+                                                                                            router.push(`/connect?search=${encodeURIComponent(mention)}`);
+                                                                                        }
+                                                                                    )}
+                                                                                </p>
 
                                                                                 {/* Comment Image */}
                                                                                 {comment.image_url && (
@@ -1681,7 +2202,7 @@ export default function FeedPage() {
                                                                                         <div className="flex flex-col items-center mr-3">
                                                                                             {/* Connecting line from parent */}
                                                                                             <div className="w-0.5 h-3 bg-gray-200 -mt-3" />
-                                                                                            <Link href={`/connect/${reply.user_id}`} className="relative z-10">
+                                                                                            <Link href={`/connect/${reply.profile?.full_name ? nameToSlug(reply.profile.full_name) : reply.user_id}`} className="relative z-10">
                                                                                                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center overflow-hidden ring-2 ring-white">
                                                                                                     {reply.profile?.avatar_url ? (
                                                                                                         <Image src={reply.profile.avatar_url} alt="" width={32} height={32} className="object-cover" />
@@ -1702,7 +2223,7 @@ export default function FeedPage() {
                                                                                         <div className="flex-1 min-w-0">
                                                                                             <div className="flex items-center justify-between gap-2">
                                                                                                 <div className="flex items-center gap-1 min-w-0">
-                                                                                                    <Link href={`/connect/${reply.user_id}`} className="font-bold text-[14px] text-gray-900 hover:underline truncate">
+                                                                                                    <Link href={`/connect/${reply.profile?.full_name ? nameToSlug(reply.profile.full_name) : reply.user_id}`} className="font-bold text-[14px] text-gray-900 hover:underline truncate">
                                                                                                         {reply.profile?.full_name}
                                                                                                     </Link>
                                                                                                     {reply.profile?.is_verified && (
@@ -1745,7 +2266,18 @@ export default function FeedPage() {
                                                                                             <div className="text-xs text-gray-500 -mt-0.5">
                                                                                                 Replying to <span className="text-green-600">@{comment.profile?.full_name?.split(' ')[0]?.toLowerCase()}</span>
                                                                                             </div>
-                                                                                            <p className="text-[14px] text-gray-900 mt-1 whitespace-pre-wrap break-words">{reply.content}</p>
+                                                                                            <p className="text-[14px] text-gray-900 mt-1 whitespace-pre-wrap break-words">
+                                                                                                {parseContentWithAll(
+                                                                                                    reply.content,
+                                                                                                    (hashtag) => {
+                                                                                                        setSelectedHashtag(hashtag);
+                                                                                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                                                                    },
+                                                                                                    (mention) => {
+                                                                                                        router.push(`/connect?search=${encodeURIComponent(mention)}`);
+                                                                                                    }
+                                                                                                )}
+                                                                                            </p>
                                                                                             {reply.image_url && (
                                                                                                 <div className="mt-2 rounded-xl overflow-hidden border border-gray-200">
                                                                                                     <img src={reply.image_url} alt="" className="max-h-60 w-auto object-cover" />
@@ -2055,7 +2587,7 @@ export default function FeedPage() {
                                 <div className="divide-y divide-gray-50">
                                     {suggestedUsers.map((person) => (
                                         <div key={person.id} className="p-4 flex items-center gap-3">
-                                            <Link href={`/connect/${person.id}`} className="flex-shrink-0">
+                                            <Link href={`/connect/${nameToSlug(person.full_name)}`} className="flex-shrink-0">
                                                 <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
                                                     {person.avatar_url ? (
                                                         <Image src={person.avatar_url} alt="" width={40} height={40} className="object-cover" />
@@ -2067,7 +2599,7 @@ export default function FeedPage() {
                                                 </div>
                                             </Link>
                                             <div className="flex-1 min-w-0">
-                                                <Link href={`/connect/${person.id}`} className="block">
+                                                <Link href={`/connect/${nameToSlug(person.full_name)}`} className="block">
                                                     <p className="font-medium text-gray-900 truncate hover:text-green-600">{person.full_name}</p>
                                                 </Link>
                                                 <p className="text-xs text-gray-500 truncate">
@@ -2095,11 +2627,33 @@ export default function FeedPage() {
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
                                 <h3 className="font-bold text-gray-900 mb-3">Trending Topics</h3>
                                 <div className="space-y-2">
-                                    {['🌾 #PoultryFarming', '🌱 #OrganicAgriculture', '🚜 #AgTech', '🛒 #FarmToMarket', '♻️ #SustainableFarming'].map((tag) => (
-                                        <button key={tag} className="block text-sm text-gray-700 hover:text-green-600 transition-colors">
-                                            {tag}
-                                        </button>
-                                    ))}
+                                    {loadingTrending ? (
+                                        <div className="flex justify-center py-4">
+                                            <Loader2 className="w-5 h-5 animate-spin text-green-600" />
+                                        </div>
+                                    ) : trendingHashtags.length > 0 ? (
+                                        trendingHashtags.slice(0, 5).map((hashtag) => (
+                                            <button
+                                                key={hashtag.id}
+                                                onClick={() => {
+                                                    setSelectedHashtag(hashtag.name);
+                                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                }}
+                                                className={`block text-sm transition-colors text-left w-full ${
+                                                    selectedHashtag === hashtag.name
+                                                        ? 'text-green-600 font-semibold'
+                                                        : 'text-gray-700 hover:text-green-600'
+                                                }`}
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <span>#{hashtag.name}</span>
+                                                    <span className="text-xs text-gray-500">{hashtag.use_count || 0} posts</span>
+                                                </div>
+                                            </button>
+                                        ))
+                                    ) : (
+                                        <p className="text-sm text-gray-500 text-center py-2">No trending topics yet</p>
+                                    )}
                                 </div>
                             </div>
                         </div>
