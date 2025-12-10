@@ -48,6 +48,7 @@ interface Profile {
     website: string | null;
     linkedin: string | null;
     youtube_url: string | null;
+    header_url: string | null;
     is_verified: boolean;
     is_featured: boolean;
     created_at: string;
@@ -137,50 +138,55 @@ export default function ProfilePage() {
             data = result.data;
             error = result.error;
         } else {
-            // Lookup by name slug (convert slug back to name pattern)
-            // Slug format: "john-doe" -> search for names containing "john" and "doe"
-            const nameSearch = identifier.replace(/-/g, ' ');
+            // Slug format: "john-doe-abc12345" where last segment is short UUID
+            const parts = identifier.split('-');
+            const shortId = parts[parts.length - 1];
             
-            // Try exact match first (case-insensitive)
-            let result = await supabase
-                .from('profiles')
-                .select('*')
-                .ilike('full_name', nameSearch)
-                .maybeSingle();
+            // Check if last part looks like a short UUID (8 hex chars)
+            const hasShortId = /^[0-9a-f]{8}$/i.test(shortId);
             
-            // If no exact match, try with wildcard
-            if (!result.data) {
-                result = await supabase
+            if (hasShortId) {
+                // Search by short ID prefix - fetch all and filter client-side
+                // since Supabase UUID columns don't support text pattern matching
+                const { data: profiles } = await supabase
                     .from('profiles')
-                    .select('*')
-                    .ilike('full_name', `%${nameSearch}%`)
-                    .maybeSingle();
-            }
-            
-            // If still no match, try matching each word
-            if (!result.data) {
-                const words = nameSearch.split(' ').filter(w => w.length > 0);
-                if (words.length > 0) {
-                    // Search for profiles where name contains all words
-                    const { data: profiles } = await supabase
-                        .from('profiles')
-                        .select('*');
-                    
-                    // Find profile where all words match
-                    const matchedProfile = profiles?.find(p => {
-                        const fullNameLower = p.full_name.toLowerCase();
-                        return words.every(word => fullNameLower.includes(word.toLowerCase()));
-                    });
-                    
-                    if (matchedProfile) {
-                        data = matchedProfile;
-                    }
+                    .select('*');
+                
+                const matchedProfile = profiles?.find(p => 
+                    p.id.toLowerCase().startsWith(shortId.toLowerCase())
+                );
+                
+                if (matchedProfile) {
+                    data = matchedProfile;
                 }
             }
             
+            // Fallback: try name-based search
             if (!data) {
-                data = result.data;
-                error = result.error;
+                const nameSearch = hasShortId 
+                    ? parts.slice(0, -1).join(' ')  // Remove short ID
+                    : identifier.replace(/-/g, ' ');
+                
+                // Try exact match first (case-insensitive)
+                let result = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .ilike('full_name', nameSearch)
+                    .maybeSingle();
+                
+                // If no exact match, try with wildcard
+                if (!result.data) {
+                    result = await supabase
+                        .from('profiles')
+                        .select('*')
+                        .ilike('full_name', `%${nameSearch}%`)
+                        .maybeSingle();
+                }
+                
+                if (!data) {
+                    data = result.data;
+                    error = result.error;
+                }
             }
         }
 
@@ -293,7 +299,16 @@ export default function ProfilePage() {
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                     {/* Cover & Profile Header */}
                     <div className="relative">
-                        <div className="h-32 sm:h-48 bg-gradient-to-r from-green-600 to-emerald-500" />
+                        <div className="h-32 sm:h-48 bg-gradient-to-r from-green-600 to-emerald-500 relative overflow-hidden">
+                            {profile.header_url && (
+                                <Image
+                                    src={profile.header_url}
+                                    alt="Cover"
+                                    fill
+                                    className="object-cover"
+                                />
+                            )}
+                        </div>
                         <div className="absolute -bottom-16 left-6 sm:left-8">
                             <div className="w-32 h-32 rounded-full border-4 border-white bg-gray-100 flex items-center justify-center overflow-hidden shadow-lg">
                                 {profile.avatar_url ? (

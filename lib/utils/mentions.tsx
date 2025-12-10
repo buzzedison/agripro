@@ -25,6 +25,16 @@ export function nameToSlug(name: string): string {
 }
 
 /**
+ * Convert a name + ID to a unique URL-friendly slug
+ * "John Doe", "abc123-..." -> "john-doe-abc123"
+ */
+export function nameToUniqueSlug(name: string, id: string): string {
+  const nameSlug = nameToSlug(name);
+  const shortId = id.split('-')[0]; // First 8 chars of UUID
+  return `${nameSlug}-${shortId}`;
+}
+
+/**
  * Extract mentions from text
  * Matches mentions like @JohnDoe, @Jane Smith, etc.
  * Returns array of mentioned names without the @ symbol
@@ -155,8 +165,11 @@ export function parseContentWithAll(
       }
       
       if (matchedFullName) {
-        // Link directly to user profile using name slug
-        const profileSlug = nameToSlug(matchedFullName);
+        // Link directly to user profile using unique slug (name + short ID)
+        const userId = mentionedUsers?.get(matchedFullName);
+        const profileSlug = userId 
+          ? nameToUniqueSlug(matchedFullName, userId)
+          : nameToSlug(matchedFullName);
         parts.push(
           <Link
             key={`mention-${idx}-${match.index}`}

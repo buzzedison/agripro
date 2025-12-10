@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, ChevronDown, ArrowRight, MessageSquare, BookOpen, Users, ShoppingBag, Sprout, User, LogOut, LayoutDashboard, Home, Heart, Bell } from 'lucide-react';
 import NotificationBell from '@/components/NotificationBell';
 import { createClient } from '@/lib/supabase/client';
-import { nameToSlug } from '@/lib/utils/mentions';
+import { nameToUniqueSlug } from '@/lib/utils/mentions';
 
 // Four Pillars: Knowledge, Connect, Trade, Grow + Impact
 const navigation = [
@@ -234,7 +234,7 @@ export default function Navbar() {
                         Dashboard
                       </Link>
                       <Link
-                        href={profile?.full_name ? `/connect/${nameToSlug(profile.full_name)}` : '/connect/profile/edit'}
+                        href={profile?.full_name && user?.id ? `/connect/${nameToUniqueSlug(profile.full_name, user.id)}` : '/connect/profile/edit'}
                         onClick={() => setUserMenuOpen(false)}
                         className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600"
                       >

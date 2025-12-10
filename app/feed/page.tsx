@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import LinkPreview, { extractUrls, parseContentWithLinks } from '../components/LinkPreview';
 import { parseContentWithLinksAndHashtags, extractHashtags } from '@/lib/utils/hashtags';
-import { parseContentWithAll, extractMentions, nameToSlug } from '@/lib/utils/mentions';
+import { parseContentWithAll, extractMentions, nameToUniqueSlug } from '@/lib/utils/mentions';
 
 // Video URL detection helpers
 function isVideoUrl(url: string): boolean {
@@ -1469,7 +1469,7 @@ export default function FeedPage() {
                                             )}
                                         </div>
                                     </div>
-                                    <Link href={`/connect/${profile?.full_name ? nameToSlug(profile.full_name) : user?.id}`} className="block">
+                                    <Link href={`/connect/${profile?.full_name && user?.id ? nameToUniqueSlug(profile.full_name, user.id) : user?.id}`} className="block">
                                         <h3 className="font-bold text-gray-900 hover:text-green-600">{profile?.full_name || 'Complete Profile'}</h3>
                                     </Link>
                                     {profile?.organization_name && (
@@ -1702,7 +1702,7 @@ export default function FeedPage() {
                                         <div className="p-4">
                                             {/* Post Header */}
                                             <div className="flex items-start gap-3 mb-3">
-                                                <Link href={`/connect/${post.profile?.full_name ? nameToSlug(post.profile.full_name) : post.user_id}`} className="flex-shrink-0">
+                                                <Link href={`/connect/${post.profile?.full_name ? nameToUniqueSlug(post.profile.full_name, post.user_id) : post.user_id}`} className="flex-shrink-0">
                                                     <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
                                                         {post.profile?.avatar_url ? (
                                                             <Image src={post.profile.avatar_url} alt="" width={40} height={40} className="object-cover" />
@@ -1715,7 +1715,7 @@ export default function FeedPage() {
                                                 </Link>
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center gap-1.5">
-                                                        <Link href={`/connect/${post.profile?.full_name ? nameToSlug(post.profile.full_name) : post.user_id}`} className="font-bold text-gray-900 hover:underline truncate">
+                                                        <Link href={`/connect/${post.profile?.full_name ? nameToUniqueSlug(post.profile.full_name, post.user_id) : post.user_id}`} className="font-bold text-gray-900 hover:underline truncate">
                                                             {post.profile?.full_name}
                                                         </Link>
                                                         {post.profile?.is_verified && (
@@ -1961,7 +1961,7 @@ export default function FeedPage() {
                                                                         <div className="flex px-4 py-3 hover:bg-gray-50/50 transition-colors">
                                                                             {/* Avatar Column with Thread Line */}
                                                                             <div className="flex flex-col items-center mr-3">
-                                                                                <Link href={`/connect/${comment.profile?.full_name ? nameToSlug(comment.profile.full_name) : comment.user_id}`} className="relative z-10">
+                                                                                <Link href={`/connect/${comment.profile?.full_name ? nameToUniqueSlug(comment.profile.full_name, comment.user_id) : comment.user_id}`} className="relative z-10">
                                                                                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center overflow-hidden ring-2 ring-white">
                                                                                         {comment.profile?.avatar_url ? (
                                                                                             <Image src={comment.profile.avatar_url} alt="" width={40} height={40} className="object-cover" />
@@ -1983,7 +1983,7 @@ export default function FeedPage() {
                                                                                 {/* Header */}
                                                                                 <div className="flex items-center justify-between gap-2">
                                                                                     <div className="flex items-center gap-1 min-w-0">
-                                                                                        <Link href={`/connect/${comment.profile?.full_name ? nameToSlug(comment.profile.full_name) : comment.user_id}`} className="font-bold text-[15px] text-gray-900 hover:underline truncate">
+                                                                                        <Link href={`/connect/${comment.profile?.full_name ? nameToUniqueSlug(comment.profile.full_name, comment.user_id) : comment.user_id}`} className="font-bold text-[15px] text-gray-900 hover:underline truncate">
                                                                                             {comment.profile?.full_name}
                                                                                         </Link>
                                                                                         {comment.profile?.is_verified && (
@@ -2202,7 +2202,7 @@ export default function FeedPage() {
                                                                                         <div className="flex flex-col items-center mr-3">
                                                                                             {/* Connecting line from parent */}
                                                                                             <div className="w-0.5 h-3 bg-gray-200 -mt-3" />
-                                                                                            <Link href={`/connect/${reply.profile?.full_name ? nameToSlug(reply.profile.full_name) : reply.user_id}`} className="relative z-10">
+                                                                                            <Link href={`/connect/${reply.profile?.full_name ? nameToUniqueSlug(reply.profile.full_name, reply.user_id) : reply.user_id}`} className="relative z-10">
                                                                                                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center overflow-hidden ring-2 ring-white">
                                                                                                     {reply.profile?.avatar_url ? (
                                                                                                         <Image src={reply.profile.avatar_url} alt="" width={32} height={32} className="object-cover" />
@@ -2223,7 +2223,7 @@ export default function FeedPage() {
                                                                                         <div className="flex-1 min-w-0">
                                                                                             <div className="flex items-center justify-between gap-2">
                                                                                                 <div className="flex items-center gap-1 min-w-0">
-                                                                                                    <Link href={`/connect/${reply.profile?.full_name ? nameToSlug(reply.profile.full_name) : reply.user_id}`} className="font-bold text-[14px] text-gray-900 hover:underline truncate">
+                                                                                                    <Link href={`/connect/${reply.profile?.full_name ? nameToUniqueSlug(reply.profile.full_name, reply.user_id) : reply.user_id}`} className="font-bold text-[14px] text-gray-900 hover:underline truncate">
                                                                                                         {reply.profile?.full_name}
                                                                                                     </Link>
                                                                                                     {reply.profile?.is_verified && (
@@ -2587,7 +2587,7 @@ export default function FeedPage() {
                                 <div className="divide-y divide-gray-50">
                                     {suggestedUsers.map((person) => (
                                         <div key={person.id} className="p-4 flex items-center gap-3">
-                                            <Link href={`/connect/${nameToSlug(person.full_name)}`} className="flex-shrink-0">
+                                            <Link href={`/connect/${nameToUniqueSlug(person.full_name, person.id)}`} className="flex-shrink-0">
                                                 <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
                                                     {person.avatar_url ? (
                                                         <Image src={person.avatar_url} alt="" width={40} height={40} className="object-cover" />
@@ -2599,7 +2599,7 @@ export default function FeedPage() {
                                                 </div>
                                             </Link>
                                             <div className="flex-1 min-w-0">
-                                                <Link href={`/connect/${nameToSlug(person.full_name)}`} className="block">
+                                                <Link href={`/connect/${nameToUniqueSlug(person.full_name, person.id)}`} className="block">
                                                     <p className="font-medium text-gray-900 truncate hover:text-green-600">{person.full_name}</p>
                                                 </Link>
                                                 <p className="text-xs text-gray-500 truncate">

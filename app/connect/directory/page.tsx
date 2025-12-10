@@ -10,7 +10,7 @@ import {
     Lightbulb, Wrench, ChevronDown, X, Loader2,
     Globe, CheckCircle
 } from 'lucide-react';
-import { nameToSlug } from '@/lib/utils/mentions';
+import { nameToUniqueSlug } from '@/lib/utils/mentions';
 
 interface Profile {
     id: string;
@@ -262,7 +262,7 @@ function DirectoryContent() {
                                 return (
                                     <Link
                                         key={profile.id}
-                                        href={`/connect/${nameToSlug(profile.full_name)}`}
+                                        href={`/connect/${nameToUniqueSlug(profile.full_name, profile.id)}`}
                                         className="group bg-white rounded-xl border border-gray-100 hover:border-green-200 hover:shadow-lg transition-all duration-300 overflow-hidden"
                                     >
                                         <div className="p-6">
