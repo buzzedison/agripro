@@ -89,10 +89,15 @@ export async function PATCH(request: NextRequest) {
         };
 
         // Set verification fields for approved vendors
-        if (status === 'approved') {
+        // Set verification fields for approved vendors
+        // Set verification fields for approved vendors
+        if (body.verify === true) {
             updateData.verified_at = new Date().toISOString();
             updateData.verified_by = user.id;
             updateData.is_verified = true;
+        } else if (status === 'approved') {
+            // Approval grants posting rights but not verification badge
+            // is_verified remains false until separate verification process
         } else if (status === 'rejected') {
             updateData.rejection_reason = rejectionReason;
             updateData.is_verified = false;

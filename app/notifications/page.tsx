@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
+import { nameToUniqueSlug } from '@/lib/utils/mentions';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 import {
@@ -60,7 +61,7 @@ export default function NotificationsPage() {
         }
         throw new Error('Failed to fetch notifications');
       }
-      
+
       const data = await response.json();
       setNotifications(data.notifications || []);
     } catch (error) {
@@ -73,7 +74,7 @@ export default function NotificationsPage() {
   const markAllAsRead = async () => {
     const unreadCount = notifications.filter(n => !n.read).length;
     if (unreadCount === 0) return;
-    
+
     setMarkingRead(true);
     try {
       const response = await fetch('/api/feed/notifications', {
@@ -100,7 +101,7 @@ export default function NotificationsPage() {
         body: JSON.stringify({ notificationIds: [notificationId] })
       });
 
-      setNotifications(prev => prev.map(n => 
+      setNotifications(prev => prev.map(n =>
         n.id === notificationId ? { ...n, read: true } : n
       ));
     } catch (error) {
@@ -133,7 +134,11 @@ export default function NotificationsPage() {
 
     // Navigate based on notification type
     if (notification.type === 'follow') {
-      router.push('/connect');
+      // Navigate to the actor's profile
+      const profileSlug = notification.actor?.full_name && notification.actor_id
+        ? nameToUniqueSlug(notification.actor.full_name, notification.actor_id)
+        : notification.actor_id;
+      router.push(`/connect/${profileSlug}`);
     } else if (notification.post_id) {
       router.push(`/feed?post=${notification.post_id}`);
     }
@@ -220,11 +225,10 @@ export default function NotificationsPage() {
             <button
               key={key}
               onClick={() => setFilter(key as typeof filter)}
-              className={`px-4 py-2 text-sm font-medium rounded-full whitespace-nowrap transition-colors ${
-                filter === key
-                  ? 'bg-green-600 text-white'
-                  : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
-              }`}
+              className={`px-4 py-2 text-sm font-medium rounded-full whitespace-nowrap transition-colors ${filter === key
+                ? 'bg-green-600 text-white'
+                : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                }`}
             >
               {label}
             </button>
@@ -238,8 +242,8 @@ export default function NotificationsPage() {
               <Bell className="w-16 h-16 text-gray-300 mb-4" />
               <p className="text-lg font-medium">No notifications</p>
               <p className="text-sm text-gray-400">
-                {filter === 'all' 
-                  ? "You're all caught up!" 
+                {filter === 'all'
+                  ? "You're all caught up!"
                   : `No ${filter} notifications`}
               </p>
             </div>

@@ -16,7 +16,8 @@ import {
     FaPhone,
     FaStore,
     FaSpinner,
-    FaExclamationTriangle
+    FaExclamationTriangle,
+    FaShieldAlt
 } from 'react-icons/fa';
 
 interface Vendor {
@@ -143,6 +144,32 @@ export default function AdminVendorManagement() {
         }
     };
 
+    const handleVerify = async (vendor: Vendor) => {
+        try {
+            setActionLoading(true);
+            const response = await fetch('/api/admin/trade/vendors', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    vendorId: vendor.id,
+                    status: 'approved', // Status remains approved
+                    verify: true // Explicit verification flag
+                }),
+            });
+
+            if (response.ok) {
+                fetchVendors();
+                if (selectedVendor?.id === vendor.id) {
+                    setSelectedVendor(null);
+                }
+            }
+        } catch (error) {
+            console.error('Error verifying vendor:', error);
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString('en-US', {
             year: 'numeric',
@@ -192,8 +219,8 @@ export default function AdminVendorManagement() {
                                     key={status}
                                     onClick={() => setStatusFilter(status)}
                                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${statusFilter === status
-                                            ? 'bg-green-600 text-white'
-                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                        ? 'bg-green-600 text-white'
+                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                         }`}
                                 >
                                     {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -328,6 +355,16 @@ export default function AdminVendorManagement() {
                                                 </button>
                                             </>
                                         )}
+                                        {vendor.status === 'approved' && !vendor.is_verified && (
+                                            <button
+                                                onClick={() => handleVerify(vendor)}
+                                                disabled={actionLoading}
+                                                className="px-3 py-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
+                                                title="Verify Vendor"
+                                            >
+                                                <FaShieldAlt className="w-5 h-5" />
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
 
@@ -429,31 +466,47 @@ export default function AdminVendorManagement() {
                             </div>
 
                             {/* Actions */}
-                            {selectedVendor.status === 'pending' && (
-                                <div className="p-6 border-t border-gray-100 flex justify-end gap-3">
+                            <div className="p-6 border-t border-gray-100 flex justify-end gap-3">
+                                {selectedVendor.status === 'pending' && (
+                                    <>
+                                        <button
+                                            onClick={() => {
+                                                setShowRejectModal(true);
+                                            }}
+                                            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+                                        >
+                                            <FaTimes className="w-4 h-4" />
+                                            Reject
+                                        </button>
+                                        <button
+                                            onClick={() => handleApprove(selectedVendor)}
+                                            disabled={actionLoading}
+                                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                                        >
+                                            {actionLoading ? (
+                                                <FaSpinner className="w-4 h-4 animate-spin" />
+                                            ) : (
+                                                <FaCheck className="w-4 h-4" />
+                                            )}
+                                            Approve Vendor
+                                        </button>
+                                    </>
+                                )}
+                                {selectedVendor.status === 'approved' && !selectedVendor.is_verified && (
                                     <button
-                                        onClick={() => {
-                                            setShowRejectModal(true);
-                                        }}
-                                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
-                                    >
-                                        <FaTimes className="w-4 h-4" />
-                                        Reject
-                                    </button>
-                                    <button
-                                        onClick={() => handleApprove(selectedVendor)}
+                                        onClick={() => handleVerify(selectedVendor)}
                                         disabled={actionLoading}
-                                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
                                     >
                                         {actionLoading ? (
                                             <FaSpinner className="w-4 h-4 animate-spin" />
                                         ) : (
-                                            <FaCheck className="w-4 h-4" />
+                                            <FaShieldAlt className="w-4 h-4" />
                                         )}
-                                        Approve Vendor
+                                        Verify Vendor
                                     </button>
-                                </div>
-                            )}
+                                )}
+                            </div>
                         </div>
                     </div>
                 )}

@@ -10,7 +10,7 @@ import {
     User, Users, MapPin, Edit2, Bell, Search, Plus,
     TrendingUp, MessageCircle, Calendar, Briefcase,
     Globe, ChevronRight, Loader2, CheckCircle, BookOpen,
-    ShoppingBag, Sprout, ArrowRight
+    ShoppingBag, Sprout, ArrowRight, Store
 } from 'lucide-react';
 
 interface Profile {
@@ -307,6 +307,19 @@ export default function DashboardPage() {
                                 <div>
                                     <p className="font-semibold text-gray-900">AI Assistant</p>
                                     <p className="text-sm text-gray-500">Get help instantly</p>
+                                </div>
+                            </Link>
+
+                            <Link
+                                href="/greenmarket/dashboard"
+                                className="group flex items-center gap-4 p-4 bg-white rounded-xl border border-gray-100 shadow-sm hover:border-emerald-200 hover:shadow-md transition-all"
+                            >
+                                <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center group-hover:bg-emerald-200 transition-colors">
+                                    <Store className="w-6 h-6 text-emerald-600" />
+                                </div>
+                                <div>
+                                    <p className="font-semibold text-gray-900">Vendor Portal</p>
+                                    <p className="text-sm text-gray-500">Manage your store</p>
                                 </div>
                             </Link>
                         </motion.div>

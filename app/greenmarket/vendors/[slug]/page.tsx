@@ -45,6 +45,14 @@ export default async function VendorProfilePage({ params }: PageProps) {
         notFound();
     }
 
+    // Fetch vendor products
+    const { data: products } = await supabase
+        .from('trade_products')
+        .select('*')
+        .eq('vendor_id', vendor.id)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
     const location = [vendor.city, vendor.region, vendor.country].filter(Boolean).join(', ');
 
     return (
@@ -216,13 +224,71 @@ export default async function VendorProfilePage({ params }: PageProps) {
                             </div>
                         )}
 
-                        {/* Products Placeholder */}
+                        {/* Products */}
                         <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8">
-                            <h2 className="text-xl font-bold text-gray-900 mb-4">Products & Services</h2>
-                            <div className="text-center py-12 text-gray-500">
-                                <FaStore className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                                <p>Product listings coming soon</p>
-                            </div>
+                            <h2 className="text-xl font-bold text-gray-900 mb-6">Products & Services</h2>
+
+                            {products && products.length > 0 ? (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {products.map((product) => (
+                                        <Link
+                                            key={product.id}
+                                            href={`/greenmarket/products/${product.slug}`}
+                                            className="group border border-gray-100 rounded-xl overflow-hidden hover:shadow-md transition-shadow block"
+                                        >
+                                            {/* Product Image */}
+                                            <div className="relative aspect-square bg-gray-100">
+                                                {product.images && product.images[0] ? (
+                                                    <Image
+                                                        src={product.images[0]}
+                                                        alt={product.name}
+                                                        fill
+                                                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                                                    />
+                                                ) : (
+                                                    <div className="flex items-center justify-center h-full text-gray-300">
+                                                        <FaStore className="w-8 h-8" />
+                                                    </div>
+                                                )}
+                                                {product.is_organic && (
+                                                    <div className="absolute top-2 right-2 px-2 py-1 bg-green-500 text-white text-xs font-bold rounded-full shadow-sm flex items-center gap-1">
+                                                        <FaLeaf className="w-3 h-3" />
+                                                        Organic
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Product Info */}
+                                            <div className="p-4">
+                                                <h3 className="font-semibold text-gray-900 mb-1 group-hover:text-green-600 transition-colors line-clamp-1">
+                                                    {product.name}
+                                                </h3>
+                                                <p className="text-sm text-gray-500 mb-3 line-clamp-2 min-h-[2.5em]">
+                                                    {product.description}
+                                                </p>
+                                                <div className="flex items-center justify-between">
+                                                    <span className="font-bold text-gray-900">
+                                                        GHS {product.price.toFixed(2)}
+                                                        <span className="text-xs font-normal text-gray-500"> / {product.unit}</span>
+                                                    </span>
+                                                    <span className={`text-xs px-2 py-1 rounded-full ${product.stock_status === 'in_stock' ? 'bg-green-100 text-green-700' :
+                                                        product.stock_status === 'low_stock' ? 'bg-yellow-100 text-yellow-700' :
+                                                            'bg-red-100 text-red-700'
+                                                        }`}>
+                                                        {product.stock_status === 'in_stock' ? 'In Stock' :
+                                                            product.stock_status === 'low_stock' ? 'Low Stock' : 'Out of Stock'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-12 text-gray-500">
+                                    <FaStore className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                                    <p>No products listed yet.</p>
+                                </div>
+                            )}
                         </div>
                     </div>
 

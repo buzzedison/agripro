@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { nameToUniqueSlug } from '@/lib/utils/mentions';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
@@ -47,7 +48,7 @@ export default function NotificationBell() {
   // Fetch notifications on mount and periodically
   useEffect(() => {
     fetchNotifications();
-    
+
     // Poll for new notifications every 30 seconds
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
@@ -69,7 +70,7 @@ export default function NotificationBell() {
     try {
       const response = await fetch('/api/feed/notifications?limit=20');
       if (!response.ok) return;
-      
+
       const data = await response.json();
       setNotifications(data.notifications || []);
       setUnreadCount(data.unreadCount || 0);
@@ -80,7 +81,7 @@ export default function NotificationBell() {
 
   const markAllAsRead = async () => {
     if (unreadCount === 0) return;
-    
+
     setMarkingRead(true);
     try {
       const response = await fetch('/api/feed/notifications', {
@@ -108,7 +109,7 @@ export default function NotificationBell() {
         body: JSON.stringify({ notificationIds: [notificationId] })
       });
 
-      setNotifications(prev => prev.map(n => 
+      setNotifications(prev => prev.map(n =>
         n.id === notificationId ? { ...n, read: true } : n
       ));
       setUnreadCount(prev => Math.max(0, prev - 1));
@@ -125,7 +126,11 @@ export default function NotificationBell() {
 
     // Navigate based on notification type
     if (notification.type === 'follow') {
-      router.push('/connect');
+      // Navigate to the actor's profile
+      const profileSlug = notification.actor?.full_name && notification.actor_id
+        ? nameToUniqueSlug(notification.actor.full_name, notification.actor_id)
+        : notification.actor_id;
+      router.push(`/connect/${profileSlug}`);
     } else if (notification.post_id) {
       router.push(`/feed?post=${notification.post_id}`);
     }
@@ -214,9 +219,8 @@ export default function NotificationBell() {
                   <button
                     key={notification.id}
                     onClick={() => handleNotificationClick(notification)}
-                    className={`w-full px-4 py-3 flex items-start gap-3 hover:bg-gray-50 transition-colors text-left ${
-                      !notification.read ? 'bg-green-50/50' : ''
-                    }`}
+                    className={`w-full px-4 py-3 flex items-start gap-3 hover:bg-gray-50 transition-colors text-left ${!notification.read ? 'bg-green-50/50' : ''
+                      }`}
                   >
                     {/* Avatar */}
                     <div className="relative flex-shrink-0">

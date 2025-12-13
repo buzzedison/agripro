@@ -300,24 +300,27 @@ export default function AdminDashboard() {
           </Link>
 
           {/* User Management */}
-          <div className="bg-white rounded-lg shadow p-6 opacity-75">
+          <Link
+            href="/admin/members"
+            className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6 group"
+          >
             <div className="flex items-center mb-4">
               <div className="flex-shrink-0">
-                <FaUsers className="h-8 w-8 text-purple-600" />
+                <FaUsers className="h-8 w-8 text-purple-600 group-hover:text-purple-700" />
               </div>
               <div className="ml-4">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  User Management
+                <h3 className="text-lg font-semibold text-gray-900 group-hover:text-purple-600">
+                  Members Directory
                 </h3>
               </div>
             </div>
             <p className="text-gray-600 text-sm">
-              Manage user accounts, permissions, and access levels.
+              View all signed-up users, including those with incomplete profiles.
             </p>
-            <div className="mt-4 flex items-center text-gray-400 text-sm font-medium">
-              Coming Soon
+            <div className="mt-4 flex items-center text-purple-600 text-sm font-medium">
+              View Members →
             </div>
-          </div>
+          </Link>
 
           {/* Admin Users */}
           <Link

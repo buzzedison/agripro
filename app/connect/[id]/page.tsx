@@ -26,6 +26,12 @@ function getYouTubeVideoId(url: string): string | null {
     return null;
 }
 
+function ensureProtocol(url: string | null): string {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    return `https://${url}`;
+}
+
 interface Profile {
     id: string;
     full_name: string;
@@ -113,7 +119,7 @@ export default function ProfilePage() {
         setError(null);
 
         const identifier = params.id as string;
-        
+
         // Reserved route names that shouldn't be treated as profile slugs
         const reservedRoutes = ['profile', 'dashboard', 'directory', 'onboarding', 'edit'];
         if (reservedRoutes.includes(identifier.toLowerCase())) {
@@ -121,13 +127,13 @@ export default function ProfilePage() {
             setLoading(false);
             return;
         }
-        
+
         // Check if it's a UUID or a name-based slug
         const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
-        
+
         let data = null;
         let error = null;
-        
+
         if (isUUID) {
             // Lookup by ID
             const result = await supabase
@@ -141,39 +147,39 @@ export default function ProfilePage() {
             // Slug format: "john-doe-abc12345" where last segment is short UUID
             const parts = identifier.split('-');
             const shortId = parts[parts.length - 1];
-            
+
             // Check if last part looks like a short UUID (8 hex chars)
             const hasShortId = /^[0-9a-f]{8}$/i.test(shortId);
-            
+
             if (hasShortId) {
                 // Search by short ID prefix - fetch all and filter client-side
                 // since Supabase UUID columns don't support text pattern matching
                 const { data: profiles } = await supabase
                     .from('profiles')
                     .select('*');
-                
-                const matchedProfile = profiles?.find(p => 
+
+                const matchedProfile = profiles?.find(p =>
                     p.id.toLowerCase().startsWith(shortId.toLowerCase())
                 );
-                
+
                 if (matchedProfile) {
                     data = matchedProfile;
                 }
             }
-            
+
             // Fallback: try name-based search
             if (!data) {
-                const nameSearch = hasShortId 
+                const nameSearch = hasShortId
                     ? parts.slice(0, -1).join(' ')  // Remove short ID
                     : identifier.replace(/-/g, ' ');
-                
+
                 // Try exact match first (case-insensitive)
                 let result = await supabase
                     .from('profiles')
                     .select('*')
                     .ilike('full_name', nameSearch)
                     .maybeSingle();
-                
+
                 // If no exact match, try with wildcard
                 if (!result.data) {
                     result = await supabase
@@ -182,7 +188,7 @@ export default function ProfilePage() {
                         .ilike('full_name', `%${nameSearch}%`)
                         .maybeSingle();
                 }
-                
+
                 if (!data) {
                     data = result.data;
                     error = result.error;
@@ -526,9 +532,11 @@ export default function ProfilePage() {
                                     </a>
                                 )}
 
+
+
                                 {profile.website && (
                                     <a
-                                        href={profile.website}
+                                        href={ensureProtocol(profile.website)}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-green-50 transition-colors group"
@@ -540,7 +548,7 @@ export default function ProfilePage() {
 
                                 {profile.linkedin && (
                                     <a
-                                        href={profile.linkedin}
+                                        href={ensureProtocol(profile.linkedin)}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-blue-50 transition-colors group"

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { FaSearch, FaFilter, FaTh, FaList, FaStore, FaArrowLeft, FaSpinner } from 'react-icons/fa';
+import Image from 'next/image';
+import { FaSearch, FaFilter, FaTh, FaList, FaStore, FaArrowLeft, FaSpinner, FaLeaf, FaShoppingBasket, FaTag } from 'react-icons/fa';
 import VendorCard from '../components/VendorCard';
 
 interface Vendor {
@@ -22,6 +23,28 @@ interface Vendor {
     total_reviews: number;
     slug: string;
     created_at: string;
+}
+
+interface Product {
+    id: string;
+    name: string;
+    description: string;
+    price: number;
+    unit: string;
+    images: string[];
+    is_organic: boolean;
+    stock_status: string;
+    slug: string;
+    vendor: {
+        business_name: string;
+        slug: string;
+        is_verified: boolean;
+        logo_url: string | null;
+    };
+    category: {
+        name: string;
+        slug: string;
+    };
 }
 
 interface Category {
