@@ -258,12 +258,19 @@ export default function NotificationsPage() {
                     exit={{ opacity: 0, x: -100 }}
                     className={`relative ${!notification.read ? 'bg-green-50/50' : ''}`}
                   >
-                    <button
+                    <div
                       onClick={() => handleNotificationClick(notification)}
-                      className="w-full px-4 py-4 flex items-start gap-4 hover:bg-gray-50 transition-colors text-left"
+                      className="w-full px-4 py-4 flex items-start gap-4 hover:bg-gray-50 transition-colors text-left cursor-pointer relative"
                     >
                       {/* Avatar */}
-                      <div className="relative flex-shrink-0">
+                      <Link
+                        href={notification.actor?.full_name && notification.actor_id
+                          ? `/connect/${nameToUniqueSlug(notification.actor.full_name, notification.actor_id)}`
+                          : `/connect/${notification.actor_id}`
+                        }
+                        onClick={(e) => e.stopPropagation()}
+                        className="relative flex-shrink-0 z-10"
+                      >
                         {notification.actor.avatar_url ? (
                           <Image
                             src={notification.actor.avatar_url}
@@ -281,12 +288,21 @@ export default function NotificationsPage() {
                         <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white flex items-center justify-center shadow-sm border border-gray-100">
                           {getNotificationIcon(notification.type)}
                         </div>
-                      </div>
+                      </Link>
 
                       {/* Content */}
                       <div className="flex-1 min-w-0">
                         <p className="text-[15px] text-gray-900">
-                          <span className="font-semibold">{notification.actor.full_name}</span>
+                          <Link
+                            href={notification.actor?.full_name && notification.actor_id
+                              ? `/connect/${nameToUniqueSlug(notification.actor.full_name, notification.actor_id)}`
+                              : `/connect/${notification.actor_id}`
+                            }
+                            onClick={(e) => e.stopPropagation()}
+                            className="font-semibold hover:underline decoration-gray-900 z-10 relative"
+                          >
+                            {notification.actor.full_name}
+                          </Link>
                           {' '}
                           {notification.message.replace(notification.actor.full_name, '').trim()}
                         </p>
@@ -299,7 +315,7 @@ export default function NotificationsPage() {
                       {!notification.read && (
                         <div className="w-3 h-3 rounded-full bg-green-500 flex-shrink-0 mt-2" />
                       )}
-                    </button>
+                    </div>
 
                     {/* Delete button */}
                     <button

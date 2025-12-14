@@ -157,9 +157,24 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     notFound()
   }
 
+  const heroImage = insight.heroImage ?? insight.image
+  const imageUrl = heroImage ? urlForImage(heroImage).width(1200).height(630).fit('crop').url() : undefined
+
   return {
     title: `${insight.title} - Knowledge Hub`,
     description: insight.excerpt,
+    openGraph: {
+      title: insight.title,
+      description: insight.excerpt,
+      type: 'article',
+      images: imageUrl ? [{ url: imageUrl }] : [],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: insight.title,
+      description: insight.excerpt,
+      images: imageUrl ? [imageUrl] : [],
+    },
   }
 }
 
