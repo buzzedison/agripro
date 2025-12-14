@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowLeft, Save, Loader2, Check, Camera, Youtube, X, Play } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Check, Camera, Youtube, X, Play, Lock, Globe, Users } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
+import { PrivacySettings } from '../../actions';
 
 const valueChains = [
     'Poultry', 'Vegetables', 'Grains & Cereals', 'Fruits', 'Dairy',
@@ -33,6 +34,12 @@ const userTypes = [
     { id: 'buyer', label: 'Buyer / Trader' },
     { id: 'expert', label: 'Expert / Advisor' },
     { id: 'service_provider', label: 'Service Provider' },
+];
+
+const privacyOptions = [
+    { id: 'public', label: 'Public', icon: Globe, description: 'Visible to everyone' },
+    { id: 'connections', label: 'Connections Only', icon: Users, description: 'Visible to connected users' },
+    { id: 'private', label: 'Private', icon: Lock, description: 'Only visible to you' },
 ];
 
 // Extract YouTube video ID from various URL formats
@@ -82,6 +89,12 @@ export default function EditProfilePage() {
         avatar_url: '',
         header_url: '',
         youtube_url: '',
+        privacy_settings: {
+            email: 'connections',
+            phone: 'connections',
+            location: 'public',
+            bio: 'public'
+        } as PrivacySettings
     });
 
     useEffect(() => {
@@ -126,6 +139,12 @@ export default function EditProfilePage() {
                 avatar_url: data.avatar_url || '',
                 header_url: data.header_url || '',
                 youtube_url: data.youtube_url || '',
+                privacy_settings: data.privacy_settings || {
+                    email: 'connections',
+                    phone: 'connections',
+                    location: 'public',
+                    bio: 'public'
+                }
             });
         }
     };
@@ -247,6 +266,16 @@ export default function EditProfilePage() {
 
     const updateField = (field: string, value: any) => {
         setFormData(prev => ({ ...prev, [field]: value }));
+    };
+
+    const updatePrivacy = (field: keyof PrivacySettings, value: string) => {
+        setFormData(prev => ({
+            ...prev,
+            privacy_settings: {
+                ...prev.privacy_settings,
+                [field]: value
+            }
+        }));
     };
 
     const toggleValueChain = (chain: string) => {
@@ -431,6 +460,47 @@ export default function EditProfilePage() {
                                 JPG, PNG or GIF. Max 5MB. Recommended size: 1500x500 pixels.
                             </p>
                         </div>
+                    </div>
+                </section>
+
+                {/* Privacy Settings */}
+                <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+                    <h2 className="text-lg font-bold text-gray-900 mb-1">Privacy Settings</h2>
+                    <p className="text-sm text-gray-500 mb-6">Control who can see your information.</p>
+
+                    <div className="space-y-4">
+                        {(['email', 'phone', 'location', 'bio'] as const).map((field) => (
+                            <div key={field} className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center pb-4 border-b border-gray-50 last:border-0 last:pb-0">
+                                <div className="sm:col-span-1">
+                                    <span className="text-sm font-medium text-gray-700 capitalize">
+                                        {field === 'bio' ? 'About / Bio' : field}
+                                    </span>
+                                </div>
+                                <div className="sm:col-span-2">
+                                    <div className="flex flex-wrap gap-2">
+                                        {privacyOptions.map((option) => {
+                                            const Icon = option.icon;
+                                            const isSelected = formData.privacy_settings?.[field] === option.id;
+                                            return (
+                                                <button
+                                                    key={option.id}
+                                                    type="button"
+                                                    onClick={() => updatePrivacy(field, option.id)}
+                                                    className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm border transition-colors ${isSelected
+                                                        ? 'bg-green-50 text-green-700 border-green-200 font-medium'
+                                                        : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                                        }`}
+                                                    title={option.description}
+                                                >
+                                                    <Icon className="w-3.5 h-3.5" />
+                                                    {option.label}
+                                                </button>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </section>
 

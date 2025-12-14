@@ -25,7 +25,7 @@ interface Notification {
   id: string;
   user_id: string;
   actor_id: string;
-  type: 'mention' | 'like' | 'comment' | 'repost' | 'follow';
+  type: 'mention' | 'like' | 'comment' | 'repost' | 'follow' | 'connection_request' | 'connection_accepted';
   post_id?: string;
   comment_id?: string;
   message: string;
@@ -133,7 +133,7 @@ export default function NotificationsPage() {
     }
 
     // Navigate based on notification type
-    if (notification.type === 'follow') {
+    if (notification.type === 'follow' || notification.type === 'connection_request' || notification.type === 'connection_accepted') {
       // Navigate to the actor's profile
       const profileSlug = notification.actor?.full_name && notification.actor_id
         ? nameToUniqueSlug(notification.actor.full_name, notification.actor_id)
@@ -156,6 +156,10 @@ export default function NotificationsPage() {
         return <Repeat2 className="w-5 h-5 text-purple-500" />;
       case 'follow':
         return <UserPlus className="w-5 h-5 text-blue-500" />;
+      case 'connection_request':
+        return <UserPlus className="w-5 h-5 text-green-600" />;
+      case 'connection_accepted':
+        return <CheckCheck className="w-5 h-5 text-green-600" />;
       default:
         return <Bell className="w-5 h-5 text-gray-500" />;
     }

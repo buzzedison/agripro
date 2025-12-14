@@ -12,8 +12,10 @@ import {
     Image as ImageIcon, Send, Loader2, Users, TrendingUp,
     Search, MapPin, CheckCircle, X, Bookmark, Smile, Camera,
     ChevronDown, ChevronUp, Trash2, Edit3, AlertTriangle,
-    Play, ExternalLink, Volume2, VolumeX, Maximize2, Quote
+    Play, ExternalLink, Volume2, VolumeX, Maximize2, Quote, BarChart2
 } from 'lucide-react';
+import PollCard from './components/PollCard';
+import GifPicker from './components/GifPicker';
 import LinkPreview, { extractUrls, parseContentWithLinks } from '../components/LinkPreview';
 import { parseContentWithLinksAndHashtags, extractHashtags } from '@/lib/utils/hashtags';
 import { parseContentWithAll, extractMentions, nameToUniqueSlug } from '@/lib/utils/mentions';
@@ -213,6 +215,7 @@ interface Post {
     user_id: string;
     content: string;
     image_url: string | null;
+    gif_url: string | null;
     created_at: string;
     likes_count: number;
     comments_count: number;
@@ -222,6 +225,7 @@ interface Post {
         id: string;
         content: string;
         image_url: string | null;
+        gif_url: string | null;
         created_at: string;
         profile: {
             full_name: string;
@@ -238,6 +242,7 @@ interface Post {
     };
     user_has_liked?: boolean;
     user_has_reposted?: boolean;
+    is_poll?: boolean;
     mentioned_users?: Map<string, string>; // Map of full_name -> user_id
 }
 
@@ -247,6 +252,7 @@ interface Comment {
     user_id: string;
     content: string;
     image_url?: string | null;
+    gif_url?: string | null;
     parent_comment_id?: string | null;
     created_at: string;
     profile: {
@@ -297,41 +303,81 @@ export default function FeedPage() {
     const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
     const [loadingComments, setLoadingComments] = useState<Set<string>>(new Set());
     const [submittingComment, setSubmittingComment] = useState<Set<string>>(new Set());
-    const [postMenuOpen, setPostMenuOpen] = useState<string | null>(null);
+
+    // Poll state
+    const [isPollMode, setIsPollMode] = useState(false);
+    const [pollOptions, setPollOptions] = useState<string[]>(['', '']);
+
+    // GIF state
+    const [showGifPicker, setShowGifPicker] = useState(false);
+    const [selectedGif, setSelectedGif] = useState<string | null>(null);
+    const [commentGifs, setCommentGifs] = useState<Record<string, string | null>>({});
+    const [showCommentGifPicker, setShowCommentGifPicker] = useState<string | null>(null); // commentId or postId
+
+    // Connection/Social Features State (Restored)
+    const [selectedHashtag, setSelectedHashtag] = useState<string | null>(null);
+    const [trendingHashtags, setTrendingHashtags] = useState<{ id: string; name: string; use_count: number }[]>([]);
+    const [loadingTrending, setLoadingTrending] = useState(true);
+    const [bookmarkedPostIds, setBookmarkedPostIds] = useState<Set<string>>(new Set());
+    const [bookmarkingPost, setBookmarkingPost] = useState<Set<string>>(new Set());
+
+    // Mentions
+    const [mentionSearchQuery, setMentionSearchQuery] = useState('');
+    const [showMentionDropdown, setShowMentionDropdown] = useState(false);
+    const [mentionSuggestions, setMentionSuggestions] = useState<{
+        full_name: string;
+        id: string;
+        avatar_url: string | null;
+        user_type?: string;
+        organization_name?: string;
+        is_verified?: boolean;
+    }[]>([]);
+    const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    // Quote Reposts
+    const [quoteModal, setQuoteModal] = useState<{ open: boolean; post: Post | null }>({ open: false, post: null });
+    const [quoteContent, setQuoteContent] = useState('');
+
+    // Reposts View
+    const [repostsModal, setRepostsModal] = useState<{ open: boolean; postId: string | null }>({ open: false, postId: null });
+    const [repostMenuOpen, setRepostMenuOpen] = useState<string | null>(null);
+    const [reposters, setReposters] = useState<any[]>([]);
+    const [loadingReposters, setLoadingReposters] = useState(false);
+
+    // Comments & Editing
+    const [commentImages, setCommentImages] = useState<Record<string, { file: File; preview: string } | null>>({});
+    const [saving, setSaving] = useState(false);
     const [deleteModal, setDeleteModal] = useState<{ open: boolean; postId: string | null }>({ open: false, postId: null });
     const [editModal, setEditModal] = useState<{ open: boolean; post: Post | null }>({ open: false, post: null });
     const [editContent, setEditContent] = useState('');
-    const [saving, setSaving] = useState(false);
-    // Comment edit/delete state
+    const [postMenuOpen, setPostMenuOpen] = useState<string | null>(null);
     const [editCommentModal, setEditCommentModal] = useState<{ open: boolean; comment: Comment | null; postId: string | null }>({ open: false, comment: null, postId: null });
     const [editCommentContent, setEditCommentContent] = useState('');
-    const [commentMenuOpen, setCommentMenuOpen] = useState<string | null>(null);
-    // Quote repost state
-    const [quoteModal, setQuoteModal] = useState<{ open: boolean; post: Post | null }>({ open: false, post: null });
-    const [quoteContent, setQuoteContent] = useState('');
-    const [repostMenuOpen, setRepostMenuOpen] = useState<string | null>(null);
-    // View reposts state
-    const [repostsModal, setRepostsModal] = useState<{ open: boolean; postId: string | null }>({ open: false, postId: null });
-    const [reposters, setReposters] = useState<{ id: string; full_name: string; avatar_url: string | null; user_type: string; created_at: string }[]>([]);
-    const [loadingReposters, setLoadingReposters] = useState(false);
-    // Reply/emoji/image comment state
+    const [commentMenuOpen, setCommentMenuOpen] = useState<string | null>(null); // commentId
     const [replyingTo, setReplyingTo] = useState<{ postId: string; commentId: string; userName: string } | null>(null);
-    const [showCommentEmoji, setShowCommentEmoji] = useState<string | null>(null);
-    const [commentImageInputRef] = useState<Record<string, HTMLInputElement | null>>({});
-    const [commentImages, setCommentImages] = useState<Record<string, { file: File; preview: string } | null>>({});
-    // Hashtag state
-    const [selectedHashtag, setSelectedHashtag] = useState<string | null>(null);
-    const [trendingHashtags, setTrendingHashtags] = useState<any[]>([]);
-    const [loadingTrending, setLoadingTrending] = useState(false);
-    // Bookmark state
-    const [bookmarkedPostIds, setBookmarkedPostIds] = useState<Set<string>>(new Set());
-    const [bookmarkingPost, setBookmarkingPost] = useState<string | null>(null);
-    // Mention autocomplete state
-    const [mentionSuggestions, setMentionSuggestions] = useState<any[]>([]);
-    const [showMentionDropdown, setShowMentionDropdown] = useState(false);
-    const [mentionSearchQuery, setMentionSearchQuery] = useState('');
-    const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const [showCommentEmoji, setShowCommentEmoji] = useState<string | null>(null); // postId or commentId logic
+
+
+    const handleAddPollOption = () => {
+        if (pollOptions.length < 4) {
+            setPollOptions([...pollOptions, '']);
+        }
+    };
+
+    const handleRemovePollOption = (index: number) => {
+        if (pollOptions.length > 2) {
+            const newOptions = [...pollOptions];
+            newOptions.splice(index, 1);
+            setPollOptions(newOptions);
+        }
+    };
+
+    const handlePollOptionChange = (index: number, value: string) => {
+        const newOptions = [...pollOptions];
+        newOptions[index] = value;
+        setPollOptions(newOptions);
+    };
 
     useEffect(() => {
         checkAuth();
@@ -374,12 +420,38 @@ export default function FeedPage() {
     };
 
     const fetchPosts = async (userId: string) => {
-        // Fetch posts
-        const { data: postsData } = await supabase
-            .from('posts')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(50);
+        // Fetch posts using the new network feed RPC function
+        // This prioritizes connections but also returns other posts
+        let postsData: any[] = [];
+
+        try {
+            const { data, error } = await supabase.rpc('get_network_feed', {
+                p_limit: 50,
+                p_offset: 0
+            });
+
+            if (error) {
+                console.error('Error fetching feed via RPC, falling back to basic query:', error);
+                // Fallback to basic query if RPC fails (e.g. migration not run yet)
+                const { data: fallbackData } = await supabase
+                    .from('posts')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(50);
+                postsData = fallbackData || [];
+            } else {
+                postsData = data || [];
+            }
+        } catch (err) {
+            console.error('Unexpected error fetching feed:', err);
+            // Fallback
+            const { data: fallbackData } = await supabase
+                .from('posts')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(50);
+            postsData = fallbackData || [];
+        }
 
         if (postsData && postsData.length > 0) {
             // Fetch profiles for post authors
@@ -410,7 +482,7 @@ export default function FeedPage() {
             // Fetch mentioned users for all posts
             const postIds = postsData.map(p => p.id);
             const postMentionsMap = new Map<string, Map<string, string>>();
-            
+
             // Try to get mentions from post_mentions table first
             try {
                 const { data: mentionsData } = await supabase
@@ -420,13 +492,13 @@ export default function FeedPage() {
 
                 // Get profiles for mentioned users
                 const mentionedUserIds = [...new Set(mentionsData?.map(m => m.mentioned_user_id) || [])];
-                
+
                 if (mentionedUserIds.length > 0) {
                     const { data: mentionedProfiles } = await supabase
                         .from('profiles')
                         .select('id, full_name')
                         .in('id', mentionedUserIds);
-                    
+
                     const mentionedProfilesMap = new Map(mentionedProfiles?.map(p => [p.id, p]) || []);
 
                     // Build mentioned users map per post
@@ -480,8 +552,8 @@ export default function FeedPage() {
                             const matchedUser = allProfiles.find(u => {
                                 const fullNameLower = u.full_name.toLowerCase();
                                 return fullNameLower === mentionName ||
-                                       fullNameLower.startsWith(mentionName) ||
-                                       mentionName.startsWith(fullNameLower);
+                                    fullNameLower.startsWith(mentionName) ||
+                                    mentionName.startsWith(fullNameLower);
                             });
                             if (matchedUser) {
                                 // Store with full_name as key for proper slug generation
@@ -589,7 +661,7 @@ export default function FeedPage() {
     const handleBookmark = async (postId: string, isBookmarked: boolean) => {
         if (!user) return;
 
-        setBookmarkingPost(postId);
+        setBookmarkingPost(prev => new Set(prev).add(postId));
 
         // Optimistic update
         setBookmarkedPostIds(prev => {
@@ -631,7 +703,11 @@ export default function FeedPage() {
                 return newSet;
             });
         } finally {
-            setBookmarkingPost(null);
+            setBookmarkingPost(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(postId);
+                return newSet;
+            });
         }
     };
 
@@ -844,7 +920,15 @@ export default function FeedPage() {
     };
 
     const handlePost = async () => {
-        if ((!newPostContent.trim() && !newPostImage) || !user) return;
+        if ((!newPostContent.trim() && !newPostImage && !isPollMode) || !user) return;
+
+        // Validation for poll
+        if (isPollMode) {
+            if (pollOptions.some(opt => !opt.trim())) {
+                alert('Please fill in all poll options');
+                return;
+            }
+        }
 
         setPosting(true);
         try {
@@ -876,7 +960,9 @@ export default function FeedPage() {
                 .insert({
                     user_id: user.id,
                     content: newPostContent.trim(),
-                    image_url: imageUrl
+                    image_url: imageUrl,
+                    gif_url: selectedGif,
+                    is_poll: isPollMode
                 })
                 .select('*')
                 .single();
@@ -884,6 +970,25 @@ export default function FeedPage() {
             if (insertError) {
                 console.error('Insert error:', insertError.message);
                 throw insertError;
+            }
+
+            // Insert Poll Options
+            if (isPollMode && newPost) {
+                const optionsToInsert = pollOptions.map((opt, index) => ({
+                    post_id: newPost.id,
+                    option_text: opt,
+                    index: index
+                }));
+
+                const { error: optionsError } = await supabase
+                    .from('poll_options')
+                    .insert(optionsToInsert);
+
+                if (optionsError) {
+                    console.error('Error creating poll options:', optionsError);
+                    alert(`DEBUG: Poll options failed to save! ${optionsError.message}`);
+                    // Non-fatal, but bad UX.
+                }
             }
 
             // Save hashtags if any exist in the content
@@ -945,6 +1050,9 @@ export default function FeedPage() {
             setPosts([postWithProfile, ...posts]);
             setNewPostContent('');
             removeImage();
+            setSelectedGif(null);
+            setIsPollMode(false);
+            setPollOptions(['', '']);
         } catch (err: any) {
             console.error('Error posting:', err?.message || err);
             alert('Failed to post: ' + (err?.message || 'Unknown error'));
@@ -1185,7 +1293,8 @@ export default function FeedPage() {
                     user_id: user.id,
                     content,
                     parent_comment_id: parentCommentId || null,
-                    image_url: imageUrl
+                    image_url: imageUrl,
+                    gif_url: commentGifs[inputKey] || null
                 })
                 .select('*')
                 .single();
@@ -1265,6 +1374,7 @@ export default function FeedPage() {
 
                 setCommentInputs(prev => ({ ...prev, [inputKey]: '' }));
                 setCommentImages(prev => ({ ...prev, [inputKey]: null }));
+                setCommentGifs(prev => ({ ...prev, [inputKey]: null }));
                 setReplyingTo(null);
             }
         } catch (err: any) {
@@ -1563,11 +1673,10 @@ export default function FeedPage() {
                                                 <button
                                                     key={user.id}
                                                     onClick={() => insertMention(user)}
-                                                    className={`w-full flex items-center gap-3 px-4 py-2.5 transition-colors ${
-                                                        index === selectedMentionIndex
-                                                            ? 'bg-green-50 text-green-900'
-                                                            : 'text-gray-700 hover:bg-gray-50'
-                                                    }`}
+                                                    className={`w-full flex items-center gap-3 px-4 py-2.5 transition-colors ${index === selectedMentionIndex
+                                                        ? 'bg-green-50 text-green-900'
+                                                        : 'text-gray-700 hover:bg-gray-50'
+                                                        }`}
                                                 >
                                                     <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">
                                                         {user.avatar_url ? (
@@ -1618,6 +1727,55 @@ export default function FeedPage() {
                                         </div>
                                     )}
 
+                                    {/* GIF Preview */}
+                                    {selectedGif && (
+                                        <div className="relative mt-2 mb-3">
+                                            <img
+                                                src={selectedGif}
+                                                alt="GIF Preview"
+                                                className="w-full max-h-80 object-cover rounded-xl"
+                                            />
+                                            <button
+                                                onClick={() => setSelectedGif(null)}
+                                                className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {isPollMode && (
+                                        <div className="mb-4 space-y-2 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                            {pollOptions.map((option, index) => (
+                                                <div key={index} className="flex gap-2">
+                                                    <input
+                                                        type="text"
+                                                        placeholder={`Option ${index + 1}`}
+                                                        value={option}
+                                                        onChange={(e) => handlePollOptionChange(index, e.target.value)}
+                                                        className="flex-1 px-4 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500"
+                                                    />
+                                                    {pollOptions.length > 2 && (
+                                                        <button
+                                                            onClick={() => handleRemovePollOption(index)}
+                                                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                        >
+                                                            <X className="w-5 h-5" />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ))}
+                                            {pollOptions.length < 4 && (
+                                                <button
+                                                    onClick={handleAddPollOption}
+                                                    className="text-sm font-medium text-green-600 hover:text-green-700 px-2 py-1"
+                                                >
+                                                    + Add option
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
+
                                     <div className="flex items-center justify-between pt-3 border-t border-gray-100">
                                         <div className="flex gap-1">
                                             {/* Image Upload */}
@@ -1636,6 +1794,29 @@ export default function FeedPage() {
                                                 <Camera className="w-5 h-5" />
                                             </button>
 
+                                            {/* GIF Toggle */}
+                                            <div className="relative">
+                                                <button
+                                                    onClick={() => setShowGifPicker(!showGifPicker)}
+                                                    className={`p-2 rounded-lg transition-colors ${showGifPicker
+                                                        ? "text-blue-600 bg-blue-50"
+                                                        : "text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                                                        }`}
+                                                    title="Add GIF"
+                                                >
+                                                    <span className="text-xs font-bold border rounded px-1 border-current">GIF</span>
+                                                </button>
+                                                {showGifPicker && (
+                                                    <GifPicker
+                                                        onSelect={(url) => {
+                                                            setSelectedGif(url);
+                                                            setShowGifPicker(false);
+                                                        }}
+                                                        onClose={() => setShowGifPicker(false)}
+                                                    />
+                                                )}
+                                            </div>
+
                                             {/* Emoji Picker */}
                                             <div className="relative">
                                                 <button
@@ -1644,6 +1825,19 @@ export default function FeedPage() {
                                                     title="Add emoji"
                                                 >
                                                     <Smile className="w-5 h-5" />
+                                                </button>
+
+                                                {/* Poll Toggle */}
+                                                <button
+                                                    onClick={() => !newPostImage && setIsPollMode(!isPollMode)}
+                                                    disabled={!!newPostImage}
+                                                    className={`p-2 rounded-lg transition-colors ${isPollMode
+                                                        ? "text-green-600 bg-green-50"
+                                                        : "text-gray-400 hover:text-green-600 hover:bg-green-50 disabled:opacity-50"
+                                                        }`}
+                                                    title="Create poll"
+                                                >
+                                                    <BarChart2 className="w-5 h-5 transform rotate-90" />
                                                 </button>
 
                                                 <AnimatePresence>
@@ -1808,6 +2002,18 @@ export default function FeedPage() {
                                                 )
                                             )}
 
+                                            {/* GIF Display */}
+                                            {post.gif_url && (
+                                                <div className="rounded-xl overflow-hidden mb-3 bg-gray-100">
+                                                    <img src={post.gif_url} alt="GIF" className="w-full max-h-[500px] object-cover" />
+                                                </div>
+                                            )}
+
+                                            {/* Poll Display */}
+                                            {post.is_poll && (
+                                                <PollCard postId={post.id} userId={user?.id || ''} />
+                                            )}
+
                                             {/* Quoted Post Embed */}
                                             {post.quoted_post && (
                                                 <div className="mt-3 border border-gray-200 rounded-xl overflow-hidden bg-gray-50 hover:bg-gray-100 transition-colors">
@@ -1925,16 +2131,18 @@ export default function FeedPage() {
                                                     </AnimatePresence>
                                                 </div>
                                                 <button
-                                                    onClick={() => handleBookmark(post.id, bookmarkedPostIds.has(post.id))}
-                                                    disabled={bookmarkingPost === post.id}
-                                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${
-                                                        bookmarkedPostIds.has(post.id)
-                                                            ? 'text-yellow-600 bg-yellow-50'
-                                                            : 'text-gray-500 hover:text-yellow-600 hover:bg-yellow-50'
-                                                    }`}
+                                                    onClick={() => handleBookmark(post.id, !!bookmarkedPostIds.has(post.id))}
+                                                    disabled={bookmarkingPost.has(post.id)}
+                                                    className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${bookmarkedPostIds.has(post.id)
+                                                        ? "text-green-600"
+                                                        : "text-gray-500 hover:text-green-600"
+                                                        }`}
                                                 >
-                                                    <Bookmark className={`w-5 h-5 ${bookmarkedPostIds.has(post.id) ? 'fill-current' : ''}`} />
-                                                </button>
+                                                    {bookmarkingPost.has(post.id) ? (
+                                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                                    ) : (
+                                                        <Bookmark className={`w-5 h-5 ${bookmarkedPostIds.has(post.id) ? "fill-current" : ""}`} />
+                                                    )}</button>
                                             </div>
                                         </div>
 
@@ -2052,6 +2260,13 @@ export default function FeedPage() {
                                                                                     </div>
                                                                                 )}
 
+                                                                                {/* Comment GIF */}
+                                                                                {comment.gif_url && (
+                                                                                    <div className="mt-3 rounded-2xl overflow-hidden border border-gray-200">
+                                                                                        <img src={comment.gif_url} alt="GIF" className="max-h-80 w-auto object-cover" />
+                                                                                    </div>
+                                                                                )}
+
                                                                                 {/* Actions */}
                                                                                 <div className="flex items-center gap-6 mt-3 -ml-2">
                                                                                     <button
@@ -2117,8 +2332,48 @@ export default function FeedPage() {
                                                                                                             </button>
                                                                                                         </div>
                                                                                                     )}
+                                                                                                    {/* Comment GIF Preview */}
+                                                                                                    {commentGifs[`reply-${comment.id}`] && (
+                                                                                                        <div className="relative inline-block mt-2">
+                                                                                                            <img
+                                                                                                                src={commentGifs[`reply-${comment.id}`]!}
+                                                                                                                alt="GIF Preview"
+                                                                                                                className="h-24 rounded-lg object-cover"
+                                                                                                            />
+                                                                                                            <button
+                                                                                                                onClick={() => setCommentGifs(prev => ({ ...prev, [`reply-${comment.id}`]: null }))}
+                                                                                                                className="absolute -top-1.5 -right-1.5 p-0.5 bg-gray-900 text-white rounded-full hover:bg-gray-700"
+                                                                                                            >
+                                                                                                                <X className="w-3 h-3" />
+                                                                                                            </button>
+                                                                                                        </div>
+                                                                                                    )}
                                                                                                     <div className="flex items-center justify-between mt-2">
                                                                                                         <div className="flex items-center gap-1">
+                                                                                                            {/* GIF Picker for Reply */}
+                                                                                                            <div className="relative">
+                                                                                                                <button
+                                                                                                                    onClick={(e) => {
+                                                                                                                        e.stopPropagation();
+                                                                                                                        setShowCommentGifPicker(showCommentGifPicker === `reply-${comment.id}` ? null : `reply-${comment.id}`);
+                                                                                                                    }}
+                                                                                                                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                                                                                                                >
+                                                                                                                    <span className="text-[10px] font-bold border rounded px-0.5 border-current">GIF</span>
+                                                                                                                </button>
+                                                                                                                {showCommentGifPicker === `reply-${comment.id}` && (
+                                                                                                                    <div className="absolute left-0 top-full mt-1 z-[60]">
+                                                                                                                        <GifPicker
+                                                                                                                            onSelect={(url) => {
+                                                                                                                                setCommentGifs(prev => ({ ...prev, [`reply-${comment.id}`]: url }));
+                                                                                                                                setShowCommentGifPicker(null);
+                                                                                                                            }}
+                                                                                                                            onClose={() => setShowCommentGifPicker(null)}
+                                                                                                                        />
+                                                                                                                    </div>
+                                                                                                                )}
+                                                                                                            </div>
+
                                                                                                             <label className="p-2 text-green-600 hover:bg-green-50 rounded-full transition-colors cursor-pointer">
                                                                                                                 <Camera className="w-4 h-4" />
                                                                                                                 <input
@@ -2639,11 +2894,10 @@ export default function FeedPage() {
                                                     setSelectedHashtag(hashtag.name);
                                                     window.scrollTo({ top: 0, behavior: 'smooth' });
                                                 }}
-                                                className={`block text-sm transition-colors text-left w-full ${
-                                                    selectedHashtag === hashtag.name
-                                                        ? 'text-green-600 font-semibold'
-                                                        : 'text-gray-700 hover:text-green-600'
-                                                }`}
+                                                className={`block text-sm transition-colors text-left w-full ${selectedHashtag === hashtag.name
+                                                    ? 'text-green-600 font-semibold'
+                                                    : 'text-gray-700 hover:text-green-600'
+                                                    }`}
                                             >
                                                 <div className="flex items-center justify-between">
                                                     <span>#{hashtag.name}</span>

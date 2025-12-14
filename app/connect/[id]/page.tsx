@@ -6,10 +6,18 @@ import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
+    getConnectionStatus,
+    sendConnectionRequest,
+    acceptConnectionRequest,
+    getProfileSecurely,
+    ConnectionStatus,
+    PrivacySettings
+} from '../actions';
+import {
     ArrowLeft, MapPin, Mail, Phone, Globe, Linkedin,
     Calendar, Briefcase, CheckCircle, Users, ShoppingBag,
     Lightbulb, Wrench, Loader2, MessageCircle, UserPlus,
-    UserCheck, Share2, Youtube, Play
+    UserCheck, Share2, Youtube, Play, UserMinus, Clock
 } from 'lucide-react';
 
 // Extract YouTube video ID from various URL formats
@@ -58,11 +66,13 @@ interface Profile {
     is_verified: boolean;
     is_featured: boolean;
     created_at: string;
+    privacy_settings: PrivacySettings | null;
 }
 
 interface Stats {
     followers: number;
     following: number;
+    connections: number;
     posts: number;
 }
 
@@ -86,12 +96,16 @@ export default function ProfilePage() {
     const supabase = createClient();
 
     const [profile, setProfile] = useState<Profile | null>(null);
-    const [stats, setStats] = useState<Stats>({ followers: 0, following: 0, posts: 0 });
+    const [stats, setStats] = useState<Stats>({ followers: 0, following: 0, posts: 0, connections: 0 });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [currentUser, setCurrentUser] = useState<any>(null);
     const [isFollowing, setIsFollowing] = useState(false);
     const [followLoading, setFollowLoading] = useState(false);
+
+    // Connection State
+    const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('none');
+    const [connectionLoading, setConnectionLoading] = useState(false);
 
     useEffect(() => {
         const init = async () => {
@@ -112,6 +126,14 @@ export default function ProfilePage() {
             .eq('following_id', profileId)
             .single();
         setIsFollowing(!!data);
+
+        // Fetch connection status (connect/accept/etc)
+        try {
+            const status = await getConnectionStatus(profileId);
+            setConnectionStatus(status);
+        } catch (err) {
+            console.error("Failed to fetch connection status", err);
+        }
     };
 
     const fetchProfile = async (user?: any) => {
@@ -128,99 +150,68 @@ export default function ProfilePage() {
             return;
         }
 
-        // Check if it's a UUID or a name-based slug
-        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
+        try {
+            const result = await getProfileSecurely(identifier);
 
-        let data = null;
-        let error = null;
-
-        if (isUUID) {
-            // Lookup by ID
-            const result = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', identifier)
-                .single();
-            data = result.data;
-            error = result.error;
-        } else {
-            // Slug format: "john-doe-abc12345" where last segment is short UUID
-            const parts = identifier.split('-');
-            const shortId = parts[parts.length - 1];
-
-            // Check if last part looks like a short UUID (8 hex chars)
-            const hasShortId = /^[0-9a-f]{8}$/i.test(shortId);
-
-            if (hasShortId) {
-                // Search by short ID prefix - fetch all and filter client-side
-                // since Supabase UUID columns don't support text pattern matching
-                const { data: profiles } = await supabase
-                    .from('profiles')
-                    .select('*');
-
-                const matchedProfile = profiles?.find(p =>
-                    p.id.toLowerCase().startsWith(shortId.toLowerCase())
-                );
-
-                if (matchedProfile) {
-                    data = matchedProfile;
+            if (result.error || !result.data) {
+                console.error('Error fetching profile:', result.error || 'No profile found');
+                setError('Profile not found');
+            } else {
+                setProfile(result.data);
+                fetchStats(result.data.id);
+                // Check follow status with the actual profile ID
+                if (user) {
+                    checkFollowStatus(user.id, result.data.id);
                 }
             }
-
-            // Fallback: try name-based search
-            if (!data) {
-                const nameSearch = hasShortId
-                    ? parts.slice(0, -1).join(' ')  // Remove short ID
-                    : identifier.replace(/-/g, ' ');
-
-                // Try exact match first (case-insensitive)
-                let result = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .ilike('full_name', nameSearch)
-                    .maybeSingle();
-
-                // If no exact match, try with wildcard
-                if (!result.data) {
-                    result = await supabase
-                        .from('profiles')
-                        .select('*')
-                        .ilike('full_name', `%${nameSearch}%`)
-                        .maybeSingle();
-                }
-
-                if (!data) {
-                    data = result.data;
-                    error = result.error;
-                }
-            }
-        }
-
-        if (error || !data) {
-            console.error('Error fetching profile:', error || 'No profile found');
+        } catch (err) {
+            console.error("Unexpected error fetching profile:", err);
             setError('Profile not found');
-        } else {
-            setProfile(data);
-            fetchStats(data.id);
-            // Check follow status with the actual profile ID
-            if (user) {
-                checkFollowStatus(user.id, data.id);
-            }
         }
 
         setLoading(false);
     };
 
     const fetchStats = async (profileId: string) => {
-        const [followersRes, followingRes, postsRes] = await Promise.all([
+        const [followersRes, followingRes, postsRes, connectionsRes] = await Promise.all([
+            // TODO: Update these counts to reflect new Connections table or stick to Follows?
+            // Assuming "Follows" are still tracked in 'connections' (renamed or separate?)
+            // Based on migration plan: 'connections' table creates NEW 'connect' system.
+            // EXISTING 'connections' table from earlier might be for FOLLOWS. 
+            // NOTE: The previous existing table for follows was named 'connections' in older migrations.
+            // We created a NEW table named 'connections' in migration 016, which MIGHT CONFLICT if strict name collision.
+            // If it already exists, it keeps the old schema. 
+            // Migration 016: "requester_id, receiver_id, status".
+            // Old Migration 002: "follower_id, following_id, status".
+            // This is a CONFLICT. Migration 016 will likely FAIL or use existing table if columns differ.
+            // I should have checked this.
+            // But proceeding with the code assuming we fix DB later if needed.
+            // For now, let's assume 'connections' is the NEW relation table, and 'follows' is separate or we migrate.
+            // Wait, if I use the SAME table name, it's messy.
+            // Let's assume for this code we are using a DIFFERENT table or columns.
+            // Actually, best practice suggests 'follows' table for follows, 'connections' for bidirectional.
+            // If the old table was named 'connections' but meant for follows, we should probably rename it or use a new table.
+            // IMPORTANT: In fetchStats, I should refer to the correct table. 
+            // For now, I'll keep existing logic but be aware.
+            // NOTE: 'connections' fetches (for Follows) should query the OLD 'connections' table (which might need renaming if we fixed it). 
+            // HOWEVER, based on my previous fix, the new table is `user_connections`. The old table `connections` remains for follows.
+            // So:
+            // Follows -> `connections` table
+            // Connections -> `user_connections` table
+
             supabase.from('connections').select('id', { count: 'exact', head: true }).eq('following_id', profileId),
             supabase.from('connections').select('id', { count: 'exact', head: true }).eq('follower_id', profileId),
             supabase.from('posts').select('id', { count: 'exact', head: true }).eq('user_id', profileId),
+            // Connections count: entries in user_connections where (requester OR receiver) is profile AND status is accepted
+            supabase.from('user_connections')
+                .select('id', { count: 'exact', head: true })
+                .or(`and(requester_id.eq.${profileId},status.eq.accepted),and(receiver_id.eq.${profileId},status.eq.accepted)`)
         ]);
         setStats({
             followers: followersRes.count || 0,
             following: followingRes.count || 0,
             posts: postsRes.count || 0,
+            connections: connectionsRes.count || 0
         });
     };
 
@@ -230,7 +221,7 @@ export default function ProfilePage() {
         setFollowLoading(true);
         try {
             if (isFollowing) {
-                await supabase.from('connections').delete()
+                await supabase.from('connections').delete() // This refers to the OLD connections table (follows)
                     .eq('follower_id', currentUser.id)
                     .eq('following_id', profile.id);
                 setIsFollowing(false);
@@ -250,12 +241,57 @@ export default function ProfilePage() {
         }
     };
 
+    const handleConnect = async () => {
+        if (!currentUser || !profile) return;
+        setConnectionLoading(true);
+        try {
+            await sendConnectionRequest(profile.id);
+            setConnectionStatus('pending_sent');
+        } catch (err) {
+            console.error("Error sending request:", err);
+        } finally {
+            setConnectionLoading(false);
+        }
+    };
+
+    const handleAccept = async () => {
+        if (!currentUser || !profile) return;
+        setConnectionLoading(true);
+        try {
+            await acceptConnectionRequest(profile.id);
+            setConnectionStatus('accepted');
+        } catch (err) {
+            console.error("Error accepting:", err);
+        } finally {
+            setConnectionLoading(false);
+        }
+    };
+
     const getLocationString = () => {
         if (!profile) return '';
+        // Privacy check for Location
+        if (!canViewField('location')) return 'Location Hidden';
+
         const parts = [profile.city, profile.region, profile.country].filter(Boolean);
         return parts.join(', ');
     };
 
+    // Helper to check privacy
+    const canViewField = (field: keyof PrivacySettings) => {
+        if (!profile || !currentUser) return false;
+        if (currentUser.id === profile.id) return true; // Own profile
+
+        const privacy = profile.privacy_settings?.[field] || 'connections'; // Default to connections if null
+
+        if (privacy === 'public') return true;
+        if (privacy === 'private') return false;
+        if (privacy === 'connections') {
+            return connectionStatus === 'accepted';
+        }
+        return false;
+    };
+
+    // Render Logic
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -344,6 +380,43 @@ export default function ProfilePage() {
                                 </Link>
                             ) : currentUser ? (
                                 <>
+                                    {/* Connection Button */}
+                                    {connectionStatus === 'accepted' ? (
+                                        <button
+                                            className="inline-flex items-center gap-2 px-5 py-2 bg-green-100 text-green-800 font-semibold rounded-full shadow-sm hover:bg-green-200 transition-colors"
+                                        >
+                                            <UserCheck className="w-4 h-4" />
+                                            Connected
+                                        </button>
+                                    ) : connectionStatus === 'pending_sent' ? (
+                                        <button
+                                            disabled
+                                            className="inline-flex items-center gap-2 px-5 py-2 bg-gray-100 text-gray-500 font-medium rounded-full shadow-sm cursor-not-allowed"
+                                        >
+                                            <Clock className="w-4 h-4" />
+                                            Pending
+                                        </button>
+                                    ) : connectionStatus === 'pending_received' ? (
+                                        <button
+                                            onClick={handleAccept}
+                                            disabled={connectionLoading}
+                                            className="inline-flex items-center gap-2 px-5 py-2 bg-blue-600 text-white font-semibold rounded-full shadow hover:bg-blue-700 transition-colors"
+                                        >
+                                            {connectionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+                                            Accept Request
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={handleConnect}
+                                            disabled={connectionLoading}
+                                            className="inline-flex items-center gap-2 px-5 py-2 bg-white text-gray-700 font-semibold rounded-full shadow hover:bg-gray-50 transition-colors border border-gray-200"
+                                        >
+                                            {connectionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+                                            Connect
+                                        </button>
+                                    )}
+
+                                    {/* Follow Button - Keep existing logic for feed */}
                                     <button
                                         onClick={handleFollow}
                                         disabled={followLoading}
@@ -355,12 +428,13 @@ export default function ProfilePage() {
                                         {followLoading ? (
                                             <Loader2 className="w-4 h-4 animate-spin" />
                                         ) : isFollowing ? (
-                                            <UserCheck className="w-4 h-4" />
+                                            <CheckCircle className="w-4 h-4" />
                                         ) : (
-                                            <UserPlus className="w-4 h-4" />
+                                            <Share2 className="w-4 h-4" /> // Changed icon to differentiate
                                         )}
                                         {isFollowing ? 'Following' : 'Follow'}
                                     </button>
+
                                     <button className="p-2 bg-white text-gray-600 rounded-full shadow hover:bg-gray-50 transition-colors">
                                         <MessageCircle className="w-5 h-5" />
                                     </button>
@@ -371,7 +445,7 @@ export default function ProfilePage() {
                                     className="inline-flex items-center gap-2 px-5 py-2 bg-green-600 text-white font-semibold rounded-full shadow hover:bg-green-700 transition-colors"
                                 >
                                     <UserPlus className="w-4 h-4" />
-                                    Follow
+                                    Connect
                                 </Link>
                             )}
                             <button className="p-2 bg-white text-gray-600 rounded-full shadow hover:bg-gray-50 transition-colors">
@@ -406,10 +480,18 @@ export default function ProfilePage() {
                                 {typeConfig.label}
                             </span>
 
-                            {getLocationString() && (
-                                <span className="inline-flex items-center gap-1 text-sm text-gray-500">
+                            {/* Location - Privacy Protected */}
+                            {canViewField('location') ? (
+                                getLocationString() && (
+                                    <span className="inline-flex items-center gap-1 text-sm text-gray-500">
+                                        <MapPin className="w-4 h-4" />
+                                        {getLocationString()}
+                                    </span>
+                                )
+                            ) : (
+                                <span className="inline-flex items-center gap-1 text-sm text-gray-400 italic">
                                     <MapPin className="w-4 h-4" />
-                                    {getLocationString()}
+                                    Location hidden
                                 </span>
                             )}
 
@@ -432,6 +514,10 @@ export default function ProfilePage() {
                                 <p className="text-sm text-gray-500">Following</p>
                             </div>
                             <div className="text-center">
+                                <p className="text-xl font-bold text-gray-900">{stats.connections}</p>
+                                <p className="text-sm text-gray-500">Connections</p>
+                            </div>
+                            <div className="text-center">
                                 <p className="text-xl font-bold text-gray-900">{stats.posts}</p>
                                 <p className="text-sm text-gray-500">Posts</p>
                             </div>
@@ -442,7 +528,11 @@ export default function ProfilePage() {
                     {profile.bio && (
                         <div className="px-6 sm:px-8 pb-8">
                             <h2 className="text-sm font-bold uppercase tracking-wide text-gray-500 mb-3">About</h2>
-                            <p className="text-gray-700 leading-relaxed whitespace-pre-line">{profile.bio}</p>
+                            {canViewField('bio') ? (
+                                <p className="text-gray-700 leading-relaxed whitespace-pre-line">{profile.bio}</p>
+                            ) : (
+                                <p className="text-gray-400 italic">Bio is private.</p>
+                            )}
                         </div>
                     )}
 
@@ -495,69 +585,98 @@ export default function ProfilePage() {
                         </div>
                     )}
 
-                    {/* Contact Info */}
+                    {/* Contact Info - PRIVACY PROTECTED */}
                     {(profile.email || profile.phone || profile.whatsapp || profile.website || profile.linkedin) && (
                         <div className="px-6 sm:px-8 pb-8 border-t border-gray-100 pt-6">
                             <h2 className="text-sm font-bold uppercase tracking-wide text-gray-500 mb-4">Contact</h2>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                {profile.email && (
-                                    <a
-                                        href={`mailto:${profile.email}`}
-                                        className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-green-50 transition-colors group"
+
+                            {/* Privacy Check Overlay / Message */}
+                            {(!isOwnProfile && connectionStatus !== 'accepted') ? (
+                                <div className="bg-blue-50 border border-blue-100 rounded-xl p-6 text-center">
+                                    <UserPlus className="w-8 h-8 text-blue-500 mx-auto mb-3" />
+                                    <h3 className="font-semibold text-blue-900 mb-1">Connect to view contact info</h3>
+                                    <p className="text-blue-700 text-sm mb-4 max-w-sm mx-auto">
+                                        You need to be connected with {profile.full_name} to view their contact details and private information.
+                                    </p>
+                                    <button
+                                        onClick={handleConnect}
+                                        disabled={connectionLoading || connectionStatus === 'pending_sent'}
+                                        className="px-5 py-2 bg-blue-600 text-white font-medium rounded-full shadow hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
-                                        <Mail className="w-5 h-5 text-gray-400 group-hover:text-green-600" />
-                                        <span className="text-sm text-gray-700 group-hover:text-green-700 truncate">{profile.email}</span>
-                                    </a>
-                                )}
+                                        {connectionStatus === 'pending_sent' ? 'Request Sent' : 'Connect Now'}
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {/* Email */}
+                                    {canViewField('email') && profile.email ? (
+                                        <a
+                                            href={`mailto:${profile.email}`}
+                                            className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-green-50 transition-colors group"
+                                        >
+                                            <Mail className="w-5 h-5 text-gray-400 group-hover:text-green-600" />
+                                            <span className="text-sm text-gray-700 group-hover:text-green-700 truncate">{profile.email}</span>
+                                        </a>
+                                    ) : (
+                                        profile.email && <div className="p-3 bg-gray-50 rounded-lg opacity-50 flex items-center gap-3">
+                                            <Mail className="w-5 h-5 text-gray-400" />
+                                            <span className="text-sm text-gray-400">Email hidden</span>
+                                        </div>
+                                    )}
 
-                                {profile.phone && (
-                                    <a
-                                        href={`tel:${profile.phone}`}
-                                        className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-green-50 transition-colors group"
-                                    >
-                                        <Phone className="w-5 h-5 text-gray-400 group-hover:text-green-600" />
-                                        <span className="text-sm text-gray-700 group-hover:text-green-700">{profile.phone}</span>
-                                    </a>
-                                )}
+                                    {/* Phone */}
+                                    {canViewField('phone') && profile.phone ? (
+                                        <a
+                                            href={`tel:${profile.phone}`}
+                                            className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-green-50 transition-colors group"
+                                        >
+                                            <Phone className="w-5 h-5 text-gray-400 group-hover:text-green-600" />
+                                            <span className="text-sm text-gray-700 group-hover:text-green-700">{profile.phone}</span>
+                                        </a>
+                                    ) : (
+                                        profile.phone && <div className="p-3 bg-gray-50 rounded-lg opacity-50 flex items-center gap-3">
+                                            <Phone className="w-5 h-5 text-gray-400" />
+                                            <span className="text-sm text-gray-400">Phone hidden</span>
+                                        </div>
+                                    )}
 
-                                {profile.whatsapp && (
-                                    <a
-                                        href={`https://wa.me/${profile.whatsapp.replace(/\D/g, '')}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-green-50 transition-colors group"
-                                    >
-                                        <MessageCircle className="w-5 h-5 text-gray-400 group-hover:text-green-600" />
-                                        <span className="text-sm text-gray-700 group-hover:text-green-700">WhatsApp</span>
-                                    </a>
-                                )}
+                                    {profile.whatsapp && (
+                                        <a
+                                            href={`https://wa.me/${profile.whatsapp.replace(/\D/g, '')}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-green-50 transition-colors group"
+                                        >
+                                            <MessageCircle className="w-5 h-5 text-gray-400 group-hover:text-green-600" />
+                                            <span className="text-sm text-gray-700 group-hover:text-green-700">WhatsApp</span>
+                                        </a>
+                                    )}
 
+                                    {profile.website && (
+                                        <a
+                                            href={ensureProtocol(profile.website)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-green-50 transition-colors group"
+                                        >
+                                            <Globe className="w-5 h-5 text-gray-400 group-hover:text-green-600" />
+                                            <span className="text-sm text-gray-700 group-hover:text-green-700 truncate">{profile.website}</span>
+                                        </a>
+                                    )}
 
-
-                                {profile.website && (
-                                    <a
-                                        href={ensureProtocol(profile.website)}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-green-50 transition-colors group"
-                                    >
-                                        <Globe className="w-5 h-5 text-gray-400 group-hover:text-green-600" />
-                                        <span className="text-sm text-gray-700 group-hover:text-green-700 truncate">{profile.website}</span>
-                                    </a>
-                                )}
-
-                                {profile.linkedin && (
-                                    <a
-                                        href={ensureProtocol(profile.linkedin)}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-blue-50 transition-colors group"
-                                    >
-                                        <Linkedin className="w-5 h-5 text-gray-400 group-hover:text-blue-600" />
-                                        <span className="text-sm text-gray-700 group-hover:text-blue-700">LinkedIn Profile</span>
-                                    </a>
-                                )}
-                            </div>
+                                    {profile.linkedin && (
+                                        <a
+                                            href={ensureProtocol(profile.linkedin)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-blue-50 transition-colors group"
+                                        >
+                                            <Linkedin className="w-5 h-5 text-gray-400 group-hover:text-blue-600" />
+                                            <span className="text-sm text-gray-700 group-hover:text-blue-700">LinkedIn Profile</span>
+                                        </a>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
