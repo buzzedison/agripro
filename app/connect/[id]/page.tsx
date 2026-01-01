@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import Image from 'next/image';
+import { nameToUniqueSlug } from '@/lib/utils/mentions';
 import {
     getConnectionStatus,
     sendConnectionRequest,
@@ -17,7 +18,7 @@ import {
     ArrowLeft, MapPin, Mail, Phone, Globe, Linkedin,
     Calendar, Briefcase, CheckCircle, Users, ShoppingBag,
     Lightbulb, Wrench, Loader2, MessageCircle, UserPlus,
-    UserCheck, Share2, Youtube, Play, UserMinus, Clock
+    UserCheck, Share2, Youtube, Play, UserMinus, Clock, X
 } from 'lucide-react';
 
 // Extract YouTube video ID from various URL formats
@@ -76,6 +77,14 @@ interface Stats {
     posts: number;
 }
 
+interface ProfilePreview {
+    id: string;
+    full_name: string;
+    avatar_url: string | null;
+    organization_name: string | null;
+    user_type: string | null;
+}
+
 const userTypeConfig: Record<string, { icon: any; label: string; bgColor: string; textColor: string }> = {
     farmer: { icon: Users, label: 'Farmer / Producer', bgColor: 'bg-green-100', textColor: 'text-green-700' },
     buyer: { icon: ShoppingBag, label: 'Buyer / Trader', bgColor: 'bg-blue-100', textColor: 'text-blue-700' },
@@ -106,6 +115,10 @@ export default function ProfilePage() {
     // Connection State
     const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('none');
     const [connectionLoading, setConnectionLoading] = useState(false);
+    const [connectionId, setConnectionId] = useState<string | null>(null);
+    const [activeList, setActiveList] = useState<{ type: 'followers' | 'following' | 'connections'; title: string } | null>(null);
+    const [listItems, setListItems] = useState<ProfilePreview[]>([]);
+    const [listLoading, setListLoading] = useState(false);
 
     useEffect(() => {
         const init = async () => {
@@ -131,9 +144,25 @@ export default function ProfilePage() {
         try {
             const status = await getConnectionStatus(profileId);
             setConnectionStatus(status);
+            if (status === 'accepted') {
+                await fetchConnectionRecord(userId, profileId);
+            } else {
+                setConnectionId(null);
+            }
         } catch (err) {
             console.error("Failed to fetch connection status", err);
         }
+    };
+
+    const fetchConnectionRecord = async (viewerId: string, profileId: string) => {
+        const { data } = await supabase
+            .from('user_connections')
+            .select('id')
+            .eq('status', 'accepted')
+            .or(`and(requester_id.eq.${viewerId},receiver_id.eq.${profileId}),and(requester_id.eq.${profileId},receiver_id.eq.${viewerId})`)
+            .maybeSingle();
+        setConnectionId(data?.id || null);
+        return data?.id || null;
     };
 
     const fetchProfile = async (user?: any) => {
@@ -215,6 +244,69 @@ export default function ProfilePage() {
         });
     };
 
+    const fetchListItems = async (type: 'followers' | 'following' | 'connections') => {
+        if (!profile) return;
+        setListLoading(true);
+        try {
+            let ids: string[] = [];
+            if (type === 'followers') {
+                const { data } = await supabase
+                    .from('connections')
+                    .select('follower_id')
+                    .eq('following_id', profile.id);
+                ids = (data || []).map((row) => row.follower_id);
+            } else if (type === 'following') {
+                const { data } = await supabase
+                    .from('connections')
+                    .select('following_id')
+                    .eq('follower_id', profile.id);
+                ids = (data || []).map((row) => row.following_id);
+            } else {
+                const { data } = await supabase
+                    .from('user_connections')
+                    .select('requester_id, receiver_id')
+                    .eq('status', 'accepted')
+                    .or(`requester_id.eq.${profile.id},receiver_id.eq.${profile.id}`);
+                ids = (data || []).map((row) =>
+                    row.requester_id === profile.id ? row.receiver_id : row.requester_id
+                );
+            }
+
+            if (ids.length === 0) {
+                setListItems([]);
+                setListLoading(false);
+                return;
+            }
+
+            const { data: profilesData } = await supabase
+                .from('profiles')
+                .select('id, full_name, avatar_url, organization_name, user_type')
+                .in('id', ids);
+
+            const indexMap = new Map(ids.map((id, idx) => [id, idx]));
+            const items = (profilesData || []).sort(
+                (a, b) => (indexMap.get(a.id) ?? 0) - (indexMap.get(b.id) ?? 0)
+            );
+            setListItems(items);
+        } catch (err) {
+            console.error('Failed to fetch list', err);
+            setListItems([]);
+        } finally {
+            setListLoading(false);
+        }
+    };
+
+    const openList = (type: 'followers' | 'following' | 'connections', title: string) => {
+        if (!profile) return;
+        setActiveList({ type, title });
+        fetchListItems(type);
+    };
+
+    const closeList = () => {
+        setActiveList(null);
+        setListItems([]);
+    };
+
     const handleFollow = async () => {
         if (!currentUser || !profile) return;
 
@@ -247,6 +339,7 @@ export default function ProfilePage() {
         try {
             await sendConnectionRequest(profile.id);
             setConnectionStatus('pending_sent');
+            setConnectionId(null);
         } catch (err) {
             console.error("Error sending request:", err);
         } finally {
@@ -260,6 +353,7 @@ export default function ProfilePage() {
         try {
             await acceptConnectionRequest(profile.id);
             setConnectionStatus('accepted');
+            await fetchConnectionRecord(currentUser.id, profile.id);
         } catch (err) {
             console.error("Error accepting:", err);
         } finally {
@@ -435,9 +529,15 @@ export default function ProfilePage() {
                                         {isFollowing ? 'Following' : 'Follow'}
                                     </button>
 
-                                    <button className="p-2 bg-white text-gray-600 rounded-full shadow hover:bg-gray-50 transition-colors">
-                                        <MessageCircle className="w-5 h-5" />
-                                    </button>
+                                    {connectionStatus === 'accepted' && connectionId && (
+                                        <Link
+                                            href={`/messages?connectionId=${connectionId}`}
+                                            className="p-2 bg-white text-gray-600 rounded-full shadow hover:bg-gray-50 transition-colors"
+                                            title="Send message"
+                                        >
+                                            <MessageCircle className="w-5 h-5" />
+                                        </Link>
+                                    )}
                                 </>
                             ) : (
                                 <Link
@@ -504,23 +604,23 @@ export default function ProfilePage() {
                         </div>
 
                         {/* Stats */}
-                        <div className="flex items-center gap-6 py-4 border-t border-b border-gray-100">
-                            <div className="text-center">
-                                <p className="text-xl font-bold text-gray-900">{stats.followers}</p>
-                                <p className="text-sm text-gray-500">Followers</p>
-                            </div>
-                            <div className="text-center">
-                                <p className="text-xl font-bold text-gray-900">{stats.following}</p>
-                                <p className="text-sm text-gray-500">Following</p>
-                            </div>
-                            <div className="text-center">
-                                <p className="text-xl font-bold text-gray-900">{stats.connections}</p>
-                                <p className="text-sm text-gray-500">Connections</p>
-                            </div>
-                            <div className="text-center">
-                                <p className="text-xl font-bold text-gray-900">{stats.posts}</p>
-                                <p className="text-sm text-gray-500">Posts</p>
-                            </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 py-4 border-t border-b border-gray-100">
+                            <StatPill
+                                label="Followers"
+                                value={stats.followers}
+                                onClick={() => openList('followers', 'Followers')}
+                            />
+                            <StatPill
+                                label="Following"
+                                value={stats.following}
+                                onClick={() => openList('following', 'Following')}
+                            />
+                            <StatPill
+                                label="Connections"
+                                value={stats.connections}
+                                onClick={() => openList('connections', 'Connections')}
+                            />
+                            <StatPill label="Posts" value={stats.posts} />
                         </div>
                     </div>
 
@@ -677,6 +777,125 @@ export default function ProfilePage() {
                                     )}
                                 </div>
                             )}
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {activeList && (
+                <ProfileListModal
+                    activeList={activeList}
+                    items={listItems}
+                    loading={listLoading}
+                    onClose={closeList}
+                />
+            )}
+        </div>
+    );
+}
+
+interface StatPillProps {
+    label: string;
+    value: number;
+    onClick?: () => void;
+}
+
+function StatPill({ label, value, onClick }: StatPillProps) {
+    const clickable = Boolean(onClick);
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            disabled={!clickable}
+            className={`flex flex-col items-center justify-center rounded-2xl border border-gray-100 px-4 py-3 transition-colors ${
+                clickable ? 'hover:border-green-200 hover:bg-green-50' : 'cursor-default'
+            }`}
+        >
+            <p className="text-xl font-bold text-gray-900">{value}</p>
+            <p className="text-sm text-gray-500">{label}</p>
+            {clickable && <span className="text-xs text-green-600 mt-1">View</span>}
+        </button>
+    );
+}
+
+interface ProfileListModalProps {
+    activeList: { type: 'followers' | 'following' | 'connections'; title: string };
+    items: ProfilePreview[];
+    loading: boolean;
+    onClose: () => void;
+}
+
+function ProfileListModal({ activeList, items, loading, onClose }: ProfileListModalProps) {
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] flex flex-col">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                    <div>
+                        <p className="text-sm text-gray-500">Viewing</p>
+                        <h3 className="text-lg font-semibold text-gray-900">{activeList.title}</h3>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="p-2 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                        aria-label="Close"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+                <div className="flex-1 overflow-y-auto">
+                    {loading ? (
+                        <div className="flex items-center justify-center py-12">
+                            <Loader2 className="w-5 h-5 animate-spin text-green-600" />
+                        </div>
+                    ) : items.length === 0 ? (
+                        <div className="text-center py-10 px-6 text-sm text-gray-500">
+                            No {activeList.title.toLowerCase()} yet.
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-gray-100">
+                            {items.map((item) => {
+                                const slug = item.full_name
+                                    ? nameToUniqueSlug(item.full_name, item.id)
+                                    : item.id;
+                                return (
+                                    <Link
+                                        key={item.id}
+                                        href={`/connect/${slug}`}
+                                        className="flex items-center gap-4 px-5 py-3 hover:bg-gray-50 transition-colors"
+                                    >
+                                        <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
+                                            {item.avatar_url ? (
+                                                <Image
+                                                    src={item.avatar_url}
+                                                    alt={item.full_name || ''}
+                                                    width={48}
+                                                    height={48}
+                                                    className="object-cover"
+                                                />
+                                            ) : (
+                                                <span className="text-base font-semibold text-gray-500">
+                                                    {item.full_name?.charAt(0).toUpperCase() || '?'}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-semibold text-gray-900 truncate">
+                                                {item.full_name || 'AgriPro member'}
+                                            </p>
+                                            {item.organization_name && (
+                                                <p className="text-sm text-gray-500 truncate">
+                                                    {item.organization_name}
+                                                </p>
+                                            )}
+                                            {item.user_type && (
+                                                <p className="text-xs text-gray-400">
+                                                    {userTypeConfig[item.user_type]?.label || item.user_type}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </Link>
+                                );
+                            })}
                         </div>
                     )}
                 </div>

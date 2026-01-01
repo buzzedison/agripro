@@ -133,7 +133,9 @@ export default function NotificationsPage() {
     }
 
     // Navigate based on notification type
-    if (notification.type === 'follow' || notification.type === 'connection_request' || notification.type === 'connection_accepted') {
+    if (notification.type === 'connection_request') {
+      router.push('/connect/requests');
+    } else if (notification.type === 'follow' || notification.type === 'connection_accepted') {
       // Navigate to the actor's profile
       const profileSlug = notification.actor?.full_name && notification.actor_id
         ? nameToUniqueSlug(notification.actor.full_name, notification.actor_id)

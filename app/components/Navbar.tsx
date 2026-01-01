@@ -61,34 +61,53 @@ export default function Navbar() {
   const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null);
   const [scrolled, setScrolled] = useState(false);
   const [user, setUser] = useState<any>(null);
-  const [profile, setProfile] = useState<{ full_name: string } | null>(null);
+  const [profile, setProfile] = useState<{ full_name: string; avatar_url: string | null } | null>(null);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const supabase = createClient();
+  const metadataAvatar =
+    (typeof user?.user_metadata?.avatar_url === 'string' && user.user_metadata.avatar_url) ||
+    (typeof user?.user_metadata?.avatar === 'string' && user.user_metadata.avatar) ||
+    (typeof user?.user_metadata?.picture === 'string' && user.user_metadata.picture) ||
+    null;
+  const avatarUrl = profile?.avatar_url || metadataAvatar;
+  const avatarInitial =
+    profile?.full_name?.charAt(0)?.toUpperCase() ||
+    user?.user_metadata?.full_name?.charAt(0)?.toUpperCase() ||
+    user?.email?.charAt(0)?.toUpperCase() ||
+    'A';
 
   // Check auth state and fetch profile
   useEffect(() => {
+    const fetchProfile = async (userId: string) => {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('full_name, avatar_url')
+        .eq('id', userId)
+        .single();
+      setProfile(profileData || null);
+    };
+
     const checkUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
-      
       if (user) {
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('id', user.id)
-          .single();
-        setProfile(profileData);
+        await fetchProfile(user.id);
+      } else {
+        setProfile(null);
       }
-      
       setLoading(false);
     };
     checkUser();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
-      if (!session?.user) setProfile(null);
+      if (session?.user) {
+        fetchProfile(session.user.id);
+      } else {
+        setProfile(null);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -206,8 +225,20 @@ export default function Navbar() {
                     onClick={() => setUserMenuOpen(!userMenuOpen)}
                     className="flex items-center gap-2 px-3 py-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
                   >
-                    <div className="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center text-white font-semibold text-sm">
-                      {user.email?.charAt(0).toUpperCase()}
+                    <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                      {avatarUrl ? (
+                        <Image
+                          src={avatarUrl}
+                          alt={profile?.full_name || user?.email || 'Profile avatar'}
+                          width={32}
+                          height={32}
+                          className="object-cover w-full h-full"
+                        />
+                      ) : (
+                        <span className="text-sm font-semibold text-gray-600">
+                          {avatarInitial}
+                        </span>
+                      )}
                     </div>
                     <ChevronDown className="w-4 h-4 text-gray-500" />
                   </button>
@@ -224,6 +255,14 @@ export default function Navbar() {
                       >
                         <Home className="w-4 h-4" />
                         Feed
+                      </Link>
+                      <Link
+                        href="/messages"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600"
+                      >
+                        <MessageSquare className="w-4 h-4" />
+                        Messages
                       </Link>
                       <Link
                         href="/connect/dashboard"
@@ -323,8 +362,20 @@ export default function Navbar() {
                   <div className="p-4 border-b border-gray-100 bg-gray-50">
                     {user ? (
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center text-white font-semibold">
-                          {user.email?.charAt(0).toUpperCase()}
+                        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                          {avatarUrl ? (
+                            <Image
+                              src={avatarUrl}
+                              alt={profile?.full_name || user?.email || 'Profile avatar'}
+                              width={40}
+                              height={40}
+                              className="object-cover w-full h-full"
+                            />
+                          ) : (
+                            <span className="text-base font-semibold text-gray-600">
+                              {avatarInitial}
+                            </span>
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900 truncate">{user.email}</p>
@@ -421,6 +472,14 @@ export default function Navbar() {
 
                 {/* Mobile quick links */}
                 <div className="p-3 border-t border-gray-100">
+                  <Link
+                    href="/messages"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-xl mb-2"
+                  >
+                    <MessageSquare className="w-5 h-5" />
+                    Messages
+                  </Link>
                   <Link
                     href="/chat"
                     onClick={() => setIsOpen(false)}

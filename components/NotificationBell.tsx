@@ -13,7 +13,7 @@ import {
   Repeat2,
   AtSign,
   UserPlus,
-  Check,
+  UserCheck,
   CheckCheck,
   X,
   Loader2
@@ -23,7 +23,7 @@ interface Notification {
   id: string;
   user_id: string;
   actor_id: string;
-  type: 'mention' | 'like' | 'comment' | 'repost' | 'follow';
+  type: 'mention' | 'like' | 'comment' | 'repost' | 'follow' | 'connection_request' | 'connection_accepted';
   post_id?: string;
   comment_id?: string;
   message: string;
@@ -125,7 +125,9 @@ export default function NotificationBell() {
     }
 
     // Navigate based on notification type
-    if (notification.type === 'follow') {
+    if (notification.type === 'connection_request') {
+      router.push('/connect/requests');
+    } else if (notification.type === 'follow' || notification.type === 'connection_accepted') {
       // Navigate to the actor's profile
       const profileSlug = notification.actor?.full_name && notification.actor_id
         ? nameToUniqueSlug(notification.actor.full_name, notification.actor_id)
@@ -149,7 +151,10 @@ export default function NotificationBell() {
       case 'repost':
         return <Repeat2 className="w-4 h-4 text-purple-500" />;
       case 'follow':
+      case 'connection_request':
         return <UserPlus className="w-4 h-4 text-blue-500" />;
+      case 'connection_accepted':
+        return <UserCheck className="w-4 h-4 text-green-600" />;
       default:
         return <Bell className="w-4 h-4 text-gray-500" />;
     }

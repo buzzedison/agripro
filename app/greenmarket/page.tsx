@@ -170,7 +170,7 @@ export default function GreenMarketPage() {
                 <FaArrowRight className="w-4 h-4" />
               </Link>
               <Link
-                href="/greenmarket/vendors"
+                href="/greenmarket/become-vendor"
                 className="inline-flex items-center gap-2 px-8 py-4 bg-white/10 backdrop-blur-md text-white border border-white/30 rounded-2xl font-semibold text-lg hover:bg-white/20 transition-all"
               >
                 <FaStore className="w-5 h-5" />
@@ -420,7 +420,7 @@ export default function GreenMarketPage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
-                href="/greenmarket/vendors"
+                href="/greenmarket/become-vendor"
                 className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-green-600 text-white rounded-2xl font-semibold text-lg hover:bg-green-700 transition-all"
               >
                 <FaStore className="w-5 h-5" />

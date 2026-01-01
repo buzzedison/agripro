@@ -14,6 +14,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: '*.supabase.co',
       },
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+      },
     ],
     // Use unoptimized images for Sanity since it has its own CDN optimization
     unoptimized: true,

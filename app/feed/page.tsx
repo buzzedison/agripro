@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import Image from 'next/image';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 import {
     Heart, MessageCircle, Repeat2, Share, MoreHorizontal,
@@ -19,6 +19,7 @@ import GifPicker from './components/GifPicker';
 import LinkPreview, { extractUrls, parseContentWithLinks } from '../components/LinkPreview';
 import { parseContentWithLinksAndHashtags, extractHashtags } from '@/lib/utils/hashtags';
 import { parseContentWithAll, extractMentions, nameToUniqueSlug } from '@/lib/utils/mentions';
+import { toast } from 'sonner';
 
 // Video URL detection helpers
 function isVideoUrl(url: string): boolean {
@@ -203,6 +204,114 @@ function InlineVideoPlayer({ url }: { url: string }) {
     return null;
 }
 
+const FEED_PAGE_SIZE = 20;
+
+function LoadingFeedPlaceholder() {
+    const skeletonLine = 'h-3 rounded-full bg-gray-200';
+    return (
+        <div className="min-h-screen bg-gray-100">
+            <div className="max-w-6xl mx-auto px-4 py-6">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <div className="hidden lg:block lg:col-span-3 space-y-4">
+                        {[1, 2].map((item) => (
+                            <div key={`left-${item}`} className="bg-white rounded-2xl border border-gray-100 p-4 space-y-3 animate-pulse">
+                                <div className="h-20 rounded-xl bg-gray-200" />
+                                <div className="flex items-center gap-3 mt-2">
+                                    <div className="w-12 h-12 rounded-full bg-gray-200" />
+                                    <div className="flex-1 space-y-2">
+                                        <div className={`${skeletonLine} w-3/4`} />
+                                        <div className={`${skeletonLine} w-1/2`} />
+                                    </div>
+                                </div>
+                                <div className={`${skeletonLine} w-full`} />
+                                <div className={`${skeletonLine} w-2/3`} />
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="lg:col-span-6 space-y-4">
+                        <div className="bg-white rounded-2xl border border-gray-100 p-4 animate-pulse">
+                            <div className="flex gap-3">
+                                <div className="w-12 h-12 rounded-full bg-gray-200" />
+                                <div className="flex-1 space-y-3">
+                                    <div className={`${skeletonLine} w-1/2`} />
+                                    <div className={`${skeletonLine} w-full`} />
+                                    <div className={`${skeletonLine} w-5/6`} />
+                                </div>
+                            </div>
+                            <div className="mt-4 space-y-2">
+                                <div className="h-48 bg-gray-200 rounded-xl" />
+                                <div className="flex gap-2">
+                                    <div className="h-8 bg-gray-200 rounded-full flex-1" />
+                                    <div className="h-8 bg-gray-200 rounded-full flex-1" />
+                                </div>
+                            </div>
+                        </div>
+                        {[1, 2].map((item) => (
+                            <div key={`post-${item}`} className="bg-white rounded-2xl border border-gray-100 p-4 space-y-3 animate-pulse">
+                                <div className="flex gap-3">
+                                    <div className="w-12 h-12 rounded-full bg-gray-200" />
+                                    <div className="flex-1 space-y-2">
+                                        <div className={`${skeletonLine} w-2/3`} />
+                                        <div className={`${skeletonLine} w-full`} />
+                                    </div>
+                                </div>
+                                <div className="h-36 bg-gray-200 rounded-xl" />
+                                <div className="flex gap-3">
+                                    {[1, 2, 3].map((action) => (
+                                        <div key={`action-${action}`} className="h-4 w-16 bg-gray-200 rounded-full" />
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="hidden lg:block lg:col-span-3 space-y-4">
+                        {[1, 2].map((item) => (
+                            <div key={`right-${item}`} className="bg-white rounded-2xl border border-gray-100 p-4 space-y-3 animate-pulse">
+                                <div className={`${skeletonLine} w-2/3`} />
+                                <div className={`${skeletonLine} w-1/2`} />
+                                {[1, 2, 3].map((sub) => (
+                                    <div key={`right-${item}-${sub}`} className={`${skeletonLine} w-full`} />
+                                ))}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+interface ResilientImageProps {
+    src?: string | null;
+    alt: string;
+    className?: string;
+    fallbackText?: string;
+}
+
+function ResilientImage({ src, alt, className = '', fallbackText = 'Media unavailable' }: ResilientImageProps) {
+    const [hasError, setHasError] = useState(false);
+
+    if (!src || hasError) {
+        return (
+            <div className={`${className} flex items-center justify-center bg-gray-100 text-gray-500 text-xs gap-2`}>
+                <ImageIcon className="w-4 h-4" />
+                <span>{fallbackText}</span>
+            </div>
+        );
+    }
+
+    return (
+        <img
+            src={src}
+            alt={alt}
+            className={className}
+            onError={() => setHasError(true)}
+        />
+    );
+}
+
 // Emoji picker data
 const emojiCategories = {
     'Agriculture': ['🌾', '🌽', '🍅', '🥕', '🥬', '🌿', '🌱', '🚜', '🐄', '🐔', '🐖', '🐐', '🌻', '🍎', '🥭', '🍌'],
@@ -286,6 +395,7 @@ export default function FeedPage() {
     const router = useRouter();
     const supabase = createClient();
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const prefersReducedMotion = useReducedMotion();
 
     const [user, setUser] = useState<any>(null);
     const [profile, setProfile] = useState<Profile | null>(null);
@@ -320,6 +430,13 @@ export default function FeedPage() {
     const [loadingTrending, setLoadingTrending] = useState(true);
     const [bookmarkedPostIds, setBookmarkedPostIds] = useState<Set<string>>(new Set());
     const [bookmarkingPost, setBookmarkingPost] = useState<Set<string>>(new Set());
+    const [feedOffset, setFeedOffset] = useState(0);
+    const [hasMorePosts, setHasMorePosts] = useState(true);
+    const [loadingMorePosts, setLoadingMorePosts] = useState(false);
+    const [uploadStatus, setUploadStatus] = useState<string | null>(null);
+    const displayedTrendingHashtags = selectedHashtag
+        ? trendingHashtags.filter((tag) => tag.name !== selectedHashtag)
+        : trendingHashtags;
 
     // Mentions
     const [mentionSearchQuery, setMentionSearchQuery] = useState('');
@@ -387,10 +504,13 @@ export default function FeedPage() {
 
     // Fetch posts by hashtag when selectedHashtag changes
     useEffect(() => {
-        if (selectedHashtag && user) {
+        if (!user) return;
+        if (selectedHashtag) {
             fetchPostsByHashtag(selectedHashtag);
-        } else if (!selectedHashtag && user) {
-            fetchPosts(user.id);
+        } else {
+            setFeedOffset(0);
+            setHasMorePosts(true);
+            fetchPosts(user.id, { offset: 0 });
         }
     }, [selectedHashtag, user]);
 
@@ -403,7 +523,7 @@ export default function FeedPage() {
         setUser(user);
         await Promise.all([
             fetchProfile(user.id),
-            fetchPosts(user.id),
+            fetchPosts(user.id, { offset: 0 }),
             fetchSuggestedUsers(user.id),
             fetchFollowing(user.id)
         ]);
@@ -419,179 +539,212 @@ export default function FeedPage() {
         setProfile(data);
     };
 
-    const fetchPosts = async (userId: string) => {
-        // Fetch posts using the new network feed RPC function
-        // This prioritizes connections but also returns other posts
-        let postsData: any[] = [];
+    const fetchPosts = async (userId: string, options: { offset?: number; append?: boolean } = {}) => {
+        const { offset = 0, append = false } = options;
+        const limit = FEED_PAGE_SIZE;
+
+        if (append) {
+            setLoadingMorePosts(true);
+        }
 
         try {
-            const { data, error } = await supabase.rpc('get_network_feed', {
-                p_limit: 50,
-                p_offset: 0
-            });
+            // Fetch posts using the new network feed RPC function
+            // This prioritizes connections but also returns other posts
+            let postsData: any[] = [];
 
-            if (error) {
-                console.error('Error fetching feed via RPC, falling back to basic query:', error);
-                // Fallback to basic query if RPC fails (e.g. migration not run yet)
+            try {
+                const { data, error } = await supabase.rpc('get_network_feed', {
+                    p_limit: limit,
+                    p_offset: offset
+                });
+
+                if (error) {
+                    console.error('Error fetching feed via RPC, falling back to basic query:', error);
+                    // Fallback to basic query if RPC fails (e.g. migration not run yet)
+                    const { data: fallbackData } = await supabase
+                        .from('posts')
+                        .select('*')
+                        .order('created_at', { ascending: false })
+                        .range(offset, offset + limit - 1);
+                    postsData = fallbackData || [];
+                } else {
+                    postsData = data || [];
+                }
+            } catch (err) {
+                console.error('Unexpected error fetching feed:', err);
+                // Fallback
                 const { data: fallbackData } = await supabase
                     .from('posts')
                     .select('*')
                     .order('created_at', { ascending: false })
-                    .limit(50);
+                    .range(offset, offset + limit - 1);
                 postsData = fallbackData || [];
-            } else {
-                postsData = data || [];
-            }
-        } catch (err) {
-            console.error('Unexpected error fetching feed:', err);
-            // Fallback
-            const { data: fallbackData } = await supabase
-                .from('posts')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .limit(50);
-            postsData = fallbackData || [];
-        }
-
-        if (postsData && postsData.length > 0) {
-            // Fetch profiles for post authors
-            const authorIds = [...new Set(postsData.map(p => p.user_id))];
-            const { data: profilesData } = await supabase
-                .from('profiles')
-                .select('id, full_name, avatar_url, user_type, organization_name, is_verified')
-                .in('id', authorIds);
-
-            const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
-
-            // Check which posts the user has liked
-            const { data: likesData } = await supabase
-                .from('post_likes')
-                .select('post_id')
-                .eq('user_id', userId);
-
-            const likedPostIds = new Set(likesData?.map(l => l.post_id) || []);
-
-            // Check which posts the user has reposted
-            const { data: repostsData } = await supabase
-                .from('post_reposts')
-                .select('post_id')
-                .eq('user_id', userId);
-
-            const repostedPostIds = new Set(repostsData?.map(r => r.post_id) || []);
-
-            // Fetch mentioned users for all posts
-            const postIds = postsData.map(p => p.id);
-            const postMentionsMap = new Map<string, Map<string, string>>();
-
-            // Try to get mentions from post_mentions table first
-            try {
-                const { data: mentionsData } = await supabase
-                    .from('post_mentions')
-                    .select('post_id, mentioned_user_id')
-                    .in('post_id', postIds);
-
-                // Get profiles for mentioned users
-                const mentionedUserIds = [...new Set(mentionsData?.map(m => m.mentioned_user_id) || [])];
-
-                if (mentionedUserIds.length > 0) {
-                    const { data: mentionedProfiles } = await supabase
-                        .from('profiles')
-                        .select('id, full_name')
-                        .in('id', mentionedUserIds);
-
-                    const mentionedProfilesMap = new Map(mentionedProfiles?.map(p => [p.id, p]) || []);
-
-                    // Build mentioned users map per post
-                    mentionsData?.forEach(mention => {
-                        const profile = mentionedProfilesMap.get(mention.mentioned_user_id);
-                        if (profile) {
-                            if (!postMentionsMap.has(mention.post_id)) {
-                                postMentionsMap.set(mention.post_id, new Map());
-                            }
-                            postMentionsMap.get(mention.post_id)!.set(profile.full_name, profile.id);
-                        }
-                    });
-                }
-            } catch (mentionError) {
-                // Table might not exist yet, fall through to extract from content
-                console.log('post_mentions table not available, extracting from content');
             }
 
-            // Fallback: Extract mentions from content and look up users
-            // This handles posts created before the mentions table existed
-            const mentionRegex = /@([a-zA-Z][a-zA-Z0-9\s]+?)(?=\s|$|[^\w])/g;
-            const allMentionNames = new Set<string>();
-            postsData.forEach(post => {
-                if (!postMentionsMap.has(post.id)) {
-                    const matches = post.content.matchAll(mentionRegex);
-                    for (const match of matches) {
-                        allMentionNames.add(match[1].trim());
-                    }
-                }
-            });
-
-            // Look up users by name if we have mentions not in the table
-            if (allMentionNames.size > 0) {
-                // Use ilike for case-insensitive partial matching
-                const mentionNamesArray = Array.from(allMentionNames);
-                const { data: usersByName } = await supabase
+            if (postsData && postsData.length > 0) {
+                // Fetch profiles for post authors
+                const authorIds = [...new Set(postsData.map(p => p.user_id))];
+                const { data: profilesData } = await supabase
                     .from('profiles')
-                    .select('id, full_name');
+                    .select('id, full_name, avatar_url, user_type, organization_name, is_verified')
+                    .in('id', authorIds);
 
-                // Build a map for flexible matching
-                const allProfiles = usersByName || [];
+                const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
 
-                // Add to posts that don't have mentions from the table
+                // Check which posts the user has liked
+                const { data: likesData } = await supabase
+                    .from('post_likes')
+                    .select('post_id')
+                    .eq('user_id', userId);
+
+                const likedPostIds = new Set(likesData?.map(l => l.post_id) || []);
+
+                // Check which posts the user has reposted
+                const { data: repostsData } = await supabase
+                    .from('post_reposts')
+                    .select('post_id')
+                    .eq('user_id', userId);
+
+                const repostedPostIds = new Set(repostsData?.map(r => r.post_id) || []);
+
+                // Fetch mentioned users for all posts
+                const postIds = postsData.map(p => p.id);
+                const postMentionsMap = new Map<string, Map<string, string>>();
+
+                // Try to get mentions from post_mentions table first
+                try {
+                    const { data: mentionsData } = await supabase
+                        .from('post_mentions')
+                        .select('post_id, mentioned_user_id')
+                        .in('post_id', postIds);
+
+                    // Get profiles for mentioned users
+                    const mentionedUserIds = [...new Set(mentionsData?.map(m => m.mentioned_user_id) || [])];
+
+                    if (mentionedUserIds.length > 0) {
+                        const { data: mentionedProfiles } = await supabase
+                            .from('profiles')
+                            .select('id, full_name')
+                            .in('id', mentionedUserIds);
+
+                        const mentionedProfilesMap = new Map(mentionedProfiles?.map(p => [p.id, p]) || []);
+
+                        // Build mentioned users map per post
+                        mentionsData?.forEach(mention => {
+                            const profile = mentionedProfilesMap.get(mention.mentioned_user_id);
+                            if (profile) {
+                                if (!postMentionsMap.has(mention.post_id)) {
+                                    postMentionsMap.set(mention.post_id, new Map());
+                                }
+                                postMentionsMap.get(mention.post_id)!.set(profile.full_name, profile.id);
+                            }
+                        });
+                    }
+                } catch (mentionError) {
+                    // Table might not exist yet, fall through to extract from content
+                    console.log('post_mentions table not available, extracting from content');
+                }
+
+                // Fallback: Extract mentions from content and look up users
+                // This handles posts created before the mentions table existed
+                const mentionRegex = /@([a-zA-Z][a-zA-Z0-9\s]+?)(?=\s|$|[^\w])/g;
+                const allMentionNames = new Set<string>();
                 postsData.forEach(post => {
                     if (!postMentionsMap.has(post.id)) {
                         const matches = post.content.matchAll(mentionRegex);
-                        const postMentions = new Map<string, string>();
                         for (const match of matches) {
-                            const mentionName = match[1].trim().toLowerCase();
-                            // Find matching user - try exact match first, then partial
-                            const matchedUser = allProfiles.find(u => {
-                                const fullNameLower = u.full_name.toLowerCase();
-                                return fullNameLower === mentionName ||
-                                    fullNameLower.startsWith(mentionName) ||
-                                    mentionName.startsWith(fullNameLower);
-                            });
-                            if (matchedUser) {
-                                // Store with full_name as key for proper slug generation
-                                postMentions.set(matchedUser.full_name, matchedUser.id);
-                            }
-                        }
-                        if (postMentions.size > 0) {
-                            postMentionsMap.set(post.id, postMentions);
+                            allMentionNames.add(match[1].trim());
                         }
                     }
                 });
+
+                // Look up users by name if we have mentions not in the table
+                if (allMentionNames.size > 0) {
+                    // Use ilike for case-insensitive partial matching
+                    const mentionNamesArray = Array.from(allMentionNames);
+                    const { data: usersByName } = await supabase
+                        .from('profiles')
+                        .select('id, full_name');
+
+                    // Build a map for flexible matching
+                    const allProfiles = usersByName || [];
+
+                    // Add to posts that don't have mentions from the table
+                    postsData.forEach(post => {
+                        if (!postMentionsMap.has(post.id)) {
+                            const matches = post.content.matchAll(mentionRegex);
+                            const postMentions = new Map<string, string>();
+                            for (const match of matches) {
+                                const mentionName = match[1].trim().toLowerCase();
+                                // Find matching user - try exact match first, then partial
+                                const matchedUser = allProfiles.find(u => {
+                                    const fullNameLower = u.full_name.toLowerCase();
+                                    return fullNameLower === mentionName ||
+                                        fullNameLower.startsWith(mentionName) ||
+                                        mentionName.startsWith(fullNameLower);
+                                });
+                                if (matchedUser) {
+                                    // Store with full_name as key for proper slug generation
+                                    postMentions.set(matchedUser.full_name, matchedUser.id);
+                                }
+                            }
+                            if (postMentions.size > 0) {
+                                postMentionsMap.set(post.id, postMentions);
+                            }
+                        }
+                    });
+                }
+
+                const postsWithProfiles = postsData.map(post => ({
+                    ...post,
+                    profile: profilesMap.get(post.user_id) || {
+                        full_name: 'AgriPro Member',
+                        avatar_url: null,
+                        user_type: 'farmer',
+                        organization_name: null,
+                        is_verified: false,
+                        profile_incomplete: true,
+                    },
+                    user_has_liked: likedPostIds.has(post.id),
+                    user_has_reposted: repostedPostIds.has(post.id),
+                    mentioned_users: postMentionsMap.get(post.id) || new Map()
+                }));
+
+                setPosts(prev => {
+                    if (append) {
+                        const existingIds = new Set(prev.map(p => p.id));
+                        const merged = postsWithProfiles.filter(p => !existingIds.has(p.id));
+                        return [...prev, ...merged];
+                    }
+                    return postsWithProfiles;
+                });
+
+                setFeedOffset(offset + postsWithProfiles.length);
+                setHasMorePosts(postsWithProfiles.length === limit);
+            } else if (!append) {
+                setPosts([]);
+                setFeedOffset(0);
+                setHasMorePosts(false);
+            } else {
+                setHasMorePosts(false);
             }
-
-            const postsWithProfiles = postsData.map(post => ({
-                ...post,
-                profile: profilesMap.get(post.user_id) || {
-                    full_name: 'AgriPro Member',
-                    avatar_url: null,
-                    user_type: 'farmer',
-                    organization_name: null,
-                    is_verified: false,
-                    profile_incomplete: true,
-                },
-                user_has_liked: likedPostIds.has(post.id),
-                user_has_reposted: repostedPostIds.has(post.id),
-                mentioned_users: postMentionsMap.get(post.id) || new Map()
-            }));
-
-            setPosts(postsWithProfiles);
-        } else {
-            setPosts([]);
+        } finally {
+            if (append) {
+                setLoadingMorePosts(false);
+            }
         }
+    };
+
+    const loadMorePosts = () => {
+        if (!user || loadingMorePosts || !hasMorePosts || selectedHashtag) return;
+        fetchPosts(user.id, { offset: feedOffset, append: true });
     };
 
     const fetchPostsByHashtag = async (hashtag: string) => {
         if (!user) return;
 
         setLoading(true);
+        setHasMorePosts(false);
         try {
             const response = await fetch(`/api/feed/hashtags?tag=${encodeURIComponent(hashtag)}`);
             const data = await response.json();
@@ -620,12 +773,15 @@ export default function FeedPage() {
                 }));
 
                 setPosts(postsWithLikes);
+                setFeedOffset(postsWithLikes.length);
             } else {
                 setPosts([]);
+                setFeedOffset(0);
             }
         } catch (error) {
             console.error('Error fetching posts by hashtag:', error);
             setPosts([]);
+            setFeedOffset(0);
         } finally {
             setLoading(false);
         }
@@ -925,17 +1081,19 @@ export default function FeedPage() {
         // Validation for poll
         if (isPollMode) {
             if (pollOptions.some(opt => !opt.trim())) {
-                alert('Please fill in all poll options');
+                toast.error('Please fill in all poll options');
                 return;
             }
         }
 
         setPosting(true);
+        setUploadStatus(isPollMode ? 'Preparing your poll...' : 'Preparing your update...');
         try {
             let imageUrl = null;
 
             // Upload image if present
             if (newPostImage) {
+                setUploadStatus('Uploading image...');
                 const fileExt = newPostImage.name.split('.').pop();
                 const fileName = `${user.id}/${Date.now()}.${fileExt}`;
 
@@ -946,12 +1104,16 @@ export default function FeedPage() {
                 if (uploadError) {
                     console.error('Image upload error:', uploadError.message);
                     // Continue without image if upload fails
+                    toast.error('Image upload failed. Posting without the image.');
                 } else {
                     const { data: { publicUrl } } = supabase.storage
                         .from('post-images')
                         .getPublicUrl(fileName);
                     imageUrl = publicUrl;
                 }
+                setUploadStatus('Publishing your update...');
+            } else {
+                setUploadStatus('Publishing your update...');
             }
 
             // Insert the post
@@ -986,7 +1148,7 @@ export default function FeedPage() {
 
                 if (optionsError) {
                     console.error('Error creating poll options:', optionsError);
-                    alert(`DEBUG: Poll options failed to save! ${optionsError.message}`);
+                    toast.error('Poll options failed to save. Please try again.');
                     // Non-fatal, but bad UX.
                 }
             }
@@ -1047,17 +1209,19 @@ export default function FeedPage() {
                 mentioned_users: mentionedUsersMap
             };
 
-            setPosts([postWithProfile, ...posts]);
+            setPosts(prev => [postWithProfile, ...prev]);
             setNewPostContent('');
             removeImage();
             setSelectedGif(null);
             setIsPollMode(false);
             setPollOptions(['', '']);
+            toast.success('Post shared with your network.');
         } catch (err: any) {
             console.error('Error posting:', err?.message || err);
-            alert('Failed to post: ' + (err?.message || 'Unknown error'));
+            toast.error(`Failed to post: ${err?.message || 'Unknown error'}`);
         } finally {
             setPosting(false);
+            setUploadStatus(null);
         }
     };
 
@@ -1538,11 +1702,7 @@ export default function FeedPage() {
     };
 
     if (loading) {
-        return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <Loader2 className="w-8 h-8 animate-spin text-green-600" />
-            </div>
-        );
+        return <LoadingFeedPlaceholder />;
     }
 
     return (
@@ -1798,6 +1958,8 @@ export default function FeedPage() {
                                             <div className="relative">
                                                 <button
                                                     onClick={() => setShowGifPicker(!showGifPicker)}
+                                                    aria-expanded={showGifPicker}
+                                                    aria-label="Add GIF"
                                                     className={`p-2 rounded-lg transition-colors ${showGifPicker
                                                         ? "text-blue-600 bg-blue-50"
                                                         : "text-gray-400 hover:text-blue-600 hover:bg-blue-50"
@@ -1831,12 +1993,13 @@ export default function FeedPage() {
                                                 <button
                                                     onClick={() => !newPostImage && setIsPollMode(!isPollMode)}
                                                     disabled={!!newPostImage}
+                                                    aria-pressed={isPollMode}
                                                     className={`p-2 rounded-lg transition-colors ${isPollMode
                                                         ? "text-green-600 bg-green-50"
                                                         : "text-gray-400 hover:text-green-600 hover:bg-green-50 disabled:opacity-50"
                                                         }`}
-                                                    title="Create poll"
-                                                >
+                                                   title="Create poll"
+                                               >
                                                     <BarChart2 className="w-5 h-5 transform rotate-90" />
                                                 </button>
 
@@ -1870,14 +2033,19 @@ export default function FeedPage() {
                                             </div>
                                         </div>
 
-                                        <button
-                                            onClick={handlePost}
-                                            disabled={(!newPostContent.trim() && !newPostImage) || posting}
-                                            className="inline-flex items-center gap-2 px-5 py-2 bg-green-600 text-white font-semibold rounded-full hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                        >
-                                            {posting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                                            Post
-                                        </button>
+                                        <div className="flex flex-col items-end gap-1 text-right">
+                                            {uploadStatus && (
+                                                <span className="text-xs text-gray-500">{uploadStatus}</span>
+                                            )}
+                                            <button
+                                                onClick={handlePost}
+                                                disabled={(!newPostContent.trim() && !newPostImage && !isPollMode) || posting}
+                                                className="inline-flex items-center gap-2 px-5 py-2 bg-green-600 text-white font-semibold rounded-full hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                            >
+                                                {posting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                                {isPollMode ? 'Publish poll' : 'Post'}
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1886,13 +2054,19 @@ export default function FeedPage() {
                         {/* Posts Feed */}
                         <div className="space-y-4">
                             {posts.length > 0 ? (
-                                posts.map((post) => (
-                                    <motion.div
-                                        key={post.id}
-                                        initial={{ opacity: 0, y: 20 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
-                                    >
+                                posts.map((post) => {
+                                    const commentsForPost = postComments[post.id] || [];
+                                    const commentCount = commentsForPost.length;
+                                    const shouldAnimateComments = !prefersReducedMotion && commentCount <= 15;
+                                    const hasComments = commentCount > 0;
+
+                                    return (
+                                        <motion.div
+                                            key={post.id}
+                                            initial={{ opacity: 0, y: 20 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+                                        >
                                         <div className="p-4">
                                             {/* Post Header */}
                                             <div className="flex items-start gap-3 mb-3">
@@ -1997,7 +2171,7 @@ export default function FeedPage() {
                                                     <InlineVideoPlayer url={post.image_url} />
                                                 ) : (
                                                     <div className="rounded-xl overflow-hidden mb-3 bg-gray-100">
-                                                        <img src={post.image_url} alt="" className="w-full max-h-[500px] object-cover" />
+                                                        <ResilientImage src={post.image_url} alt="Post media" className="w-full max-h-[500px] object-cover" />
                                                     </div>
                                                 )
                                             )}
@@ -2005,7 +2179,7 @@ export default function FeedPage() {
                                             {/* GIF Display */}
                                             {post.gif_url && (
                                                 <div className="rounded-xl overflow-hidden mb-3 bg-gray-100">
-                                                    <img src={post.gif_url} alt="GIF" className="w-full max-h-[500px] object-cover" />
+                                                    <ResilientImage src={post.gif_url} alt="GIF" className="w-full max-h-[500px] object-cover" fallbackText="GIF unavailable" />
                                                 </div>
                                             )}
 
@@ -2039,15 +2213,15 @@ export default function FeedPage() {
                                                             </span>
                                                         </div>
                                                         <p className="text-sm text-gray-700 line-clamp-3">{post.quoted_post.content}</p>
-                                                        {post.quoted_post.image_url && (
-                                                            <div className="mt-2 rounded-lg overflow-hidden bg-gray-200">
-                                                                <img
-                                                                    src={post.quoted_post.image_url}
-                                                                    alt=""
-                                                                    className="w-full max-h-32 object-cover"
-                                                                />
-                                                            </div>
-                                                        )}
+                                        {post.quoted_post.image_url && (
+                                            <div className="mt-2 rounded-lg overflow-hidden bg-gray-200">
+                                                <ResilientImage
+                                                    src={post.quoted_post.image_url}
+                                                    alt="Quoted post media"
+                                                    className="w-full max-h-32 object-cover"
+                                                />
+                                            </div>
+                                        )}
                                                     </Link>
                                                 </div>
                                             )}
@@ -2056,6 +2230,8 @@ export default function FeedPage() {
                                             <div className="flex items-center justify-between pt-3 border-t border-gray-100">
                                                 <button
                                                     onClick={() => handleLike(post.id, post.user_has_liked || false)}
+                                                    aria-pressed={post.user_has_liked || false}
+                                                    aria-label={post.user_has_liked ? 'Unlike post' : 'Like post'}
                                                     className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${post.user_has_liked
                                                         ? 'text-red-500 bg-red-50'
                                                         : 'text-gray-500 hover:text-red-500 hover:bg-red-50'
@@ -2066,6 +2242,9 @@ export default function FeedPage() {
                                                 </button>
                                                 <button
                                                     onClick={() => toggleComments(post.id)}
+                                                    aria-expanded={expandedComments.has(post.id)}
+                                                    aria-controls={`comments-${post.id}`}
+                                                    aria-label={expandedComments.has(post.id) ? 'Hide comments' : 'Show comments'}
                                                     className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${expandedComments.has(post.id)
                                                         ? 'text-blue-500 bg-blue-50'
                                                         : 'text-gray-500 hover:text-blue-500 hover:bg-blue-50'
@@ -2078,6 +2257,8 @@ export default function FeedPage() {
                                                 <div className="relative">
                                                     <button
                                                         onClick={() => setRepostMenuOpen(repostMenuOpen === post.id ? null : post.id)}
+                                                        aria-pressed={post.user_has_reposted || false}
+                                                        aria-label={post.user_has_reposted ? 'Undo repost' : 'Repost'}
                                                         className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${post.user_has_reposted
                                                             ? 'text-green-500 bg-green-50'
                                                             : 'text-gray-500 hover:text-green-500 hover:bg-green-50'
@@ -2133,6 +2314,8 @@ export default function FeedPage() {
                                                 <button
                                                     onClick={() => handleBookmark(post.id, !!bookmarkedPostIds.has(post.id))}
                                                     disabled={bookmarkingPost.has(post.id)}
+                                                    aria-pressed={bookmarkedPostIds.has(post.id)}
+                                                    aria-label={bookmarkedPostIds.has(post.id) ? 'Remove bookmark' : 'Save post'}
                                                     className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${bookmarkedPostIds.has(post.id)
                                                         ? "text-green-600"
                                                         : "text-gray-500 hover:text-green-600"
@@ -2147,12 +2330,14 @@ export default function FeedPage() {
                                         </div>
 
                                         {/* Comments Section */}
-                                        <AnimatePresence>
+                                        <AnimatePresence initial={false}>
                                             {expandedComments.has(post.id) && (
                                                 <motion.div
-                                                    initial={{ height: 0, opacity: 0 }}
+                                                    id={`comments-${post.id}`}
+                                                    initial={shouldAnimateComments ? { height: 0, opacity: 0 } : false}
                                                     animate={{ height: 'auto', opacity: 1 }}
-                                                    exit={{ height: 0, opacity: 0 }}
+                                                    exit={shouldAnimateComments ? { height: 0, opacity: 0 } : { opacity: 0 }}
+                                                    transition={shouldAnimateComments ? { duration: 0.2 } : { duration: 0.15 }}
                                                     className="border-t border-gray-100 bg-gray-50"
                                                 >
                                                     <div className="divide-y divide-gray-100">
@@ -2161,9 +2346,9 @@ export default function FeedPage() {
                                                             <div className="flex justify-center py-8">
                                                                 <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
                                                             </div>
-                                                        ) : postComments[post.id]?.length > 0 ? (
+                                                        ) : hasComments ? (
                                                             <div>
-                                                                {postComments[post.id].map((comment, commentIndex) => (
+                                                                {commentsForPost.map((comment, commentIndex) => (
                                                                     <div key={comment.id} className="relative">
                                                                         {/* Main Comment */}
                                                                         <div className="flex px-4 py-3 hover:bg-gray-50/50 transition-colors">
@@ -2256,14 +2441,24 @@ export default function FeedPage() {
                                                                                 {/* Comment Image */}
                                                                                 {comment.image_url && (
                                                                                     <div className="mt-3 rounded-2xl overflow-hidden border border-gray-200">
-                                                                                        <img src={comment.image_url} alt="" className="max-h-80 w-auto object-cover" />
+                                                                                        <ResilientImage
+                                                                                            src={comment.image_url}
+                                                                                            alt="Comment image"
+                                                                                            className="max-h-80 w-auto object-cover"
+                                                                                            fallbackText="Image unavailable"
+                                                                                        />
                                                                                     </div>
                                                                                 )}
 
                                                                                 {/* Comment GIF */}
                                                                                 {comment.gif_url && (
                                                                                     <div className="mt-3 rounded-2xl overflow-hidden border border-gray-200">
-                                                                                        <img src={comment.gif_url} alt="GIF" className="max-h-80 w-auto object-cover" />
+                                                                                        <ResilientImage
+                                                                                            src={comment.gif_url}
+                                                                                            alt="Comment GIF"
+                                                                                            className="max-h-80 w-auto object-cover"
+                                                                                            fallbackText="GIF unavailable"
+                                                                                        />
                                                                                     </div>
                                                                                 )}
 
@@ -2535,7 +2730,12 @@ export default function FeedPage() {
                                                                                             </p>
                                                                                             {reply.image_url && (
                                                                                                 <div className="mt-2 rounded-xl overflow-hidden border border-gray-200">
-                                                                                                    <img src={reply.image_url} alt="" className="max-h-60 w-auto object-cover" />
+                                                                                                    <ResilientImage
+                                                                                                        src={reply.image_url}
+                                                                                                        alt="Reply image"
+                                                                                                        className="max-h-60 w-auto object-cover"
+                                                                                                        fallbackText="Image unavailable"
+                                                                                                    />
                                                                                                 </div>
                                                                                             )}
 
@@ -2808,7 +3008,8 @@ export default function FeedPage() {
                                             )}
                                         </AnimatePresence>
                                     </motion.div>
-                                ))
+                                    );
+                                })
                             ) : (
                                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
                                     <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -2816,6 +3017,28 @@ export default function FeedPage() {
                                     </div>
                                     <h3 className="text-lg font-bold text-gray-900 mb-2">No posts yet</h3>
                                     <p className="text-gray-500 mb-4">Be the first to share something with the community!</p>
+                                </div>
+                            )}
+
+                            {!selectedHashtag && posts.length > 0 && (
+                                <div className="flex justify-center pt-2">
+                                    <button
+                                        onClick={loadMorePosts}
+                                        disabled={!hasMorePosts || loadingMorePosts}
+                                        aria-busy={loadingMorePosts}
+                                        className="px-5 py-2.5 text-sm font-semibold rounded-full border border-gray-200 text-gray-700 hover:border-gray-300 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                    >
+                                        {loadingMorePosts ? (
+                                            <>
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                                Loading more posts...
+                                            </>
+                                        ) : hasMorePosts ? (
+                                            'Load more posts'
+                                        ) : (
+                                            "You're all caught up"
+                                        )}
+                                    </button>
                                 </div>
                             )}
                         </div>
@@ -2837,7 +3060,14 @@ export default function FeedPage() {
                             {/* People to Follow */}
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                                 <div className="p-4 border-b border-gray-100">
-                                    <h3 className="font-bold text-gray-900">People to Connect With</h3>
+                                    <h3 className="font-bold text-gray-900">
+                                        {selectedHashtag ? `Voices in #${selectedHashtag}` : 'People to Connect With'}
+                                    </h3>
+                                    {selectedHashtag && (
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Connect with members who often share insights on this topic.
+                                        </p>
+                                    )}
                                 </div>
                                 <div className="divide-y divide-gray-50">
                                     {suggestedUsers.map((person) => (
@@ -2881,13 +3111,31 @@ export default function FeedPage() {
                             {/* Trending Topics */}
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
                                 <h3 className="font-bold text-gray-900 mb-3">Trending Topics</h3>
+                                {selectedHashtag && (
+                                    <div className="mb-3 rounded-xl border border-green-100 bg-green-50 p-3 text-sm text-green-800">
+                                        <p className="font-semibold">#{selectedHashtag}</p>
+                                        <p className="text-xs text-green-700 mt-1">
+                                            Viewing posts tagged with #{selectedHashtag}. Explore related topics or clear the filter.
+                                        </p>
+                                        <button
+                                            onClick={() => {
+                                                setSelectedHashtag(null);
+                                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                                            }}
+                                            className="mt-3 inline-flex items-center text-xs font-semibold text-green-700 hover:text-green-900"
+                                        >
+                                            <X className="w-3 h-3 mr-1" />
+                                            Clear hashtag filter
+                                        </button>
+                                    </div>
+                                )}
                                 <div className="space-y-2">
                                     {loadingTrending ? (
                                         <div className="flex justify-center py-4">
                                             <Loader2 className="w-5 h-5 animate-spin text-green-600" />
                                         </div>
-                                    ) : trendingHashtags.length > 0 ? (
-                                        trendingHashtags.slice(0, 5).map((hashtag) => (
+                                    ) : displayedTrendingHashtags.length > 0 ? (
+                                        displayedTrendingHashtags.slice(0, 5).map((hashtag) => (
                                             <button
                                                 key={hashtag.id}
                                                 onClick={() => {
@@ -2906,7 +3154,9 @@ export default function FeedPage() {
                                             </button>
                                         ))
                                     ) : (
-                                        <p className="text-sm text-gray-500 text-center py-2">No trending topics yet</p>
+                                        <p className="text-sm text-gray-500 text-center py-2">
+                                            {selectedHashtag ? 'No other related topics right now.' : 'No trending topics yet'}
+                                        </p>
                                     )}
                                 </div>
                             </div>
