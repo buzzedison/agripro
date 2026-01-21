@@ -20,7 +20,8 @@ export default async function NewProductPage() {
         .eq('user_id', user.id)
         .single()
 
-    if (!vendor || vendor.status !== 'approved') {
+    const disallowedStatuses = ['rejected', 'suspended']
+    if (!vendor || disallowedStatuses.includes(vendor.status)) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
                 <div className="bg-white rounded-2xl shadow p-8 max-w-md text-center">
@@ -29,7 +30,7 @@ export default async function NewProductPage() {
                     </div>
                     <h1 className="text-xl font-bold text-gray-900 mb-2">Vendor Access Required</h1>
                     <p className="text-gray-600 mb-6">
-                        You need to have an approved vendor account to post products.
+                        Your vendor account needs attention before posting products.
                     </p>
                     <Link
                         href="/greenmarket/dashboard"

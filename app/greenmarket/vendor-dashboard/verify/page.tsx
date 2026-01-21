@@ -15,6 +15,8 @@ interface Vendor {
     id: string;
     business_name: string;
     verification_level: 'basic' | 'verified' | 'premium';
+    verification_status: 'not_submitted' | 'pending_review' | 'approved' | 'rejected';
+    onboarding_step: number | null;
     id_document_url: string | null;
     id_document_type: string | null;
     business_document_url: string | null;
@@ -54,7 +56,7 @@ export default function VerifyVendorPage() {
 
         const { data: vendorData, error } = await supabase
             .from('trade_vendors')
-            .select('id, business_name, verification_level, id_document_url, id_document_type, business_document_url, business_document_type')
+            .select('id, business_name, verification_level, verification_status, onboarding_step, id_document_url, id_document_type, business_document_url, business_document_type')
             .eq('user_id', user.id)
             .single();
 
@@ -133,7 +135,9 @@ export default function VerifyVendorPage() {
 
         try {
             const updates: any = {
-                verification_submitted_at: new Date().toISOString()
+                verification_submitted_at: new Date().toISOString(),
+                verification_status: 'pending_review',
+                is_verified: false
             };
 
             // Upload ID document if new file selected
@@ -152,22 +156,9 @@ export default function VerifyVendorPage() {
                 updates.business_document_type = businessType;
             }
 
-            // Determine new verification level
-            // For now, auto-verify on ID upload (in production, this would be admin-reviewed)
-            if (idFile || vendor.id_document_url) {
-                updates.verification_level = 'verified';
-                updates.is_verified = true;
-                updates.id_verified_at = new Date().toISOString();
-            }
-
-            if ((businessFile || vendor.business_document_url) && (idFile || vendor.id_document_url)) {
-                updates.verification_level = 'premium';
-                updates.business_verified_at = new Date().toISOString();
-            }
-
-            // Update onboarding step if needed
-            if (vendor.verification_level === 'basic') {
-                updates.onboarding_step = 4; // Move to next step
+            // Preserve onboarding step progression once documents submitted
+            if (vendor.verification_level === 'basic' && (idFile || vendor.id_document_url)) {
+                updates.onboarding_step = Math.max(vendor.onboarding_step || 2, 4);
             }
 
             const { error: updateError } = await supabase
@@ -177,7 +168,7 @@ export default function VerifyVendorPage() {
 
             if (updateError) throw updateError;
 
-            setSuccess('Verification documents submitted successfully!');
+            setSuccess('Documents submitted for review. You will receive an update once approved.');
             
             // Refresh vendor data
             await fetchVendorData();
@@ -206,9 +197,29 @@ export default function VerifyVendorPage() {
 
     if (!vendor) return null;
 
-    const canSubmit = idFile || businessFile;
+    const isPendingReview = vendor.verification_status === 'pending_review';
+    const isRejected = vendor.verification_status === 'rejected';
+    const canSubmit = (idFile || businessFile) && !isPendingReview;
     const isAlreadyVerified = vendor.verification_level === 'verified' || vendor.verification_level === 'premium';
     const isAlreadyPremium = vendor.verification_level === 'premium';
+    const statusChip = (() => {
+        switch (vendor.verification_status) {
+            case 'pending_review':
+                return <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">Pending review</span>;
+            case 'approved':
+                return <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">Approved</span>;
+            case 'rejected':
+                return <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">Needs updates</span>;
+            default:
+                return <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">Not submitted</span>;
+        }
+    })();
+    const statusDescriptionMap: Record<Vendor['verification_status'], string> = {
+        not_submitted: 'Upload your ID and business docs to kick off verification.',
+        pending_review: 'Thanks! Your verification is under review by the AgriPro team.',
+        approved: 'All documents have been approved. You are good to trade!',
+        rejected: 'We need updates on your documents. Please re-upload with the correct details.'
+    };
 
     return (
         <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
@@ -235,47 +246,72 @@ export default function VerifyVendorPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     className={`rounded-xl p-6 mb-8 ${
-                        vendor.verification_level === 'premium'
+                        vendor.verification_status === 'pending_review'
                             ? 'bg-amber-50 border border-amber-200'
-                            : vendor.verification_level === 'verified'
-                            ? 'bg-blue-50 border border-blue-200'
+                            : vendor.verification_status === 'approved'
+                            ? 'bg-green-50 border border-green-200'
+                            : vendor.verification_status === 'rejected'
+                            ? 'bg-red-50 border border-red-200'
                             : 'bg-gray-50 border border-gray-200'
                     }`}
                 >
                     <div className="flex items-center gap-4">
                         <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                            vendor.verification_level === 'premium'
+                            vendor.verification_status === 'approved'
+                                ? 'bg-green-100'
+                                : vendor.verification_status === 'pending_review'
                                 ? 'bg-amber-100'
-                                : vendor.verification_level === 'verified'
-                                ? 'bg-blue-100'
+                                : vendor.verification_status === 'rejected'
+                                ? 'bg-red-100'
                                 : 'bg-gray-200'
                         }`}>
-                            {vendor.verification_level === 'premium' ? (
-                                <Star className="w-6 h-6 text-amber-600 fill-current" />
-                            ) : vendor.verification_level === 'verified' ? (
-                                <CheckCircle className="w-6 h-6 text-blue-600" />
+                            {vendor.verification_status === 'approved' ? (
+                                <CheckCircle className="w-6 h-6 text-green-600" />
+                            ) : vendor.verification_status === 'pending_review' ? (
+                                <Loader2 className="w-6 h-6 text-amber-600 animate-spin" />
+                            ) : vendor.verification_status === 'rejected' ? (
+                                <AlertCircle className="w-6 h-6 text-red-600" />
                             ) : (
                                 <Shield className="w-6 h-6 text-gray-400" />
                             )}
                         </div>
                         <div>
-                            <h3 className="font-bold text-gray-900">
-                                {vendor.verification_level === 'premium'
-                                    ? 'Premium Vendor'
-                                    : vendor.verification_level === 'verified'
-                                    ? 'Verified Vendor'
-                                    : 'Basic Vendor'}
-                            </h3>
+                            <div className="flex items-center gap-3 flex-wrap">
+                                <h3 className="font-bold text-gray-900">
+                                    {vendor.verification_level === 'premium'
+                                        ? 'Premium Vendor'
+                                        : vendor.verification_level === 'verified'
+                                        ? 'Verified Vendor'
+                                        : 'Basic Vendor'}
+                                </h3>
+                                {statusChip}
+                            </div>
                             <p className="text-sm text-gray-600">
-                                {vendor.verification_level === 'premium'
-                                    ? 'Your business is fully verified with all documents.'
-                                    : vendor.verification_level === 'verified'
-                                    ? 'Your identity is verified. Add business documents for Premium status.'
-                                    : 'Upload your ID to become a Verified Vendor.'}
+                                {statusDescriptionMap[vendor.verification_status]}
                             </p>
                         </div>
                     </div>
                 </motion.div>
+
+                {isPendingReview && (
+                    <div className="mb-8 rounded-2xl border border-amber-200 bg-white p-4 flex items-start gap-3">
+                        <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
+                        <div className="text-sm text-gray-700">
+                            <p className="font-semibold text-amber-700">Documents submitted</p>
+                            <p>We&apos;re reviewing your verification. You can keep updating products while you wait.</p>
+                        </div>
+                    </div>
+                )}
+
+                {isRejected && (
+                    <div className="mb-8 rounded-2xl border border-red-200 bg-white p-4 flex items-start gap-3">
+                        <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+                        <div className="text-sm text-gray-700">
+                            <p className="font-semibold text-red-700">Action required</p>
+                            <p>Please upload clearer documents so we can approve your profile.</p>
+                        </div>
+                    </div>
+                )}
 
                 {/* Verification Tiers Info */}
                 <motion.div
@@ -542,7 +578,16 @@ export default function VerifyVendorPage() {
                         {submitting ? (
                             <>
                                 <Loader2 className="w-5 h-5 animate-spin" />
-                                {uploading === 'id' ? 'Uploading ID...' : uploading === 'business' ? 'Uploading Business Doc...' : 'Processing...'}
+                                {uploading === 'id'
+                                    ? 'Uploading ID...'
+                                    : uploading === 'business'
+                                    ? 'Uploading Business Doc...'
+                                    : 'Processing...'}
+                            </>
+                        ) : isPendingReview ? (
+                            <>
+                                <Shield className="w-5 h-5" />
+                                Awaiting review
                             </>
                         ) : (
                             <>
@@ -554,6 +599,11 @@ export default function VerifyVendorPage() {
                     <p className="text-center text-xs text-gray-400 mt-4">
                         Your documents are securely stored and used only for verification purposes.
                     </p>
+                    {isPendingReview && (
+                        <p className="text-center text-xs text-amber-600 mt-2">
+                            No action required while we review your submission.
+                        </p>
+                    )}
                 </div>
             </div>
         </div>

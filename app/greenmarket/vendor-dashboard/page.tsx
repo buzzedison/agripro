@@ -11,7 +11,7 @@ import {
     Plus, ShoppingBag, Settings, BarChart3, Package,
     Shield, FileText, Camera, Upload, X, ChevronRight,
     Star, Eye, TrendingUp, Users, AlertCircle, Sparkles,
-    Building2, CreditCard, Truck, Bell, ExternalLink
+    Building2, CreditCard, Truck, Bell, ExternalLink, Brush, MessageCircle
 } from 'lucide-react';
 import VendorModeSwitcher from '@/components/VendorModeSwitcher';
 
@@ -31,6 +31,7 @@ interface Vendor {
     status: string;
     is_verified: boolean;
     verification_level: 'basic' | 'verified' | 'premium';
+    verification_status: 'not_submitted' | 'pending_review' | 'approved' | 'rejected';
     onboarding_completed: boolean;
     onboarding_step: number;
     profile_completed: boolean;
@@ -70,6 +71,33 @@ const onboardingSteps = [
         description: 'List your first product',
         icon: Package,
         href: '/greenmarket/products/new'
+    }
+];
+
+const dashboardActions = [
+    {
+        title: 'Add new product',
+        description: 'List fresh inventory or seasonal offers.',
+        href: '/greenmarket/products/new',
+        icon: Package
+    },
+    {
+        title: 'Complete verification',
+        description: 'Upload identity and business docs.',
+        href: '/greenmarket/vendor-dashboard/verify',
+        icon: Shield
+    },
+    {
+        title: 'Update storefront',
+        description: 'Refresh visuals & company story.',
+        href: '/greenmarket/vendor-dashboard/profile',
+        icon: Brush
+    },
+    {
+        title: 'Respond to messages',
+        description: 'Keep buyers warm inside AgriPro.',
+        href: '/messages',
+        icon: MessageCircle
     }
 ];
 
@@ -288,6 +316,49 @@ function VendorDashboardContent() {
                         </div>
                     </div>
                 </motion.div>
+
+                {/* Metrics */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                    {[
+                        { label: 'Active products', value: stats.products, accent: 'bg-emerald-50 text-emerald-700' },
+                        { label: 'Profile views', value: stats.views || 0, accent: 'bg-blue-50 text-blue-700' },
+                        { label: 'New inquiries', value: stats.inquiries || 0, accent: 'bg-amber-50 text-amber-700' }
+                    ].map((metric) => (
+                        <div key={metric.label} className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+                            <p className="text-sm text-gray-500">{metric.label}</p>
+                            <p className={`text-3xl font-bold mt-2 ${metric.accent}`}>{metric.value}</p>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Action shortcuts */}
+                <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+                    {dashboardActions.map((action) => (
+                        <Link
+                            key={action.title}
+                            href={action.href}
+                            className="rounded-2xl bg-white border border-gray-100 p-4 shadow-sm hover:shadow-md transition-shadow flex flex-col gap-2"
+                        >
+                            <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-500">
+                                <action.icon className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <p className="font-semibold text-gray-900">{action.title}</p>
+                                <p className="text-sm text-gray-500">{action.description}</p>
+                            </div>
+                        </Link>
+                    ))}
+                </div>
+
+                {vendor.verification_status === 'pending_review' && (
+                    <div className="mb-8 rounded-2xl border border-amber-200 bg-white p-5 flex items-start gap-3">
+                        <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
+                        <div className="text-sm text-gray-700">
+                            <p className="font-semibold text-amber-700">Verification pending</p>
+                            <p>Your documents are under review. We&apos;ll email you when you&apos;re approved.</p>
+                        </div>
+                    </div>
+                )}
 
                 {/* Onboarding Progress */}
                 {!vendor.onboarding_completed && (

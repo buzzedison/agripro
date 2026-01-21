@@ -18,6 +18,7 @@ interface ProductData {
     name: string
     description: string
     price: number
+    currency: string
     unit: string
     categoryId: string
     stockStatus: string
@@ -91,6 +92,15 @@ export default function ProductForm({ categories, userId, initialData, action, s
         setPreviews(prev => prev.filter((_, i) => i !== index))
     }
 
+    const currencyOptions = [
+        { code: 'GHS', label: 'Ghana Cedi (GHS)' },
+        { code: 'USD', label: 'US Dollar (USD)' },
+        { code: 'KES', label: 'Kenyan Shilling (KES)' },
+        { code: 'NGN', label: 'Nigerian Naira (NGN)' },
+        { code: 'ZAR', label: 'South African Rand (ZAR)' },
+        { code: 'EUR', label: 'Euro (EUR)' }
+    ]
+
     return (
         <form action={formAction} className="space-y-8">
             {/* Hidden input for images */}
@@ -126,10 +136,10 @@ export default function ProductForm({ categories, userId, initialData, action, s
                         )}
                     </div>
 
-                    <div className="grid md:grid-cols-2 gap-4">
-                        <div>
+                    <div className="grid md:grid-cols-3 gap-4">
+                        <div className="md:col-span-2">
                             <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
-                                Price (GHS)
+                                Price
                             </label>
                             <div className="relative">
                                 <i className="absolute left-3 top-3 text-gray-400">
@@ -146,6 +156,23 @@ export default function ProductForm({ categories, userId, initialData, action, s
                                     className="pl-10 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                                 />
                             </div>
+                        </div>
+                        <div>
+                            <label htmlFor="currency" className="block text-sm font-medium text-gray-700 mb-1">
+                                Currency
+                            </label>
+                            <select
+                                name="currency"
+                                id="currency"
+                                defaultValue={initialData?.currency || 'GHS'}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            >
+                                {currencyOptions.map((currency) => (
+                                    <option key={currency.code} value={currency.code}>
+                                        {currency.label}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                         <div>
                             <label htmlFor="unit" className="block text-sm font-medium text-gray-700 mb-1">

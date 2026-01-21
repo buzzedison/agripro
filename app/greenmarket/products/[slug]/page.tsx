@@ -59,6 +59,16 @@ export default async function ProductDetailsPage({ params }: PageProps) {
     const { data: { user } } = await supabase.auth.getUser();
     const isOwner = user && vendor.user_id === user.id;
 
+    const currencySymbols: Record<string, string> = {
+        GHS: '₵',
+        USD: '$',
+        KES: 'KSh',
+        NGN: '₦',
+        ZAR: 'R',
+        EUR: '€'
+    };
+    const priceSymbol = currencySymbols[product.currency as string] || product.currency || 'GHS';
+
     return (
         <div className="min-h-screen bg-gray-50 py-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -137,7 +147,9 @@ export default async function ProductDetailsPage({ params }: PageProps) {
                             {/* Price */}
                             <div className="mb-8 p-6 bg-gray-50 rounded-2xl border border-gray-100">
                                 <div className="flex items-baseline gap-2">
-                                    <span className="text-4xl font-bold text-green-700">GHS {product.price.toFixed(2)}</span>
+                                    <span className="text-4xl font-bold text-green-700">
+                                        {priceSymbol} {product.price.toFixed(2)}
+                                    </span>
                                     <span className="text-gray-500 font-medium">/ {product.unit}</span>
                                 </div>
                             </div>

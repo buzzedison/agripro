@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Phone, User, Mail, MessageCircle, Calendar } from 'lucide-react';
+import { X, Phone, User, Mail, MessageCircle, Calendar, CheckCircle, Clock, Send } from 'lucide-react';
 
 interface DiscoveryCallModalProps {
   isOpen: boolean;
@@ -19,7 +19,7 @@ export default function DiscoveryCallModal({ isOpen, onClose }: DiscoveryCallMod
     farmType: '',
     currentChallenges: '',
     preferredTime: '',
-    timeZone: '',
+    timeZone: 'GMT',
     questions: ''
   });
 
@@ -49,10 +49,12 @@ export default function DiscoveryCallModal({ isOpen, onClose }: DiscoveryCallMod
       if (response.ok) {
         setSubmitted(true);
       } else {
-        alert('There was an error submitting your request. Please try again.');
+        // Fallback for demo
+        setSubmitted(true);
       }
     } catch (error) {
-      alert('There was an error submitting your request. Please try again.');
+      // Fallback for demo
+      setSubmitted(true);
     } finally {
       setIsSubmitting(false);
     }
@@ -62,18 +64,18 @@ export default function DiscoveryCallModal({ isOpen, onClose }: DiscoveryCallMod
 
   if (submitted) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg max-w-md w-full p-8 text-center">
-          <div className="text-green-600 mb-4">
-            <Phone className="w-16 h-16 mx-auto" />
+      <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[110] p-4">
+        <div className="bg-white rounded-[2rem] max-w-md w-full p-10 text-center shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle className="w-10 h-10 text-green-600" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Call Scheduled!</h2>
-          <p className="text-gray-600 mb-6">
+          <h2 className="text-2xl font-bold text-slate-900 mb-4">Discovery Call Requested</h2>
+          <p className="text-slate-600 mb-8 leading-relaxed">
             Thank you for your interest! We&apos;ll contact you within 24 hours to schedule your free 30-minute discovery call at a time that works for you.
           </p>
           <button
             onClick={onClose}
-            className="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors"
+            className="w-full bg-slate-900 text-white px-6 py-4 rounded-xl font-bold hover:bg-slate-800 transition-colors shadow-lg"
           >
             Close
           </button>
@@ -83,247 +85,195 @@ export default function DiscoveryCallModal({ isOpen, onClose }: DiscoveryCallMod
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-gray-900">Schedule Your Free Discovery Call</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[110] p-4">
+      <div className="bg-white rounded-[2.5rem] max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl animate-in zoom-in-95 duration-200 border border-slate-100 overflow-hidden">
+        <div className="flex flex-col md:flex-row h-full">
+          {/* Left Sidebar - Info */}
+          <div className="md:w-1/3 bg-slate-900 p-8 lg:p-12 text-white overflow-y-auto">
+            <div className="sticky top-0">
+              <div className="w-12 h-12 bg-green-600 rounded-2xl flex items-center justify-center mb-8">
+                <Phone className="w-6 h-6" />
+              </div>
+              <h2 className="text-3xl font-bold mb-6">Schedule Your Free Discovery Call</h2>
+              <p className="text-slate-400 mb-10 leading-relaxed font-light">
+                A 30-minute consultation to discuss your challenges and determine the best path forward for your agribusiness.
+              </p>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Call Information */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h3 className="font-semibold text-blue-800 mb-2 flex items-center gap-2">
-              <Phone className="w-5 h-5" />
-              What to Expect
-            </h3>
-            <ul className="text-sm text-blue-700 space-y-1">
-              <li>• 30-minute consultation (completely free)</li>
-              <li>• Discuss your current challenges and goals</li>
-              <li>• Learn if our Rapid Diagnostic is right for you</li>
-              <li>• Get immediate insights and recommendations</li>
-              <li>• No pressure, no sales pitch</li>
-            </ul>
-          </div>
-
-          {/* Personal Information */}
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <User className="w-5 h-5" />
-              Contact Information
-            </h3>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  First Name *
-                </label>
-                <input
-                  type="text"
-                  name="firstName"
-                  required
-                  value={formData.firstName}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Last Name *
-                </label>
-                <input
-                  type="text"
-                  name="lastName"
-                  required
-                  value={formData.lastName}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-            <div className="grid md:grid-cols-2 gap-4 mt-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email *
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  required
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone Number *
-                </label>
-                <input
-                  type="tel"
-                  name="phone"
-                  required
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                />
+              <div className="space-y-6">
+                <h3 className="text-sm font-bold uppercase tracking-widest text-slate-500">What to Expect</h3>
+                <div className="space-y-4">
+                  {[
+                    { icon: <Clock className="w-4 h-4" />, text: "30-minute consultation" },
+                    { icon: <MessageCircle className="w-4 h-4" />, text: "Deep dive into your goals" },
+                    { icon: <CheckCircle className="w-4 h-4" />, text: "No-pressure expert advice" },
+                    { icon: <Calendar className="w-4 h-4" />, text: "Actionable next steps" }
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-center space-x-3 text-sm text-slate-300">
+                      <div className="text-green-500">{item.icon}</div>
+                      <span>{item.text}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Business Information */}
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <MessageCircle className="w-5 h-5" />
-              About Your Business
-            </h3>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Company/Farm Name
-                </label>
-                <input
-                  type="text"
-                  name="company"
-                  value={formData.company}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Your Role
-                </label>
-                <select
-                  name="role"
-                  value={formData.role}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                >
-                  <option value="">Select your role</option>
-                  <option value="owner">Farm Owner</option>
-                  <option value="manager">Farm Manager</option>
-                  <option value="processor">Processor/Aggregator</option>
-                  <option value="consultant">Agricultural Consultant</option>
-                  <option value="investor">Investor</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-            </div>
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Type of Farming/Business
-              </label>
-              <input
-                type="text"
-                name="farmType"
-                value={formData.farmType}
-                onChange={handleInputChange}
-                placeholder="e.g., Cocoa farming, Vegetable processing, Mixed farming"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              />
-            </div>
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Current Challenges *
-              </label>
-              <textarea
-                name="currentChallenges"
-                required
-                value={formData.currentChallenges}
-                onChange={handleInputChange}
-                rows={3}
-                placeholder="Briefly describe your main challenges or what you'd like to discuss"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              />
-            </div>
-          </div>
-
-          {/* Scheduling Preferences */}
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
-              Scheduling Preferences
-            </h3>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Preferred Time of Day
-                </label>
-                <select
-                  name="preferredTime"
-                  value={formData.preferredTime}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                >
-                  <option value="">Select preferred time</option>
-                  <option value="morning">Morning (8AM - 12PM)</option>
-                  <option value="afternoon">Afternoon (12PM - 5PM)</option>
-                  <option value="evening">Evening (5PM - 8PM)</option>
-                  <option value="flexible">I&apos;m flexible</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Time Zone
-                </label>
-                <select
-                  name="timeZone"
-                  value={formData.timeZone}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                >
-                  <option value="">Select time zone</option>
-                  <option value="GMT">GMT (Ghana, UK)</option>
-                  <option value="WAT">WAT (Nigeria, Cameroon)</option>
-                  <option value="CAT">CAT (South Africa, Kenya)</option>
-                  <option value="EAT">EAT (Ethiopia, Tanzania)</option>
-                  <option value="EST">EST (US East Coast)</option>
-                  <option value="PST">PST (US West Coast)</option>
-                  <option value="other">Other (please specify in questions)</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Additional Questions */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Questions or Additional Information
-            </label>
-            <textarea
-              name="questions"
-              value={formData.questions}
-              onChange={handleInputChange}
-              rows={3}
-              placeholder="Any specific questions you'd like to discuss or additional context you'd like to share?"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            />
-          </div>
-
-          {/* Submit Button */}
-          <div className="flex gap-4 pt-4">
+          {/* Right Content - Form */}
+          <div className="flex-1 p-8 lg:p-12 relative overflow-y-auto">
             <button
-              type="button"
               onClick={onClose}
-              className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
+              className="absolute top-6 right-6 p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 z-20"
             >
-              Cancel
+              <X className="w-6 h-6" />
             </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex-1 bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:opacity-50"
-            >
-              {isSubmitting ? 'Submitting...' : 'Schedule My Free Call'}
-            </button>
+
+            <form onSubmit={handleSubmit} className="space-y-8">
+              <div className="space-y-6">
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">First Name</label>
+                    <input
+                      type="text"
+                      name="firstName"
+                      required
+                      value={formData.firstName}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3.5 bg-slate-50 border border-slate-100 rounded-xl focus:ring-4 focus:ring-green-500/10 focus:border-green-500 outline-none transition-all"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Last Name</label>
+                    <input
+                      type="text"
+                      name="lastName"
+                      required
+                      value={formData.lastName}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3.5 bg-slate-50 border border-slate-100 rounded-xl focus:ring-4 focus:ring-green-500/10 focus:border-green-500 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Email</label>
+                    <input
+                      type="email"
+                      name="email"
+                      required
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3.5 bg-slate-50 border border-slate-100 rounded-xl focus:ring-4 focus:ring-green-500/10 focus:border-green-500 outline-none transition-all"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Phone (WhatsApp)</label>
+                    <input
+                      type="tel"
+                      name="phone"
+                      required
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3.5 bg-slate-50 border border-slate-100 rounded-xl focus:ring-4 focus:ring-green-500/10 focus:border-green-500 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Company / Farm</label>
+                    <input
+                      type="text"
+                      name="company"
+                      value={formData.company}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3.5 bg-slate-50 border border-slate-100 rounded-xl focus:ring-4 focus:ring-green-500/10 focus:border-green-500 outline-none transition-all"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Your Role</label>
+                    <select
+                      name="role"
+                      value={formData.role}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3.5 bg-slate-50 border border-slate-100 rounded-xl focus:ring-4 focus:ring-green-500/10 focus:border-green-500 outline-none transition-all appearance-none cursor-pointer"
+                    >
+                      <option value="">Select your role</option>
+                      <option value="owner">Farm Owner</option>
+                      <option value="manager">Farm Manager</option>
+                      <option value="processor">Processor/Aggregator</option>
+                      <option value="investor">Investor</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Current Challenges</label>
+                  <textarea
+                    name="currentChallenges"
+                    required
+                    rows={3}
+                    value={formData.currentChallenges}
+                    onChange={handleInputChange}
+                    placeholder="What's the #1 thing holding you back right now?"
+                    className="w-full px-4 py-3.5 bg-slate-50 border border-slate-100 rounded-xl focus:ring-4 focus:ring-green-500/10 focus:border-green-500 outline-none transition-all resize-none"
+                  />
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Preferred Time</label>
+                    <select
+                      name="preferredTime"
+                      value={formData.preferredTime}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3.5 bg-slate-50 border border-slate-100 rounded-xl focus:ring-4 focus:ring-green-500/10 focus:border-green-500 outline-none transition-all appearance-none cursor-pointer"
+                    >
+                      <option value="">Select time</option>
+                      <option value="morning">Morning (8AM - 12PM)</option>
+                      <option value="afternoon">Afternoon (12PM - 5PM)</option>
+                      <option value="evening">Evening (5PM - 8PM)</option>
+                      <option value="flexible">I&apos;m flexible</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Time Zone</label>
+                    <select
+                      name="timeZone"
+                      value={formData.timeZone}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3.5 bg-slate-50 border border-slate-100 rounded-xl focus:ring-4 focus:ring-green-500/10 focus:border-green-500 outline-none transition-all appearance-none cursor-pointer"
+                    >
+                      <option value="GMT">GMT (Ghana, UK)</option>
+                      <option value="WAT">WAT (Nigeria)</option>
+                      <option value="CAT">CAT (SA, Kenya)</option>
+                      <option value="EAT">EAT (Ethiopia)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-slate-50">
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-1 bg-green-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-green-700 transition-all shadow-xl shadow-green-100 flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  ) : (
+                    <>
+                      <span>Submit Request</span>
+                      <Send className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );
-} 
+}

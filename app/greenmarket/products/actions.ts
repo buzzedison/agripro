@@ -4,10 +4,13 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 
+const currencyOptions = ['GHS', 'USD', 'KES', 'NGN', 'ZAR', 'EUR'] as const
+
 const productSchema = z.object({
     name: z.string().min(3, 'Product name must be at least 3 characters'),
     description: z.string().min(10, 'Description must be at least 10 characters'),
     price: z.coerce.number().positive('Price must be positive'),
+    currency: z.enum(currencyOptions),
     unit: z.string().min(1, 'Unit is required (e.g. kg, piece)'),
     categoryId: z.string().uuid('Invalid category'),
     stockStatus: z.enum(['in_stock', 'low_stock', 'out_of_stock']),
@@ -44,6 +47,7 @@ export async function createProduct(prevState: any, formData: FormData) {
         name: formData.get('name'),
         description: formData.get('description'),
         price: formData.get('price'),
+        currency: formData.get('currency') || 'GHS',
         unit: formData.get('unit'),
         categoryId: formData.get('categoryId'),
         stockStatus: formData.get('stockStatus'),
@@ -70,6 +74,7 @@ export async function createProduct(prevState: any, formData: FormData) {
         description: data.description,
         price: data.price,
         unit: data.unit,
+        currency: data.currency,
         stock_status: data.stockStatus,
         is_organic: data.isOrganic,
         images: data.imageUrls,
@@ -137,6 +142,7 @@ export async function updateProduct(productId: string, prevState: any, formData:
         name: formData.get('name'),
         description: formData.get('description'),
         price: formData.get('price'),
+        currency: formData.get('currency') || 'GHS',
         unit: formData.get('unit'),
         categoryId: formData.get('categoryId'),
         stockStatus: formData.get('stockStatus'),
@@ -163,9 +169,10 @@ export async function updateProduct(productId: string, prevState: any, formData:
             name: data.name,
             description: data.description,
             price: data.price,
-            unit: data.unit,
-            stock_status: data.stockStatus,
-            is_organic: data.isOrganic,
+        unit: data.unit,
+        currency: data.currency,
+        stock_status: data.stockStatus,
+        is_organic: data.isOrganic,
             images: data.imageUrls,
             updated_at: new Date().toISOString()
         })

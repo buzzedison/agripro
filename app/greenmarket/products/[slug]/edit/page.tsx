@@ -50,6 +50,7 @@ export default async function EditProductPage({ params }: PageProps) {
         name: product.name,
         description: product.description,
         price: product.price,
+        currency: product.currency || 'GHS',
         unit: product.unit,
         categoryId: product.category_id,
         stockStatus: product.stock_status,

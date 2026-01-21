@@ -39,6 +39,7 @@ export default async function VendorProfilePage({ params }: PageProps) {
         .select('*')
         .eq('slug', slug)
         .eq('status', 'approved')
+        .eq('verification_status', 'approved')
         .single();
 
     if (error || !vendor) {
@@ -268,7 +269,7 @@ export default async function VendorProfilePage({ params }: PageProps) {
                                                 </p>
                                                 <div className="flex items-center justify-between">
                                                     <span className="font-bold text-gray-900">
-                                                        GHS {product.price.toFixed(2)}
+                                                        {formatPrice(product.price, product.currency)}
                                                         <span className="text-xs font-normal text-gray-500"> / {product.unit}</span>
                                                     </span>
                                                     <span className={`text-xs px-2 py-1 rounded-full ${product.stock_status === 'in_stock' ? 'bg-green-100 text-green-700' :
@@ -380,3 +381,16 @@ export default async function VendorProfilePage({ params }: PageProps) {
         </div>
     );
 }
+const currencySymbols: Record<string, string> = {
+    GHS: '₵',
+    USD: '$',
+    KES: 'KSh',
+    NGN: '₦',
+    ZAR: 'R',
+    EUR: '€'
+};
+
+const formatPrice = (price: number, currency?: string) => {
+    const symbol = currencySymbols[currency || ''] || currency || 'GHS';
+    return `${symbol} ${price.toFixed(2)}`;
+};
