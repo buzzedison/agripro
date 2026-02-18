@@ -2,14 +2,15 @@
 
 import { usePathname } from 'next/navigation';
 import Navbar from "./Navbar";
+import SummitNavbar from "./SummitNavbar";
 
 export default function ClientNavbar() {
   const pathname = usePathname();
   const isKnowledgeHub = pathname?.startsWith('/knowledgehub');
-  
-  if (isKnowledgeHub) {
-    return null;
-  }
-  
+  const isSummit = pathname?.startsWith('/africa-food-futures');
+
+  if (isKnowledgeHub) return null;
+  if (isSummit) return <SummitNavbar />;
+
   return <Navbar />;
 }

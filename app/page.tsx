@@ -10,6 +10,7 @@ import KnowledgeHub from './components/KnowledgeHub';
 import Solutions from './components/Solutions';
 import GreenMarketPromo from './components/GreenMarketPromo';
 import ConnectSection from './components/ConnectSection';
+import FlagshipInitiatives from './components/FlagshipInitiatives';
 import { Loader2 } from 'lucide-react';
 
 export default function Home() {
@@ -41,6 +42,7 @@ export default function Home() {
   return (
     <main>
       <Hero />
+      <FlagshipInitiatives />
       <Solutions />
       <ConnectSection />
       <Impact />

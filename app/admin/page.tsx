@@ -287,7 +287,7 @@ export default function AdminDashboard() {
               </div>
               <div className="ml-4">
                 <h3 className="text-lg font-semibold text-gray-900 group-hover:text-teal-600">
-                  Trade & Vendors
+                  Trade &amp; Vendors
                 </h3>
               </div>
             </div>
@@ -296,6 +296,52 @@ export default function AdminDashboard() {
             </p>
             <div className="mt-4 flex items-center text-teal-600 text-sm font-medium">
               Manage Vendors →
+            </div>
+          </Link>
+
+          {/* Africa Food Futures */}
+          <Link
+            href="/admin/africa-food-futures"
+            className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6 group"
+          >
+            <div className="flex items-center mb-4">
+              <div className="flex-shrink-0">
+                <FaChartBar className="h-8 w-8 text-yellow-600 group-hover:text-yellow-700" />
+              </div>
+              <div className="ml-4">
+                <h3 className="text-lg font-semibold text-gray-900 group-hover:text-yellow-600">
+                  Africa Food Futures
+                </h3>
+              </div>
+            </div>
+            <p className="text-gray-600 text-sm">
+              View and manage summit form submissions — registrations, speakers, partners, sponsors &amp; exhibitors.
+            </p>
+            <div className="mt-4 flex items-center text-yellow-600 text-sm font-medium">
+              View Submissions →
+            </div>
+          </Link>
+
+          {/* Catalyst W */}
+          <Link
+            href="/admin/catalyst-w"
+            className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6 group"
+          >
+            <div className="flex items-center mb-4">
+              <div className="flex-shrink-0">
+                <FaUsers className="h-8 w-8 text-green-700 group-hover:text-green-800" />
+              </div>
+              <div className="ml-4">
+                <h3 className="text-lg font-semibold text-gray-900 group-hover:text-green-700">
+                  Catalyst W
+                </h3>
+              </div>
+            </div>
+            <p className="text-gray-600 text-sm">
+              Manage Catalyst W programme submissions — applications, prospectus requests &amp; plan selections.
+            </p>
+            <div className="mt-4 flex items-center text-green-700 text-sm font-medium">
+              View Submissions →
             </div>
           </Link>
 

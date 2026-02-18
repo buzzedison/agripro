@@ -53,7 +53,6 @@ const Footer: React.FC = () => {
                 alt="AgriPro Logo"
                 width={140}
                 height={45}
-                className="brightness-0" // High-end look: black logo on white
               />
             </Link>
             <p className="text-gray-500 mb-8 leading-relaxed max-w-sm">

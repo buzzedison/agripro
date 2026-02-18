@@ -40,6 +40,7 @@ const navigation = [
       { name: 'Farm Smart Program', href: '/farm-smart' },
       { name: 'Green Market', href: '/greenmarket' },
       { name: 'AgriPro Fellowship', href: '/fellowship' },
+      { name: 'Africa Food Futures', href: '/africa-food-futures' },
     ]
   },
   {
