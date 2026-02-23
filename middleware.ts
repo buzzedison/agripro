@@ -81,13 +81,27 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * Feel free to modify this pattern to include more paths.
+     * Only run middleware on routes that need auth:
+     * - /admin (protected routes)
+     * - /connect (profile, dashboard, onboarding)
+     * - /feed (social feed)
+     * - /messages
+     * - /notifications
+     * - /greenmarket/vendor-dashboard
+     * - /api (API routes that may need session refresh)
+     *
+     * Explicitly excluded (no middleware needed):
+     * - _next/static, _next/image, favicon, images
+     * - Public marketing pages (/, /about, /knowledgehub, /greenmarket marketplace, etc.)
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/admin/:path*',
+    '/connect/:path*',
+    '/feed/:path*',
+    '/messages/:path*',
+    '/notifications/:path*',
+    '/greenmarket/vendor-dashboard/:path*',
+    '/greenmarket/become-vendor/:path*',
+    '/api/:path*',
   ],
 }
 
