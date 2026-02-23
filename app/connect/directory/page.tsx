@@ -45,10 +45,45 @@ const countryOptions = [
     'South Africa', 'Côte d\'Ivoire', 'Senegal', 'Rwanda'
 ];
 
+// Detect bot/randomly-generated names
+// Real names: contain a space, OR are short (<= 12 chars) with normal vowel patterns
+// Bot names: long single-word strings, random mixed case, no vowels, or look like tokens
+function isLikelyRealName(name: string): boolean {
+    if (!name || name.trim().length === 0) return false;
+    const trimmed = name.trim();
+
+    // Must be at least 2 characters
+    if (trimmed.length < 2) return false;
+
+    // If it has a space it's likely a real first + last name
+    if (trimmed.includes(' ')) return true;
+
+    // Single word: reject if too long (real single-word names are usually < 20 chars)
+    if (trimmed.length > 20) return false;
+
+    // Reject if it looks like a random token: mixed upper+lower with no vowels pattern
+    // Real names don't have 4+ consecutive consonants
+    const noVowels = trimmed.replace(/[aeiouAEIOU]/g, '');
+    if (noVowels.length > trimmed.length * 0.75) return false;
+
+    // Reject if it has both upper and lowercase letters randomly mixed (camelCase bot pattern)
+    // e.g. "gMriTMCEFCk" — real single names are Title Case or all lowercase
+    const hasLower = /[a-z]/.test(trimmed);
+    const hasUpper = /[A-Z]/.test(trimmed);
+    if (hasLower && hasUpper) {
+        // Allow normal Title Case (first char upper, rest lower)
+        const isTitleCase = /^[A-Z][a-z]+$/.test(trimmed);
+        if (!isTitleCase) return false;
+    }
+
+    return true;
+}
+
 function DirectoryContent() {
     const searchParams = useSearchParams();
     const supabase = createClient();
 
+    const [activeTab, setActiveTab] = useState<'completed' | 'uncompleted'>('completed');
     const [profiles, setProfiles] = useState<Profile[]>([]);
     const [loading, setLoading] = useState(true);
     const [showFilters, setShowFilters] = useState(false);
@@ -63,7 +98,7 @@ function DirectoryContent() {
 
     useEffect(() => {
         fetchProfiles();
-    }, [filters]);
+    }, [filters, activeTab]);
 
     const fetchProfiles = async () => {
         setLoading(true);
@@ -71,9 +106,19 @@ function DirectoryContent() {
         let query = supabase
             .from('profiles')
             .select('*')
-            .eq('is_public', true)
-            .eq('profile_complete', true)
             .order('created_at', { ascending: false });
+
+        if (activeTab === 'completed') {
+            query = query.eq('is_public', true).eq('profile_complete', true);
+        } else {
+            // Uncompleted: profile_complete is false OR null
+            // Filter out bot/junk accounts: must have a real name, not the auto-generated 'User' default
+            query = query
+                .or('profile_complete.eq.false,profile_complete.is.null')
+                .not('full_name', 'is', null)
+                .neq('full_name', '')
+                .neq('full_name', 'User');
+        }
 
         if (filters.userType) {
             query = query.eq('user_type', filters.userType);
@@ -93,7 +138,14 @@ function DirectoryContent() {
         if (error) {
             console.error('Error fetching profiles:', error);
         } else {
-            setProfiles(data || []);
+            let results = data || [];
+
+            // For uncompleted tab, filter out bot/junk accounts client-side
+            if (activeTab === 'uncompleted') {
+                results = results.filter(profile => isLikelyRealName(profile.full_name));
+            }
+
+            setProfiles(results);
         }
 
         setLoading(false);
@@ -134,6 +186,30 @@ function DirectoryContent() {
                         >
                             Join the Network
                         </Link>
+                    </div>
+
+                    {/* Tabs */}
+                    <div className="mt-6 flex border-b border-gray-200">
+                        <button
+                            onClick={() => setActiveTab('completed')}
+                            className={`px-5 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                                activeTab === 'completed'
+                                    ? 'border-green-600 text-green-700'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                            }`}
+                        >
+                            Completed Profiles
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('uncompleted')}
+                            className={`px-5 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                                activeTab === 'uncompleted'
+                                    ? 'border-green-600 text-green-700'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                            }`}
+                        >
+                            Uncompleted Profiles
+                        </button>
                     </div>
 
                     {/* Search & Filters */}
@@ -233,7 +309,11 @@ function DirectoryContent() {
                         <Users className="w-16 h-16 mx-auto text-gray-300 mb-4" />
                         <h3 className="text-xl font-semibold text-gray-900 mb-2">No profiles found</h3>
                         <p className="text-gray-600 mb-6">
-                            {hasActiveFilters ? 'Try adjusting your filters' : 'Be the first to join the network!'}
+                            {hasActiveFilters
+                                ? 'Try adjusting your filters'
+                                : activeTab === 'completed'
+                                    ? 'Be the first to join the network!'
+                                    : 'No uncompleted profiles found'}
                         </p>
                         {hasActiveFilters ? (
                             <button
@@ -242,14 +322,14 @@ function DirectoryContent() {
                             >
                                 Clear filters
                             </button>
-                        ) : (
+                        ) : activeTab === 'completed' ? (
                             <Link
                                 href="/connect/onboarding"
                                 className="inline-flex items-center px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700"
                             >
                                 Create Your Profile
                             </Link>
-                        )}
+                        ) : null}
                     </div>
                 ) : (
                     <>

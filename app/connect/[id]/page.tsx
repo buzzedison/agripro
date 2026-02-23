@@ -18,7 +18,9 @@ import {
     ArrowLeft, MapPin, Mail, Phone, Globe, Linkedin,
     Calendar, Briefcase, CheckCircle, Users, ShoppingBag,
     Lightbulb, Wrench, Loader2, MessageCircle, UserPlus,
-    UserCheck, Share2, Youtube, Play, UserMinus, Clock, X
+    UserCheck, Share2, Youtube, Play, UserMinus, Clock, X,
+    FileText, Repeat2, Heart, Store, BookOpen, ExternalLink,
+    Award, Star, Handshake, BadgeCheck, Zap
 } from 'lucide-react';
 
 // Extract YouTube video ID from various URL formats
@@ -68,6 +70,9 @@ interface Profile {
     is_featured: boolean;
     created_at: string;
     privacy_settings: PrivacySettings | null;
+    services: { name: string; description?: string; price_range?: string }[] | null;
+    achievements: { title: string; year?: string; description?: string }[] | null;
+    open_to: string[] | null;
 }
 
 interface Stats {
@@ -119,6 +124,14 @@ export default function ProfilePage() {
     const [activeList, setActiveList] = useState<{ type: 'followers' | 'following' | 'connections'; title: string } | null>(null);
     const [listItems, setListItems] = useState<ProfilePreview[]>([]);
     const [listLoading, setListLoading] = useState(false);
+
+    // Activity
+    const [activeActivityTab, setActiveActivityTab] = useState<'posts' | 'reposts' | 'store' | 'articles'>('posts');
+    const [activityPosts, setActivityPosts] = useState<any[]>([]);
+    const [activityReposts, setActivityReposts] = useState<any[]>([]);
+    const [activityStore, setActivityStore] = useState<{ vendor: any; products: any[] } | null>(null);
+    const [activityArticles, setActivityArticles] = useState<any[]>([]);
+    const [activityLoading, setActivityLoading] = useState(false);
 
     useEffect(() => {
         const init = async () => {
@@ -188,6 +201,7 @@ export default function ProfilePage() {
             } else {
                 setProfile(result.data);
                 fetchStats(result.data.id);
+                fetchActivity(result.data.id);
                 // Check follow status with the actual profile ID
                 if (user) {
                     checkFollowStatus(user.id, result.data.id);
@@ -242,6 +256,106 @@ export default function ProfilePage() {
             posts: postsRes.count || 0,
             connections: connectionsRes.count || 0
         });
+    };
+
+    const fetchActivity = async (profileId: string) => {
+        setActivityLoading(true);
+        try {
+            // Posts
+            const { data: posts } = await supabase
+                .from('posts')
+                .select('id, content, image_url, likes_count, comments_count, reposts_count, created_at')
+                .eq('user_id', profileId)
+                .is('quoted_post_id', null)
+                .order('created_at', { ascending: false })
+                .limit(6);
+            setActivityPosts(posts || []);
+
+            // Reposts
+            const { data: repostRows } = await supabase
+                .from('post_reposts')
+                .select('post_id, created_at')
+                .eq('user_id', profileId)
+                .order('created_at', { ascending: false })
+                .limit(6);
+
+            if (repostRows && repostRows.length > 0) {
+                const postIds = repostRows.map(r => r.post_id);
+                const { data: repostedPosts } = await supabase
+                    .from('posts')
+                    .select('id, content, image_url, likes_count, comments_count, reposts_count, created_at, user_id')
+                    .in('id', postIds);
+
+                // Get original authors
+                const authorIds = [...new Set((repostedPosts || []).map(p => p.user_id))];
+                const { data: authors } = await supabase
+                    .from('profiles')
+                    .select('id, full_name, avatar_url')
+                    .in('id', authorIds);
+                const authorsMap = new Map((authors || []).map(a => [a.id, a]));
+
+                const enriched = (repostedPosts || []).map(p => ({
+                    ...p,
+                    original_author: authorsMap.get(p.user_id) || null,
+                    reposted_at: repostRows.find(r => r.post_id === p.id)?.created_at,
+                }));
+                setActivityReposts(enriched);
+            } else {
+                setActivityReposts([]);
+            }
+
+            // Store
+            const { data: vendor } = await supabase
+                .from('trade_vendors')
+                .select('id, business_name, logo_url, cover_image_url, business_type, slug, status, country, city')
+                .eq('user_id', profileId)
+                .eq('status', 'approved')
+                .maybeSingle();
+
+            if (vendor) {
+                const { data: products } = await supabase
+                    .from('trade_products')
+                    .select('id, name, price, unit, images, currency, stock_status')
+                    .eq('vendor_id', vendor.id)
+                    .eq('is_active', true)
+                    .limit(4);
+                setActivityStore({ vendor, products: products || [] });
+            } else {
+                setActivityStore(null);
+            }
+
+            // Knowledge Hub articles (Sanity CMS)
+            // authors and contributors are arrays — match by name or email
+            try {
+                const { client: sanityClient } = await import('@/app/lib/client');
+                const profileData = await supabase
+                    .from('profiles')
+                    .select('full_name, email')
+                    .eq('id', profileId)
+                    .single();
+                const name = profileData.data?.full_name || '';
+                const email = profileData.data?.email || '';
+                if (name || email) {
+                    const articles = await sanityClient.fetch(
+                        `*[_type == "insight" && (
+                            $name in authors[]->name ||
+                            $name in contributors[]->name ||
+                            $email in authors[]->contact.email ||
+                            $email in contributors[]->contact.email
+                        )] | order(publishedAt desc)[0...6] {
+                            _id, title, slug, excerpt, publishedAt, category
+                        }`,
+                        { name, email }
+                    );
+                    setActivityArticles(articles || []);
+                }
+            } catch {
+                setActivityArticles([]);
+            }
+        } catch (err) {
+            console.error('Error fetching activity:', err);
+        }
+        setActivityLoading(false);
     };
 
     const fetchListItems = async (type: 'followers' | 'following' | 'connections') => {
@@ -685,6 +799,121 @@ export default function ProfilePage() {
                         </div>
                     )}
 
+                    {/* Certifications & Specializations */}
+                    {((profile.certifications?.length > 0) || (profile.specializations?.length > 0)) && (
+                        <div className="px-6 sm:px-8 pb-8 border-t border-gray-100 pt-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                {profile.certifications && profile.certifications.length > 0 && (
+                                    <div>
+                                        <h2 className="text-sm font-bold uppercase tracking-wide text-gray-500 mb-3 flex items-center gap-2">
+                                            <BadgeCheck className="w-4 h-4" />
+                                            Certifications
+                                        </h2>
+                                        <div className="flex flex-wrap gap-2">
+                                            {profile.certifications.map((cert) => (
+                                                <span key={cert} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 text-sm rounded-full border border-blue-100">
+                                                    <BadgeCheck className="w-3.5 h-3.5" />
+                                                    {cert}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                {profile.specializations && profile.specializations.length > 0 && (
+                                    <div>
+                                        <h2 className="text-sm font-bold uppercase tracking-wide text-gray-500 mb-3 flex items-center gap-2">
+                                            <Star className="w-4 h-4" />
+                                            Specializations
+                                        </h2>
+                                        <div className="flex flex-wrap gap-2">
+                                            {profile.specializations.map((spec) => (
+                                                <span key={spec} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-700 text-sm rounded-full border border-amber-100">
+                                                    <Star className="w-3.5 h-3.5" />
+                                                    {spec}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* What I'm Open To */}
+                    {profile.open_to && profile.open_to.length > 0 && (
+                        <div className="px-6 sm:px-8 pb-8 border-t border-gray-100 pt-6">
+                            <h2 className="text-sm font-bold uppercase tracking-wide text-gray-500 mb-3 flex items-center gap-2">
+                                <Zap className="w-4 h-4" />
+                                Open To
+                            </h2>
+                            <div className="flex flex-wrap gap-2">
+                                {profile.open_to.map((item) => (
+                                    <span key={item} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 text-sm font-medium rounded-full border border-green-200">
+                                        <Zap className="w-3.5 h-3.5" />
+                                        {item}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Services Offered */}
+                    {profile.services && profile.services.length > 0 && (
+                        <div className="px-6 sm:px-8 pb-8 border-t border-gray-100 pt-6">
+                            <h2 className="text-sm font-bold uppercase tracking-wide text-gray-500 mb-4 flex items-center gap-2">
+                                <Handshake className="w-4 h-4" />
+                                Services Offered
+                            </h2>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {profile.services.map((service, i) => (
+                                    <div key={i} className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <p className="font-semibold text-gray-900 text-sm">{service.name}</p>
+                                            {service.price_range && (
+                                                <span className="text-xs text-green-700 font-medium bg-green-50 px-2 py-0.5 rounded-full whitespace-nowrap border border-green-100">
+                                                    {service.price_range}
+                                                </span>
+                                            )}
+                                        </div>
+                                        {service.description && (
+                                            <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">{service.description}</p>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Achievements & Milestones */}
+                    {profile.achievements && profile.achievements.length > 0 && (
+                        <div className="px-6 sm:px-8 pb-8 border-t border-gray-100 pt-6">
+                            <h2 className="text-sm font-bold uppercase tracking-wide text-gray-500 mb-4 flex items-center gap-2">
+                                <Award className="w-4 h-4" />
+                                Achievements & Milestones
+                            </h2>
+                            <div className="space-y-3">
+                                {profile.achievements.map((achievement, i) => (
+                                    <div key={i} className="flex items-start gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                                        <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                            <Award className="w-4 h-4 text-amber-600" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <p className="font-semibold text-gray-900 text-sm">{achievement.title}</p>
+                                                {achievement.year && (
+                                                    <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{achievement.year}</span>
+                                                )}
+                                            </div>
+                                            {achievement.description && (
+                                                <p className="text-xs text-gray-500 mt-1 leading-relaxed">{achievement.description}</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     {/* Contact Info - PRIVACY PROTECTED */}
                     {(profile.email || profile.phone || profile.whatsapp || profile.website || profile.linkedin) && (
                         <div className="px-6 sm:px-8 pb-8 border-t border-gray-100 pt-6">
@@ -780,6 +1009,163 @@ export default function ProfilePage() {
                         </div>
                     )}
                 </div>
+
+                {/* Activity Section */}
+                    <div className="px-6 sm:px-8 pb-8 border-t border-gray-100 pt-6">
+                        <h2 className="text-sm font-bold uppercase tracking-wide text-gray-500 mb-4">Activity</h2>
+
+                        {/* Activity Tabs */}
+                        <div className="flex gap-1 border-b border-gray-200 mb-5 overflow-x-auto">
+                            {[
+                                { key: 'posts', label: 'Posts', icon: FileText },
+                                { key: 'reposts', label: 'Reposts', icon: Repeat2 },
+                                { key: 'store', label: 'Store', icon: Store },
+                                { key: 'articles', label: 'Articles', icon: BookOpen },
+                            ].map(({ key, label, icon: Icon }) => (
+                                <button
+                                    key={key}
+                                    onClick={() => setActiveActivityTab(key as any)}
+                                    className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
+                                        activeActivityTab === key
+                                            ? 'border-green-600 text-green-700'
+                                            : 'border-transparent text-gray-500 hover:text-gray-700'
+                                    }`}
+                                >
+                                    <Icon className="w-4 h-4" />
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+
+                        {activityLoading ? (
+                            <div className="flex justify-center py-10">
+                                <Loader2 className="w-5 h-5 animate-spin text-green-600" />
+                            </div>
+                        ) : (
+                            <>
+                                {/* Posts Tab */}
+                                {activeActivityTab === 'posts' && (
+                                    activityPosts.length === 0 ? (
+                                        <p className="text-sm text-gray-400 text-center py-8">No posts yet</p>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            {activityPosts.map(post => (
+                                                <Link key={post.id} href={`/feed`} className="block bg-gray-50 hover:bg-green-50 rounded-xl p-4 transition-colors">
+                                                    <p className="text-sm text-gray-700 line-clamp-3">{post.content}</p>
+                                                    {post.image_url && (
+                                                        <img src={post.image_url} alt="" className="mt-2 rounded-lg max-h-40 object-cover w-full" />
+                                                    )}
+                                                    <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
+                                                        <span className="flex items-center gap-1"><Heart className="w-3.5 h-3.5" />{post.likes_count}</span>
+                                                        <span className="flex items-center gap-1"><MessageCircle className="w-3.5 h-3.5" />{post.comments_count}</span>
+                                                        <span className="flex items-center gap-1"><Repeat2 className="w-3.5 h-3.5" />{post.reposts_count}</span>
+                                                        <span className="ml-auto">{new Date(post.created_at).toLocaleDateString()}</span>
+                                                    </div>
+                                                </Link>
+                                            ))}
+                                        </div>
+                                    )
+                                )}
+
+                                {/* Reposts Tab */}
+                                {activeActivityTab === 'reposts' && (
+                                    activityReposts.length === 0 ? (
+                                        <p className="text-sm text-gray-400 text-center py-8">No reposts yet</p>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            {activityReposts.map(post => (
+                                                <Link key={post.id} href={`/feed`} className="block bg-gray-50 hover:bg-green-50 rounded-xl p-4 transition-colors">
+                                                    {post.original_author && (
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <Repeat2 className="w-3.5 h-3.5 text-green-500" />
+                                                            <span className="text-xs text-gray-500">Reposted from <span className="font-medium text-gray-700">{post.original_author.full_name}</span></span>
+                                                        </div>
+                                                    )}
+                                                    <p className="text-sm text-gray-700 line-clamp-3">{post.content}</p>
+                                                    <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
+                                                        <span className="flex items-center gap-1"><Heart className="w-3.5 h-3.5" />{post.likes_count}</span>
+                                                        <span className="flex items-center gap-1"><MessageCircle className="w-3.5 h-3.5" />{post.comments_count}</span>
+                                                        <span className="ml-auto">{new Date(post.reposted_at || post.created_at).toLocaleDateString()}</span>
+                                                    </div>
+                                                </Link>
+                                            ))}
+                                        </div>
+                                    )
+                                )}
+
+                                {/* Store Tab */}
+                                {activeActivityTab === 'store' && (
+                                    !activityStore ? (
+                                        <p className="text-sm text-gray-400 text-center py-8">No store on AgriPro</p>
+                                    ) : (
+                                        <div>
+                                            {/* Vendor Banner */}
+                                            <Link href={`/greenmarket/${activityStore.vendor.slug}`} className="flex items-center gap-4 p-4 bg-gray-50 hover:bg-green-50 rounded-xl mb-4 transition-colors group">
+                                                {activityStore.vendor.logo_url ? (
+                                                    <img src={activityStore.vendor.logo_url} alt="" className="w-14 h-14 rounded-xl object-cover border border-gray-200" />
+                                                ) : (
+                                                    <div className="w-14 h-14 rounded-xl bg-green-100 flex items-center justify-center">
+                                                        <Store className="w-6 h-6 text-green-600" />
+                                                    </div>
+                                                )}
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-semibold text-gray-900 group-hover:text-green-700">{activityStore.vendor.business_name}</p>
+                                                    <p className="text-xs text-gray-500">{activityStore.vendor.business_type} · {activityStore.vendor.city || activityStore.vendor.country}</p>
+                                                </div>
+                                                <ExternalLink className="w-4 h-4 text-gray-400 group-hover:text-green-600" />
+                                            </Link>
+                                            {/* Products */}
+                                            {activityStore.products.length > 0 && (
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    {activityStore.products.map(product => (
+                                                        <div key={product.id} className="bg-gray-50 rounded-xl overflow-hidden border border-gray-100">
+                                                            {product.images?.[0] && (
+                                                                <img src={product.images[0]} alt={product.name} className="w-full h-28 object-cover" />
+                                                            )}
+                                                            <div className="p-3">
+                                                                <p className="text-sm font-medium text-gray-800 truncate">{product.name}</p>
+                                                                <p className="text-xs text-green-700 font-semibold mt-0.5">
+                                                                    {product.currency || 'GHS'} {Number(product.price).toLocaleString()} <span className="text-gray-400 font-normal">/ {product.unit}</span>
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )
+                                )}
+
+                                {/* Articles Tab */}
+                                {activeActivityTab === 'articles' && (
+                                    activityArticles.length === 0 ? (
+                                        <p className="text-sm text-gray-400 text-center py-8">No articles in Knowledge Hub</p>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            {activityArticles.map((article: any) => (
+                                                <Link
+                                                    key={article._id}
+                                                    href={`/knowledgehub/insights/${article.slug?.current}`}
+                                                    className="flex items-start gap-3 p-4 bg-gray-50 hover:bg-green-50 rounded-xl transition-colors group"
+                                                >
+                                                    <BookOpen className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-semibold text-gray-800 group-hover:text-green-700 line-clamp-2">{article.title}</p>
+                                                        {article.excerpt && <p className="text-xs text-gray-500 mt-1 line-clamp-2">{article.excerpt}</p>}
+                                                        <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
+                                                            {article.category && <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{article.category}</span>}
+                                                            {article.publishedAt && <span>{new Date(article.publishedAt).toLocaleDateString()}</span>}
+                                                        </div>
+                                                    </div>
+                                                    <ExternalLink className="w-3.5 h-3.5 text-gray-300 group-hover:text-green-500 flex-shrink-0 mt-1" />
+                                                </Link>
+                                            ))}
+                                        </div>
+                                    )
+                                )}
+                            </>
+                        )}
+                    </div>
             </div>
 
             {activeList && (

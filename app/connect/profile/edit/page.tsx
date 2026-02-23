@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowLeft, Save, Loader2, Check, Camera, Youtube, X, Play, Lock, Globe, Users } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Check, Camera, Youtube, X, Play, Lock, Globe, Users, Plus, Award, Handshake, Zap, BadgeCheck, Star } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
 import { PrivacySettings } from '../../actions';
 
@@ -34,6 +34,13 @@ const userTypes = [
     { id: 'buyer', label: 'Buyer / Trader' },
     { id: 'expert', label: 'Expert / Advisor' },
     { id: 'service_provider', label: 'Service Provider' },
+];
+
+const openToOptions = [
+    'Open to Investment', 'Seeking Buyers', 'Seeking Suppliers',
+    'Available for Consulting', 'Open to Partnerships', 'Hiring',
+    'Seeking Funding', 'Export Ready', 'Looking for Land',
+    'Available for Speaking', 'Open to Joint Ventures', 'Mentoring Others',
 ];
 
 const privacyOptions = [
@@ -94,7 +101,12 @@ export default function EditProfilePage() {
             phone: 'connections',
             location: 'public',
             bio: 'public'
-        } as PrivacySettings
+        } as PrivacySettings,
+        certifications: [] as string[],
+        specializations: [] as string[],
+        open_to: [] as string[],
+        services: [] as { name: string; description: string; price_range: string }[],
+        achievements: [] as { title: string; year: string; description: string }[],
     });
 
     useEffect(() => {
@@ -144,7 +156,12 @@ export default function EditProfilePage() {
                     phone: 'connections',
                     location: 'public',
                     bio: 'public'
-                }
+                },
+                certifications: data.certifications || [],
+                specializations: data.specializations || [],
+                open_to: data.open_to || [],
+                services: data.services || [],
+                achievements: data.achievements || [],
             });
         }
     };
@@ -737,6 +754,184 @@ export default function EditProfilePage() {
                             />
                         </div>
                     </div>
+                </section>
+
+                {/* Portfolio: Certifications */}
+                <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+                    <h2 className="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2">
+                        <BadgeCheck className="w-5 h-5 text-blue-500" />
+                        Certifications
+                    </h2>
+                    <p className="text-sm text-gray-500 mb-4">List any agricultural certifications you hold (e.g. GlobalG.A.P, Organic, Fair Trade)</p>
+                    <div className="space-y-2 mb-3">
+                        {formData.certifications.map((cert, i) => (
+                            <div key={i} className="flex items-center gap-2">
+                                <input
+                                    type="text"
+                                    value={cert}
+                                    onChange={(e) => {
+                                        const updated = [...formData.certifications];
+                                        updated[i] = e.target.value;
+                                        updateField('certifications', updated);
+                                    }}
+                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                    placeholder="e.g. GlobalG.A.P Certified"
+                                />
+                                <button type="button" onClick={() => updateField('certifications', formData.certifications.filter((_, idx) => idx !== i))} className="p-2 text-gray-400 hover:text-red-500 transition-colors">
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                    <button type="button" onClick={() => updateField('certifications', [...formData.certifications, ''])} className="flex items-center gap-1.5 text-sm text-green-600 hover:text-green-700 font-medium">
+                        <Plus className="w-4 h-4" /> Add Certification
+                    </button>
+                </section>
+
+                {/* Portfolio: Specializations */}
+                <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+                    <h2 className="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2">
+                        <Star className="w-5 h-5 text-amber-500" />
+                        Specializations
+                    </h2>
+                    <p className="text-sm text-gray-500 mb-4">What are your areas of expertise? (e.g. Drip Irrigation, Post-harvest Management)</p>
+                    <div className="space-y-2 mb-3">
+                        {formData.specializations.map((spec, i) => (
+                            <div key={i} className="flex items-center gap-2">
+                                <input
+                                    type="text"
+                                    value={spec}
+                                    onChange={(e) => {
+                                        const updated = [...formData.specializations];
+                                        updated[i] = e.target.value;
+                                        updateField('specializations', updated);
+                                    }}
+                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                    placeholder="e.g. Drip Irrigation"
+                                />
+                                <button type="button" onClick={() => updateField('specializations', formData.specializations.filter((_, idx) => idx !== i))} className="p-2 text-gray-400 hover:text-red-500 transition-colors">
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                    <button type="button" onClick={() => updateField('specializations', [...formData.specializations, ''])} className="flex items-center gap-1.5 text-sm text-green-600 hover:text-green-700 font-medium">
+                        <Plus className="w-4 h-4" /> Add Specialization
+                    </button>
+                </section>
+
+                {/* Portfolio: Open To */}
+                <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+                    <h2 className="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2">
+                        <Zap className="w-5 h-5 text-green-500" />
+                        What I&apos;m Open To
+                    </h2>
+                    <p className="text-sm text-gray-500 mb-4">Let others know what opportunities or collaborations you&apos;re interested in</p>
+                    <div className="flex flex-wrap gap-2">
+                        {openToOptions.map((option) => (
+                            <button
+                                key={option}
+                                type="button"
+                                onClick={() => {
+                                    const current = formData.open_to;
+                                    updateField('open_to', current.includes(option) ? current.filter(o => o !== option) : [...current, option]);
+                                }}
+                                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors border ${
+                                    formData.open_to.includes(option)
+                                        ? 'bg-green-600 text-white border-green-600'
+                                        : 'bg-white text-gray-600 border-gray-300 hover:border-green-400'
+                                }`}
+                            >
+                                {option}
+                            </button>
+                        ))}
+                    </div>
+                </section>
+
+                {/* Portfolio: Services Offered */}
+                <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+                    <h2 className="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2">
+                        <Handshake className="w-5 h-5 text-purple-500" />
+                        Services Offered
+                    </h2>
+                    <p className="text-sm text-gray-500 mb-4">List the services you provide. Include pricing if you&apos;d like.</p>
+                    <div className="space-y-4 mb-3">
+                        {formData.services.map((service, i) => (
+                            <div key={i} className="p-4 border border-gray-200 rounded-xl space-y-2 relative">
+                                <button type="button" onClick={() => updateField('services', formData.services.filter((_, idx) => idx !== i))} className="absolute top-3 right-3 p-1 text-gray-400 hover:text-red-500 transition-colors">
+                                    <X className="w-4 h-4" />
+                                </button>
+                                <input
+                                    type="text"
+                                    value={service.name}
+                                    onChange={(e) => { const s = [...formData.services]; s[i] = { ...s[i], name: e.target.value }; updateField('services', s); }}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                    placeholder="Service name (e.g. Farm Consulting)"
+                                />
+                                <input
+                                    type="text"
+                                    value={service.price_range}
+                                    onChange={(e) => { const s = [...formData.services]; s[i] = { ...s[i], price_range: e.target.value }; updateField('services', s); }}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                    placeholder="Price range (e.g. GHS 500–1,000 or Free)"
+                                />
+                                <textarea
+                                    value={service.description}
+                                    onChange={(e) => { const s = [...formData.services]; s[i] = { ...s[i], description: e.target.value }; updateField('services', s); }}
+                                    rows={2}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                                    placeholder="Brief description of the service..."
+                                />
+                            </div>
+                        ))}
+                    </div>
+                    <button type="button" onClick={() => updateField('services', [...formData.services, { name: '', description: '', price_range: '' }])} className="flex items-center gap-1.5 text-sm text-green-600 hover:text-green-700 font-medium">
+                        <Plus className="w-4 h-4" /> Add Service
+                    </button>
+                </section>
+
+                {/* Portfolio: Achievements */}
+                <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+                    <h2 className="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2">
+                        <Award className="w-5 h-5 text-amber-500" />
+                        Achievements & Milestones
+                    </h2>
+                    <p className="text-sm text-gray-500 mb-4">Share notable accomplishments — awards, exports, farm size growth, partnerships etc.</p>
+                    <div className="space-y-4 mb-3">
+                        {formData.achievements.map((ach, i) => (
+                            <div key={i} className="p-4 border border-gray-200 rounded-xl space-y-2 relative">
+                                <button type="button" onClick={() => updateField('achievements', formData.achievements.filter((_, idx) => idx !== i))} className="absolute top-3 right-3 p-1 text-gray-400 hover:text-red-500 transition-colors">
+                                    <X className="w-4 h-4" />
+                                </button>
+                                <div className="grid grid-cols-3 gap-2">
+                                    <input
+                                        type="text"
+                                        value={ach.title}
+                                        onChange={(e) => { const a = [...formData.achievements]; a[i] = { ...a[i], title: e.target.value }; updateField('achievements', a); }}
+                                        className="col-span-2 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                        placeholder="Achievement (e.g. Best Farmer Award)"
+                                    />
+                                    <input
+                                        type="text"
+                                        value={ach.year}
+                                        onChange={(e) => { const a = [...formData.achievements]; a[i] = { ...a[i], year: e.target.value }; updateField('achievements', a); }}
+                                        className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                        placeholder="Year"
+                                    />
+                                </div>
+                                <textarea
+                                    value={ach.description}
+                                    onChange={(e) => { const a = [...formData.achievements]; a[i] = { ...a[i], description: e.target.value }; updateField('achievements', a); }}
+                                    rows={2}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                                    placeholder="Brief description..."
+                                />
+                            </div>
+                        ))}
+                    </div>
+                    <button type="button" onClick={() => updateField('achievements', [...formData.achievements, { title: '', year: '', description: '' }])} className="flex items-center gap-1.5 text-sm text-green-600 hover:text-green-700 font-medium">
+                        <Plus className="w-4 h-4" /> Add Achievement
+                    </button>
                 </section>
 
                 {/* Submit */}

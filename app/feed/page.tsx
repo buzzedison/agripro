@@ -364,6 +364,8 @@ interface Comment {
     gif_url?: string | null;
     parent_comment_id?: string | null;
     created_at: string;
+    likes_count: number;
+    user_has_liked?: boolean;
     profile: {
         full_name: string;
         avatar_url: string | null;
@@ -892,7 +894,7 @@ export default function FeedPage() {
         // Fetch all comments including replies
         const { data: commentsData } = await supabase
             .from('post_comments')
-            .select('*, parent_comment_id, image_url')
+            .select('*, parent_comment_id, image_url, likes_count')
             .eq('post_id', postId)
             .order('created_at', { ascending: true });
 
@@ -906,9 +908,23 @@ export default function FeedPage() {
 
             const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
 
+            // Fetch which comments the current user has liked
+            const commentIds = commentsData.map(c => c.id);
+            let likedCommentIds = new Set<string>();
+            if (user && commentIds.length > 0) {
+                const { data: likedData } = await supabase
+                    .from('comment_likes')
+                    .select('comment_id')
+                    .eq('user_id', user.id)
+                    .in('comment_id', commentIds);
+                likedCommentIds = new Set(likedData?.map(l => l.comment_id) || []);
+            }
+
             // Add profiles to all comments
             const allComments = commentsData.map(comment => ({
                 ...comment,
+                likes_count: comment.likes_count || 0,
+                user_has_liked: likedCommentIds.has(comment.id),
                 profile: profilesMap.get(comment.user_id) || {
                     full_name: 'AgriPro Member',
                     avatar_url: null,
@@ -1246,6 +1262,60 @@ export default function FeedPage() {
                     ? { ...p, likes_count: p.likes_count + (isLiked ? 1 : -1), user_has_liked: isLiked }
                     : p
             ));
+        }
+    };
+
+    const handleCommentLike = async (postId: string, commentId: string, isLiked: boolean) => {
+        if (!user) return;
+
+        // Optimistic update — update the comment in postComments state
+        const updateComments = (comments: Comment[]): Comment[] =>
+            comments.map(c => {
+                if (c.id === commentId) {
+                    return {
+                        ...c,
+                        likes_count: c.likes_count + (isLiked ? -1 : 1),
+                        user_has_liked: !isLiked,
+                    };
+                }
+                if (c.replies) {
+                    return { ...c, replies: updateComments(c.replies) };
+                }
+                return c;
+            });
+
+        setPostComments(prev => ({
+            ...prev,
+            [postId]: updateComments(prev[postId] || []),
+        }));
+
+        try {
+            if (isLiked) {
+                await supabase.from('comment_likes').delete().eq('comment_id', commentId).eq('user_id', user.id);
+            } else {
+                await supabase.from('comment_likes').insert({ comment_id: commentId, user_id: user.id });
+            }
+        } catch (err) {
+            // Revert on error
+            const revertComments = (comments: Comment[]): Comment[] =>
+                comments.map(c => {
+                    if (c.id === commentId) {
+                        return {
+                            ...c,
+                            likes_count: c.likes_count + (isLiked ? 1 : -1),
+                            user_has_liked: isLiked,
+                        };
+                    }
+                    if (c.replies) {
+                        return { ...c, replies: revertComments(c.replies) };
+                    }
+                    return c;
+                });
+
+            setPostComments(prev => ({
+                ...prev,
+                [postId]: revertComments(prev[postId] || []),
+            }));
         }
     };
 
@@ -2477,6 +2547,15 @@ export default function FeedPage() {
                                                                                             <span className="text-xs font-medium">{comment.replies.length}</span>
                                                                                         )}
                                                                                     </button>
+                                                                                    <button
+                                                                                        onClick={() => handleCommentLike(post.id, comment.id, comment.user_has_liked || false)}
+                                                                                        className={`flex items-center gap-1.5 px-2 py-1 rounded-full transition-colors ${comment.user_has_liked ? 'text-red-500 hover:bg-red-50' : 'text-gray-500 hover:text-red-500 hover:bg-red-50'}`}
+                                                                                    >
+                                                                                        <Heart className={`w-4 h-4 ${comment.user_has_liked ? 'fill-current' : ''}`} />
+                                                                                        {comment.likes_count > 0 && (
+                                                                                            <span className="text-xs font-medium">{comment.likes_count}</span>
+                                                                                        )}
+                                                                                    </button>
                                                                                 </div>
 
                                                                                 {/* Reply Input - Twitter Style */}
@@ -2751,6 +2830,15 @@ export default function FeedPage() {
                                                                                                 >
                                                                                                     <MessageCircle className="w-3.5 h-3.5" />
                                                                                                     <span>Reply</span>
+                                                                                                </button>
+                                                                                                <button
+                                                                                                    onClick={() => handleCommentLike(post.id, reply.id, reply.user_has_liked || false)}
+                                                                                                    className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full transition-colors text-xs ${reply.user_has_liked ? 'text-red-500 hover:bg-red-50' : 'text-gray-500 hover:text-red-500 hover:bg-red-50'}`}
+                                                                                                >
+                                                                                                    <Heart className={`w-3.5 h-3.5 ${reply.user_has_liked ? 'fill-current' : ''}`} />
+                                                                                                    {reply.likes_count > 0 && (
+                                                                                                        <span>{reply.likes_count}</span>
+                                                                                                    )}
                                                                                                 </button>
                                                                                             </div>
 
