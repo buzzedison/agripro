@@ -209,26 +209,21 @@ const components = {
   types: {
     image: ({ value }: any) => {
       if (!value?.asset) return null
-      const imageUrl = urlForImage(value).width(1600).height(1000).fit('max').url()
+      const imageUrl = urlForImage(value).width(1800).fit('max').auto('format').url()
+
       return (
         <figure
           className={clsx(
-            'my-10 overflow-hidden rounded-3xl bg-gray-100 shadow-sm',
+            'my-10 rounded-3xl bg-gray-100 shadow-sm',
             value.fullWidth ? '-mx-6 md:-mx-12 lg:-mx-24' : ''
           )}
         >
-          <div
-            className={clsx(
-              'relative w-full overflow-hidden',
-              value.fullWidth ? 'h-[320px] md:h-[460px] lg:h-[520px]' : 'h-[260px] md:h-[360px]'
-            )}
-          >
-            <Image
+          <div className="overflow-hidden rounded-3xl">
+            <img
               src={imageUrl}
               alt={value.alt || value.caption || 'Insight image'}
-              fill
-              sizes="(min-width: 1024px) 900px, 100vw"
-              className="object-cover"
+              className="block h-auto w-full"
+              loading="lazy"
             />
           </div>
           {value.caption && (

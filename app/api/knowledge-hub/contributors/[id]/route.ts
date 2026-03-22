@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 
 import { createClient } from 'next-sanity'
 import { apiVersion, dataset, projectId } from '@/sanity/env'
+import { canAccessSubmission, getKnowledgeHubSession } from '@/lib/knowledge-hub/auth'
 
 // Use fresh client without CDN cache for contributor data
 const client = createClient({
@@ -71,6 +72,11 @@ export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id?: string }> }
 ) {
+  const auth = await getKnowledgeHubSession()
+  if (!auth.ok) {
+    return auth.response
+  }
+
   const { id } = await params
 
   if (!id) {
@@ -82,6 +88,10 @@ export async function GET(
 
     if (!submission) {
       return NextResponse.json({ error: 'Submission not found' }, { status: 404 })
+    }
+
+    if (!canAccessSubmission(submission, auth.session)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const {

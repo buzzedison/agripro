@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { createClient } from 'next-sanity'
 import { apiVersion, dataset, projectId } from '@/sanity/env'
+import { getKnowledgeHubSession } from '@/lib/knowledge-hub/auth'
 
 // Use fresh client without CDN cache for contributor data
 const client = createClient({
@@ -12,14 +13,13 @@ const client = createClient({
 })
 
 export async function GET(request: NextRequest) {
-  const url = new URL(request.url)
-  const email = url.searchParams.get('email')
-
-  if (!email) {
-    return NextResponse.json({ error: 'Email is required' }, { status: 400 })
+  const auth = await getKnowledgeHubSession()
+  if (!auth.ok) {
+    return auth.response
   }
 
   try {
+    const email = auth.session.user.email!.trim().toLowerCase()
     const submissions = await client.fetch(
       `*[_type == "contributorSubmission" && supabaseUserEmail == $email] |
        order(coalesce(submittedAt, _createdAt) desc) {
@@ -48,4 +48,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to list submissions' }, { status: 500 })
   }
 }
-

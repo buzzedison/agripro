@@ -1,189 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { randomUUID } from 'crypto'
-
 import { getSanityWriteClient } from '@/sanity/lib/serverClient'
 import { client as readClient } from '@/sanity/lib/client'
+import {
+  isPortableText,
+  markdownToPortableText,
+  portableTextToPlainText,
+} from '@/lib/knowledge-hub/portableText'
+import { getKnowledgeHubSession, requireAdmin } from '@/lib/knowledge-hub/auth'
 
 const writeClient = getSanityWriteClient()
-
-/**
- * Convert markdown text to Sanity Portable Text blocks
- */
-function markdownToPortableText(markdown: string): any[] {
-  const blocks: any[] = []
-  const lines = markdown.split('\n')
-  let i = 0
-
-  while (i < lines.length) {
-    const line = lines[i]
-
-    // Skip empty lines
-    if (!line.trim()) {
-      i++
-      continue
-    }
-
-    // Headings
-    if (line.startsWith('### ')) {
-      blocks.push(createBlock(line.slice(4), 'h3'))
-      i++
-      continue
-    }
-    if (line.startsWith('## ')) {
-      blocks.push(createBlock(line.slice(3), 'h2'))
-      i++
-      continue
-    }
-    if (line.startsWith('# ')) {
-      blocks.push(createBlock(line.slice(2), 'h1'))
-      i++
-      continue
-    }
-
-    // Blockquote
-    if (line.startsWith('> ')) {
-      const quoteLines: string[] = []
-      while (i < lines.length && lines[i].startsWith('> ')) {
-        quoteLines.push(lines[i].slice(2))
-        i++
-      }
-      blocks.push(createBlock(quoteLines.join(' '), 'blockquote'))
-      continue
-    }
-
-    // Unordered list
-    if (line.match(/^[-*]\s/)) {
-      while (i < lines.length && lines[i].match(/^[-*]\s/)) {
-        blocks.push({
-          _type: 'block',
-          _key: randomUUID(),
-          style: 'normal',
-          listItem: 'bullet',
-          level: 1,
-          markDefs: [],
-          children: parseInlineMarks(lines[i].replace(/^[-*]\s/, '')),
-        })
-        i++
-      }
-      continue
-    }
-
-    // Ordered list
-    if (line.match(/^\d+\.\s/)) {
-      while (i < lines.length && lines[i].match(/^\d+\.\s/)) {
-        blocks.push({
-          _type: 'block',
-          _key: randomUUID(),
-          style: 'normal',
-          listItem: 'number',
-          level: 1,
-          markDefs: [],
-          children: parseInlineMarks(lines[i].replace(/^\d+\.\s/, '')),
-        })
-        i++
-      }
-      continue
-    }
-
-    // Image (markdown syntax) - skip for now
-    if (line.match(/^!\[([^\]]*)\]\(([^)]+)\)/)) {
-      i++
-      continue
-    }
-
-    // Regular paragraph
-    const paragraphLines: string[] = []
-    while (
-      i < lines.length &&
-      lines[i].trim() &&
-      !lines[i].startsWith('#') &&
-      !lines[i].startsWith('>') &&
-      !lines[i].match(/^[-*]\s/) &&
-      !lines[i].match(/^\d+\.\s/) &&
-      !lines[i].match(/^!\[/)
-    ) {
-      paragraphLines.push(lines[i])
-      i++
-    }
-    if (paragraphLines.length > 0) {
-      blocks.push(createBlock(paragraphLines.join(' '), 'normal'))
-    }
-  }
-
-  return blocks
-}
-
-function createBlock(text: string, style: string): any {
-  return {
-    _type: 'block',
-    _key: randomUUID(),
-    style,
-    markDefs: [],
-    children: parseInlineMarks(text),
-  }
-}
-
-function parseInlineMarks(text: string): any[] {
-  const children: any[] = []
-  const segments = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g)
-  
-  for (const segment of segments) {
-    if (!segment) continue
-    
-    if (segment.startsWith('**') && segment.endsWith('**')) {
-      children.push({
-        _type: 'span',
-        _key: randomUUID(),
-        marks: ['strong'],
-        text: segment.slice(2, -2),
-      })
-    } else if (segment.startsWith('*') && segment.endsWith('*') && !segment.startsWith('**')) {
-      children.push({
-        _type: 'span',
-        _key: randomUUID(),
-        marks: ['em'],
-        text: segment.slice(1, -1),
-      })
-    } else {
-      children.push({
-        _type: 'span',
-        _key: randomUUID(),
-        marks: [],
-        text: segment,
-      })
-    }
-  }
-
-  if (children.length === 0) {
-    children.push({
-      _type: 'span',
-      _key: randomUUID(),
-      marks: [],
-      text: text,
-    })
-  }
-
-  return children
-}
-
-function portableTextToPlainText(blocks: any[]): string {
-  if (!Array.isArray(blocks)) return ''
-  
-  return blocks
-    .map(block => {
-      if (block?._type !== 'block' || !Array.isArray(block.children)) return ''
-      return block.children
-        .map((child: any) => child?.text ?? '')
-        .join('')
-    })
-    .join('\n\n')
-}
 
 /**
  * Republish/update an existing insight's content from its linked submission
  */
 export async function POST(request: NextRequest) {
   try {
+    const auth = await getKnowledgeHubSession()
+    if (!auth.ok) {
+      return auth.response
+    }
+
+    const forbidden = requireAdmin(auth.session.adminAccess)
+    if (forbidden) {
+      return forbidden
+    }
+
     const { insightId } = await request.json()
 
     if (!insightId) {
@@ -204,6 +45,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No submission found for this insight' }, { status: 404 })
     }
 
+    if (isPortableText(submission.content)) {
+      const plainText = portableTextToPlainText(submission.content)
+      const hasMarkdownSyntax =
+        plainText.includes('## ') ||
+        plainText.includes('### ') ||
+        plainText.includes('**') ||
+        plainText.includes('- ') ||
+        plainText.includes('1. ') ||
+        plainText.includes('> ') ||
+        plainText.includes('![')
+
+      if (!hasMarkdownSyntax) {
+        await writeClient.patch(insightId)
+          .set({ content: submission.content })
+          .commit()
+
+        return NextResponse.json({
+          success: true,
+          message: 'Insight content updated successfully',
+        })
+      }
+    }
+
     // Extract plain text from the content
     let plainText = ''
     if (Array.isArray(submission.content) && submission.content.length > 0) {
@@ -217,7 +81,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Convert markdown to proper Portable Text
-    const processedContent = markdownToPortableText(plainText)
+    const processedContent = await markdownToPortableText(plainText, writeClient)
 
     // Update the insight
     await writeClient.patch(insightId)

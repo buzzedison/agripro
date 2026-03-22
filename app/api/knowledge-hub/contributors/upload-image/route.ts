@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSanityWriteClient } from '@/sanity/lib/serverClient'
+import { getKnowledgeHubSession } from '@/lib/knowledge-hub/auth'
 
 const writeClient = getSanityWriteClient()
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await getKnowledgeHubSession()
+    if (!auth.ok) {
+      return auth.response
+    }
+
     const formData = await request.formData()
     const file = formData.get('file')
 

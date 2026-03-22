@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSanityWriteClient } from '@/sanity/lib/serverClient'
 import { sendContributorStatusEmail } from '@/lib/resend/contributor'
 import { client } from '@/sanity/lib/client'
+import { getKnowledgeHubSession, requireAdmin } from '@/lib/knowledge-hub/auth'
 
 const writeClient = getSanityWriteClient()
 
@@ -16,8 +17,18 @@ type StatusPayload = {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await getKnowledgeHubSession()
+    if (!auth.ok) {
+      return auth.response
+    }
+
+    const forbidden = requireAdmin(auth.session.adminAccess)
+    if (forbidden) {
+      return forbidden
+    }
+
     const body = (await request.json()) as StatusPayload
-  const { submissionId, status, reviewer, note, linkedInsightId } = body
+    const { submissionId, status, note, linkedInsightId } = body
 
     if (!submissionId || !status) {
       return NextResponse.json({ error: 'submissionId and status required' }, { status: 400 })
@@ -67,7 +78,7 @@ export async function POST(request: NextRequest) {
         {
           _type: 'note',
           createdAt: now,
-          author: reviewer || 'Editor',
+          author: auth.session.user.email || 'Editor',
           message: note,
         },
       ])
@@ -90,7 +101,7 @@ export async function POST(request: NextRequest) {
         to: existing.supabaseUserEmail,
         status,
         title: existing.title,
-        reviewer,
+        reviewer: auth.session.user.email || 'Editor',
         note,
         insightSlug,
       })
@@ -102,4 +113,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to update status' }, { status: 500 })
   }
 }
-

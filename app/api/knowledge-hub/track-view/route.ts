@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createClient as createServerSupabaseClient } from '@/lib/supabase/server'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,8 +14,6 @@ export async function POST(request: NextRequest) {
       articleId,
       articleType,
       articleTitle,
-      userEmail,
-      userId,
       viewDuration
     } = body
 
@@ -29,6 +28,10 @@ export async function POST(request: NextRequest) {
 
     const userAgent = request.headers.get('user-agent') || ''
     const referrer = request.headers.get('referer') || ''
+    const sessionSupabase = await createServerSupabaseClient()
+    const {
+      data: { user },
+    } = await sessionSupabase.auth.getUser()
 
     // Insert view record
     const { data: viewData, error: viewError } = await supabase
@@ -37,8 +40,8 @@ export async function POST(request: NextRequest) {
         article_id: articleId,
         article_type: articleType,
         article_title: articleTitle,
-        user_email: userEmail,
-        user_id: userId,
+        user_email: user?.email ?? null,
+        user_id: user?.id ?? null,
         ip_address: ipAddress,
         user_agent: userAgent,
         referrer: referrer,
@@ -83,7 +86,7 @@ export async function POST(request: NextRequest) {
             article_type: articleType,
             article_title: articleTitle,
             total_views: 1,
-            unique_views: userEmail ? 1 : 0,
+            unique_views: user?.email ? 1 : 0,
             last_viewed_at: new Date().toISOString()
           })
       }

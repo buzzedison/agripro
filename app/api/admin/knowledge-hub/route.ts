@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getKnowledgeHubSession, requireAdmin } from '@/lib/knowledge-hub/auth'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -9,6 +10,16 @@ const supabase = createClient(
 // GET - Get knowledge hub analytics
 export async function GET(request: NextRequest) {
   try {
+    const auth = await getKnowledgeHubSession()
+    if (!auth.ok) {
+      return auth.response
+    }
+
+    const forbidden = requireAdmin(auth.session.adminAccess)
+    if (forbidden) {
+      return forbidden
+    }
+
     const { searchParams } = new URL(request.url)
     const period = searchParams.get('period') || '30d' // 7d, 30d, 90d
 

@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto'
 import { getSanityWriteClient } from '@/sanity/lib/serverClient'
 import { client as readClient } from '@/sanity/lib/client'
 import { sendAdminNewSubmissionEmail } from '@/lib/resend/contributor'
+import { canAccessSubmission, getKnowledgeHubSession } from '@/lib/knowledge-hub/auth'
 
 const writeClient = getSanityWriteClient()
 
@@ -17,8 +18,8 @@ type IncomingBody = {
   topics?: string[]
   tags?: string[]
   submissionNotes?: string
-  supabaseUserId: string
-  supabaseUserEmail: string
+  supabaseUserId?: string
+  supabaseUserEmail?: string
   contributorName?: string
   isFinal?: boolean
   coverImageAssetId?: string | null
@@ -26,6 +27,12 @@ type IncomingBody = {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await getKnowledgeHubSession()
+    if (!auth.ok) {
+      return auth.response
+    }
+
+    const { user, adminAccess } = auth.session
     const body = (await request.json()) as IncomingBody
 
     const {
@@ -38,19 +45,19 @@ export async function POST(request: NextRequest) {
       topics = [],
       tags = [],
       submissionNotes,
-      supabaseUserId,
-      supabaseUserEmail,
       contributorName,
       isFinal = false,
       coverImageAssetId = null,
     } = body
 
-    if (!title || !excerpt || !(contentBlocks?.length || contentText) || !supabaseUserId || !supabaseUserEmail) {
+    if (!title || !excerpt || !(contentBlocks?.length || contentText)) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
+    const supabaseUserId = user.id
+    const supabaseUserEmail = user.email!.trim().toLowerCase()
     const slug = createSlug(title)
-    const status = isFinal ? 'submitted' : 'draft'
+    const status = isFinal ? (adminAccess.isAdmin ? 'approved' : 'submitted') : 'draft'
     const now = new Date().toISOString()
 
     const content = contentBlocks?.length ? contentBlocks : convertPlainTextToPortableText(contentText || '')
@@ -87,6 +94,7 @@ export async function POST(request: NextRequest) {
       contributorName: contributorName || null,
       coverImage,
       submittedAt: status === 'submitted' ? now : null,
+      approvedAt: status === 'approved' ? now : null,
       ...(primaryAuthorRef ? { primaryAuthor: primaryAuthorRef } : {}),
     }
 
@@ -101,7 +109,7 @@ export async function POST(request: NextRequest) {
       const created = await writeClient.create(document)
 
       // Send admin notification if this is a final submission
-      if (isFinal) {
+      if (isFinal && !adminAccess.isAdmin) {
         sendAdminNewSubmissionEmail({
           contributorEmail: supabaseUserEmail,
           title,
@@ -111,11 +119,21 @@ export async function POST(request: NextRequest) {
         }).catch((err) => console.error('Failed to send admin notification:', err))
       }
 
-      return NextResponse.json({ success: true, submissionId: created._id })
+      return NextResponse.json({
+        success: true,
+        submissionId: created._id,
+        status,
+        shouldPublishNow: adminAccess.isAdmin,
+      })
     }
 
     const existing = await readClient.fetch(
-      `*[_type == "contributorSubmission" && _id == $id][0]{ status, submittedAt }`,
+      `*[_type == "contributorSubmission" && _id == $id][0]{
+        status,
+        submittedAt,
+        supabaseUserId,
+        supabaseUserEmail
+      }`,
       { id: submissionId }
     )
 
@@ -123,17 +141,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Submission not found' }, { status: 404 })
     }
 
+    if (!canAccessSubmission(existing, auth.session)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     const patch = writeClient.patch(submissionId).set({
       ...baseDoc,
       contentSnapshot,
       draftWordCount,
       submittedAt: status === 'submitted' ? existing.submittedAt || now : existing.submittedAt || null,
+      approvedAt: status === 'approved' ? now : null,
     })
 
     await patch.commit()
 
     // Send admin notification if this is a final submission (and wasn't already submitted)
-    if (isFinal && existing.status !== 'submitted') {
+    if (isFinal && !adminAccess.isAdmin && existing.status !== 'submitted') {
       sendAdminNewSubmissionEmail({
         contributorEmail: supabaseUserEmail,
         title,
@@ -143,7 +166,12 @@ export async function POST(request: NextRequest) {
       }).catch((err) => console.error('Failed to send admin notification:', err))
     }
 
-    return NextResponse.json({ success: true, submissionId })
+    return NextResponse.json({
+      success: true,
+      submissionId,
+      status,
+      shouldPublishNow: adminAccess.isAdmin,
+    })
   } catch (error) {
     console.error('Contributor submission error:', error)
     return NextResponse.json({ error: 'Failed to save submission' }, { status: 500 })

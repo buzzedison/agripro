@@ -110,6 +110,8 @@ export default function ContributorWritePage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [adminStatusResolved, setAdminStatusResolved] = useState(false)
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
   const [hydratingDraft, setHydratingDraft] = useState(false)
   const [readOnly, setReadOnly] = useState(false)
@@ -119,6 +121,7 @@ export default function ContributorWritePage() {
   const [coverImageUploading, setCoverImageUploading] = useState(false)
   const [coverImageError, setCoverImageError] = useState<string | null>(null)
   const [editorTab, setEditorTab] = useState<'write' | 'preview'>('write')
+  const [authorSyncDone, setAuthorSyncDone] = useState(false)
   const wordCount = useMemo(() => body.trim().split(/\s+/).filter(Boolean).length, [body])
   const statusLabel = status ? status.charAt(0).toUpperCase() + status.slice(1) : null
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -154,6 +157,9 @@ export default function ContributorWritePage() {
 
   useEffect(() => {
     if (!user) {
+      setIsAdmin(false)
+      setAdminStatusResolved(false)
+      setAuthorSyncDone(false)
       setSubmissionId(null)
       setReadOnly(false)
       setLockNotice(null)
@@ -161,13 +167,47 @@ export default function ContributorWritePage() {
       return
     }
 
+    let active = true
     const draftId = searchParams.get('draft')
+
+    const fetchAdminStatus = async () => {
+      if (!user.email) {
+        if (active) {
+          setIsAdmin(false)
+          setAdminStatusResolved(true)
+        }
+        return
+      }
+
+      try {
+        const response = await fetch('/api/admin/check-status')
+        const data = await response.json()
+
+        if (!active) return
+
+        setIsAdmin(Boolean(response.ok && data?.isAdmin))
+      } catch (err) {
+        console.error('Failed to resolve admin status', err)
+        if (active) {
+          setIsAdmin(false)
+        }
+      } finally {
+        if (active) {
+          setAdminStatusResolved(true)
+        }
+      }
+    }
+
+    fetchAdminStatus()
+
     if (!draftId) {
       setSubmissionId(null)
       setReadOnly(false)
       setLockNotice(null)
       setStatus(null)
-      return
+      return () => {
+        active = false
+      }
     }
 
     const controller = new AbortController()
@@ -249,9 +289,47 @@ export default function ContributorWritePage() {
     fetchDraft()
 
     return () => {
+      active = false
       controller.abort()
     }
   }, [user, searchParams])
+
+  useEffect(() => {
+    if (!user?.email || !adminStatusResolved || !isAdmin || authorSyncDone) {
+      return
+    }
+
+    let cancelled = false
+
+    const syncAuthorIdentity = async () => {
+      try {
+        const response = await fetch('/api/knowledge-hub/contributors/sync-author', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: user.email,
+            name: contributorName.trim() || user.user_metadata?.full_name || user.user_metadata?.name,
+          }),
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to sync author identity')
+        }
+
+        if (!cancelled) {
+          setAuthorSyncDone(true)
+        }
+      } catch (err) {
+        console.error('Failed to sync admin author identity', err)
+      }
+    }
+
+    syncAuthorIdentity()
+
+    return () => {
+      cancelled = true
+    }
+  }, [user, isAdmin, adminStatusResolved, authorSyncDone, contributorName])
 
   const meetsReviewRequirements = useMemo(() => {
     return title.trim().length >= 6 && excerpt.trim().length >= 40 && body.trim().length >= 200
@@ -548,18 +626,52 @@ export default function ContributorWritePage() {
       }
 
       const data = await response.json()
+      const nextSubmissionId = data.submissionId ?? submissionId
+
       if (!submissionId && data.submissionId) {
         setSubmissionId(data.submissionId)
       }
 
-      setMessage(final ? 'Submission sent for review. We’ll email you once it’s reviewed.' : 'Draft saved.')
+      if (typeof data.status === 'string') {
+        setStatus(data.status as SubmissionStatus)
+      }
+
+      if (final && data.shouldPublishNow && nextSubmissionId) {
+        const publishResponse = await fetch('/api/knowledge-hub/contributors/publish', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            submissionId: nextSubmissionId,
+            reviewer: user.email ?? 'Admin',
+          }),
+        })
+
+        const publishData = await publishResponse.json()
+
+        if (!publishResponse.ok) {
+          throw new Error(publishData.error || 'Article was approved, but publishing failed.')
+        }
+
+        setStatus('published')
+        setMessage('Article published successfully.')
+        router.replace(`/knowledgehub/insights/${publishData.insightSlug}`)
+        return
+      }
+
+      setMessage(
+        final
+          ? data.shouldPublishNow
+            ? 'Article approved. Finishing publication...'
+            : 'Submission sent for review. We’ll email you once it’s reviewed.'
+          : 'Draft saved.'
+      )
 
       if (final) {
-        router.replace('/knowledgehub/contributors?submitted=1')
+        router.replace(data.shouldPublishNow ? '/knowledgehub/contributors?published=1' : '/knowledgehub/contributors?submitted=1')
       }
     } catch (err) {
       console.error(err)
-      setError('Could not save submission. Please try again.')
+      setError(err instanceof Error ? err.message : 'Could not save submission. Please try again.')
     } finally {
       setSaving(false)
       setShowSubmitConfirm(false)
@@ -623,7 +735,7 @@ export default function ContributorWritePage() {
                   ⏱ Aim for 800–1,200 words. Lead with outcomes, back up claims with evidence, and cite names readers can trust.
                 </div>
                 <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 px-4 py-3">
-                  📬 You’ll receive email notifications for reviewer notes, approvals, or publication.
+                  {isAdmin ? '🚀 Admin submissions publish immediately once you confirm.' : '📬 You’ll receive email notifications for reviewer notes, approvals, or publication.'}
                 </div>
               </div>
             </div>
@@ -1051,8 +1163,8 @@ export default function ContributorWritePage() {
               <Button onClick={() => handleSave(false)} disabled={saving}>
                 Save draft
               </Button>
-              <Button variant="secondary" onClick={() => setShowSubmitConfirm(true)} disabled={saving || !canSubmit}>
-                Submit for review
+              <Button variant="secondary" onClick={() => setShowSubmitConfirm(true)} disabled={saving || !canSubmit || !adminStatusResolved}>
+                {isAdmin ? 'Publish now' : 'Submit for review'}
               </Button>
               <Button asChild variant="ghost">
                 <Link href="/knowledgehub/contributors">Back to dashboard</Link>
@@ -1064,16 +1176,18 @@ export default function ContributorWritePage() {
         {showSubmitConfirm ? (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
             <div className="w-full max-w-md rounded-3xl border border-emerald-100 bg-white p-6 shadow-xl">
-              <h2 className="text-lg font-semibold text-emerald-950">Submit for review?</h2>
+              <h2 className="text-lg font-semibold text-emerald-950">{isAdmin ? 'Publish this article now?' : 'Submit for review?'}</h2>
               <p className="mt-2 text-sm text-muted-foreground">
-                We’ll lock this draft, notify the editorial team, and email you once a reviewer responds. You can always add follow-up notes if needed.
+                {isAdmin
+                  ? 'We’ll save the final draft, bypass the approval queue for your admin account, and publish it to the Knowledge Hub immediately.'
+                  : 'We’ll lock this draft, notify the editorial team, and email you once a reviewer responds. You can always add follow-up notes if needed.'}
               </p>
               <div className="mt-6 flex justify-end gap-3">
                 <Button variant="ghost" onClick={() => setShowSubmitConfirm(false)}>
                   Not yet
                 </Button>
                 <Button onClick={() => handleSave(true)} disabled={saving}>
-                  {saving ? 'Submitting…' : 'Submit'}
+                  {saving ? (isAdmin ? 'Publishing…' : 'Submitting…') : isAdmin ? 'Publish' : 'Submit'}
                 </Button>
               </div>
             </div>

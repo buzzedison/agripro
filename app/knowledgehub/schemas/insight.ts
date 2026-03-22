@@ -1,4 +1,5 @@
 import { defineType } from 'sanity'
+import FullHeightImageInput from '@/sanity/components/FullHeightImageInput'
 
 export default defineType({
   name: 'insight',
@@ -48,6 +49,9 @@ export default defineType({
       name: 'image',
       title: 'Featured Image',
       type: 'image',
+      components: {
+        input: FullHeightImageInput,
+      },
       options: {
         hotspot: true
       }
@@ -56,6 +60,9 @@ export default defineType({
       name: 'heroImage',
       title: 'Hero Image',
       type: 'image',
+      components: {
+        input: FullHeightImageInput,
+      },
       options: { hotspot: true },
       description: 'Optional hero image override for the detail page header.',
     },
@@ -67,6 +74,9 @@ export default defineType({
         { type: 'block' },
         {
           type: 'image',
+          components: {
+            input: FullHeightImageInput,
+          },
           options: { hotspot: true },
           fields: [
             {

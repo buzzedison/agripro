@@ -148,7 +148,7 @@ export async function GET(request: NextRequest) {
     try {
       const response = await fetch(`${request.headers.get('origin') || 'http://localhost:3000'}/api/admin/knowledge-hub?period=30d`, {
         headers: {
-          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+          cookie: request.headers.get('cookie') || '',
         },
       })
 

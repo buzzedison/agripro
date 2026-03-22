@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { createClient } from 'next-sanity'
 import { apiVersion, dataset, projectId } from '@/sanity/env'
+import { getKnowledgeHubSession, requireAdmin } from '@/lib/knowledge-hub/auth'
 
 // Use fresh client without CDN cache for admin data
 const client = createClient({
@@ -75,6 +76,16 @@ const STATUSES: SubmissionStatus[] = ['draft', 'submitted', 'approved', 'rejecte
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = await getKnowledgeHubSession()
+    if (!auth.ok) {
+      return auth.response
+    }
+
+    const forbidden = requireAdmin(auth.session.adminAccess)
+    if (forbidden) {
+      return forbidden
+    }
+
     const url = new URL(request.url)
     const statusFilter = url.searchParams.get('status')
     const search = url.searchParams.get('q')?.toLowerCase().trim()
@@ -119,4 +130,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to load submissions' }, { status: 500 })
   }
 }
-

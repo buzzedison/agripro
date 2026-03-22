@@ -63,6 +63,7 @@ export default function ContributorPortalPage() {
   const router = useRouter()
 
   const [submissions, setSubmissions] = useState<Submission[]>([])
+  const [authorSyncDone, setAuthorSyncDone] = useState(false)
   const [isLoadingSubmissions, setLoadingSubmissions] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [activeSubmission, setActiveSubmission] = useState<Submission | null>(null)
@@ -71,11 +72,42 @@ export default function ContributorPortalPage() {
   useEffect(() => {
     if (!user || !user.email) return
 
+    const syncAuthorIdentity = async () => {
+      if (authorSyncDone) return
+
+      try {
+        const adminResponse = await fetch('/api/admin/check-status')
+        const adminData = await adminResponse.json()
+
+        if (!adminResponse.ok || !adminData?.isAdmin) {
+          setAuthorSyncDone(true)
+          return
+        }
+
+        const syncResponse = await fetch('/api/knowledge-hub/contributors/sync-author', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: user.email,
+            name: user.user_metadata?.full_name || user.user_metadata?.name,
+          }),
+        })
+
+        if (!syncResponse.ok) {
+          throw new Error('Failed to sync author identity')
+        }
+
+        setAuthorSyncDone(true)
+      } catch (err) {
+        console.error(err)
+      }
+    }
+
     const fetchSubmissions = async () => {
       try {
         setLoadingSubmissions(true)
         setError(null)
-        const response = await fetch(`/api/knowledge-hub/contributors/list?email=${encodeURIComponent(user.email!)}`)
+        const response = await fetch('/api/knowledge-hub/contributors/list')
         if (!response.ok) {
           throw new Error('Failed to load submissions')
         }
@@ -89,8 +121,9 @@ export default function ContributorPortalPage() {
       }
     }
 
+    syncAuthorIdentity()
     fetchSubmissions()
-  }, [user])
+  }, [user, authorSyncDone])
 
   const groupedSubmissions = useMemo(() => {
     return submissions.reduce(
