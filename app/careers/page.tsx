@@ -142,6 +142,49 @@ export default function Careers() {
               </div>
             </motion.div>
 
+            {/* Operations Intern Role */}
+            <motion.div variants={itemVariants} className="lg:col-span-2 group relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-amber-500 to-orange-400 rounded-3xl blur opacity-10 group-hover:opacity-30 transition duration-500"></div>
+              <div className="relative bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 p-8 md:p-10 border border-amber-100 flex flex-col md:flex-row gap-8 items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="bg-amber-100/80 p-4 rounded-2xl">
+                      <FaUsers className="text-3xl text-amber-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl md:text-3xl font-bold text-gray-900 group-hover:text-amber-700 transition-colors">
+                        Operations Intern
+                      </h3>
+                      <div className="flex items-center gap-3 mt-2 text-sm font-medium text-gray-500">
+                        <span className="bg-gray-100 px-3 py-1 rounded-full">National Service / Attachment</span>
+                        <span className="bg-amber-50 text-amber-700 px-3 py-1 rounded-full border border-amber-200">✨ Catalyst W 2026</span>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-gray-600 text-lg mb-6 leading-relaxed">
+                    The operational spine of AgriPro for 2026. Coordinate our flagship Catalyst W accelerator and manage international logistics for our Rwanda Demo Day. Real ownership from day one.
+                  </p>
+                  <div className="flex flex-wrap gap-4 mb-6 md:mb-0">
+                    <div className="flex items-center gap-2 text-gray-600 bg-gray-50 px-4 py-2 rounded-xl">
+                      <span className="text-xl">🕒</span> 8 Months
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-600 bg-gray-50 px-4 py-2 rounded-xl">
+                      <span className="text-xl">📍</span> Accra / Hybrid
+                    </div>
+                  </div>
+                </div>
+                <div className="w-full md:w-auto self-center md:self-end">
+                  <Link
+                    href="/careers/operations-intern"
+                    className="group/btn w-full md:w-auto inline-flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-700 text-white px-8 py-4 rounded-full font-bold text-lg transition-all hover:scale-105 shadow-lg shadow-amber-600/30"
+                  >
+                    View Details
+                    <FaArrowRight className="group-hover/btn:translate-x-1 transition-transform" />
+                  </Link>
+                </div>
+              </div>
+            </motion.div>
+
             {/* Agripro Fellowship */}
             <motion.div variants={itemVariants} className="group cursor-pointer">
               <Link href="/fellowship" className="block h-full">
