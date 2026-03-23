@@ -253,7 +253,7 @@ export default function OperationsIntern() {
               <div className="relative z-10 flex flex-col md:flex-row gap-12">
                 <div className="md:w-1/2">
                    <h3 className="text-3xl font-bold mb-8 flex items-center gap-3">
-                    <FaStar className="text-emerald-400" /> What We're Looking For
+                    <FaStar className="text-emerald-400" /> What We&apos;re Looking For
                   </h3>
                   <ul className="space-y-4">
                     {[
@@ -261,7 +261,7 @@ export default function OperationsIntern() {
                       "Superbly organized — nothing gets lost on your watch",
                       "Strong written English for emails and community updates",
                       "Proficient in Google Workspace & WhatsApp coordination",
-                      "Passion for agribusiness and women's entrepreneurship",
+                      "Passion for agribusiness and women&apos;s entrepreneurship",
                       "Able to work independently without daily supervision"
                     ].map((req, i) => (
                       <li key={i} className="flex items-start gap-3 bg-white/5 p-4 rounded-xl border border-white/10">
@@ -330,7 +330,7 @@ export default function OperationsIntern() {
                 Ready to Join Catalyst W?
               </h2>
               <p className="text-lg md:text-xl text-green-900/80 mb-10 max-w-2xl mx-auto font-medium">
-                Applications are reviewed on a rolling basis. If you're a fit, you'll hear from us within 5 working days.
+                Applications are reviewed on a rolling basis. If you&apos;re a fit, you&apos;ll hear from us within 5 working days.
               </p>
 
               <div className="flex flex-col sm:flex-row justify-center gap-5">
