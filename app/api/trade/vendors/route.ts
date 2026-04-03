@@ -18,12 +18,19 @@ export async function GET(request: NextRequest) {
         let query = supabase
             .from('trade_vendors')
             .select('id, business_name, owner_name, business_type, product_description, logo_url, cover_image_url, country, region, city, is_featured, is_verified, rating, total_reviews, slug, created_at', { count: 'exact' })
-            .eq('status', 'approved')
-            .eq('verification_status', 'approved');
+            .eq('status', 'approved');
 
         // Apply filters
         if (search) {
-            query = query.or(`business_name.ilike.%${search}%,product_description.ilike.%${search}%`);
+            query = query.or(
+                `business_name.ilike.%${search}%,` +
+                `product_description.ilike.%${search}%,` +
+                `owner_name.ilike.%${search}%,` +
+                `city.ilike.%${search}%,` +
+                `region.ilike.%${search}%,` +
+                `country.ilike.%${search}%,` +
+                `business_type.ilike.%${search}%`
+            );
         }
 
         if (category) {

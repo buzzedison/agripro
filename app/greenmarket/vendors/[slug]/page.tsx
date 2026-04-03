@@ -39,7 +39,6 @@ export default async function VendorProfilePage({ params }: PageProps) {
         .select('*')
         .eq('slug', slug)
         .eq('status', 'approved')
-        .eq('verification_status', 'approved')
         .single();
 
     if (error || !vendor) {
@@ -296,25 +295,53 @@ export default async function VendorProfilePage({ params }: PageProps) {
                     {/* Sidebar */}
                     <div className="space-y-6">
                         {/* Trust Badge */}
-                        {vendor.is_verified && (
+                        {vendor.verification_level && vendor.verification_level !== 'basic' && (
                             <div className="bg-white rounded-2xl shadow-sm p-6">
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div className="p-2 bg-green-100 rounded-lg">
-                                        <FaShieldAlt className="w-5 h-5 text-green-600" />
-                                    </div>
-                                    <h3 className="font-bold text-gray-900">Verified Vendor</h3>
-                                </div>
-                                <p className="text-sm text-gray-600">
-                                    This vendor has been reviewed and approved by our team. They meet our standards for quality and sustainability.
-                                </p>
-                                {vendor.verified_at && (
-                                    <p className="text-xs text-gray-400 mt-3">
-                                        Verified on {new Date(vendor.verified_at).toLocaleDateString('en-US', {
-                                            year: 'numeric',
-                                            month: 'long',
-                                            day: 'numeric'
-                                        })}
-                                    </p>
+                                {(vendor.verification_level as string) === 'agripro_certified' ? (
+                                    <>
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <div className="p-2 bg-green-100 rounded-lg">
+                                                <FaShieldAlt className="w-5 h-5 text-green-600" />
+                                            </div>
+                                            <div>
+                                                <h3 className="font-bold text-gray-900">AgriPro Certified</h3>
+                                                <p className="text-xs text-green-600 font-medium">Quality & Sustainability Vetted</p>
+                                            </div>
+                                        </div>
+                                        <p className="text-sm text-gray-600">
+                                            This vendor has been personally vetted by the AgriPro team and meets our verified standards for product quality, business practices, and sustainability.
+                                        </p>
+                                    </>
+                                ) : vendor.verification_level === 'premium' ? (
+                                    <>
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <div className="p-2 bg-amber-100 rounded-lg">
+                                                <FaShieldAlt className="w-5 h-5 text-amber-600" />
+                                            </div>
+                                            <div>
+                                                <h3 className="font-bold text-gray-900">Business Verified</h3>
+                                                <p className="text-xs text-amber-600 font-medium">Identity & Registration Confirmed</p>
+                                            </div>
+                                        </div>
+                                        <p className="text-sm text-gray-600">
+                                            This vendor&apos;s identity and business registration have been confirmed by AgriPro.
+                                        </p>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <div className="p-2 bg-blue-100 rounded-lg">
+                                                <FaShieldAlt className="w-5 h-5 text-blue-600" />
+                                            </div>
+                                            <div>
+                                                <h3 className="font-bold text-gray-900">Identity Verified</h3>
+                                                <p className="text-xs text-blue-600 font-medium">ID Confirmed</p>
+                                            </div>
+                                        </div>
+                                        <p className="text-sm text-gray-600">
+                                            This vendor&apos;s identity has been confirmed by AgriPro.
+                                        </p>
+                                    </>
                                 )}
                             </div>
                         )}

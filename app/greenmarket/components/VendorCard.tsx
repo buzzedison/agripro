@@ -37,23 +37,31 @@ interface VendorCardProps {
 }
 
 const businessTypeLabels: Record<string, string> = {
-    'organic-farm': 'Organic Farm',
+    'fresh-produce': 'Fresh Produce',
+    'livestock': 'Livestock',
+    'grains': 'Grains & Cereals',
+    'processed-foods': 'Processed Foods',
+    'dairy': 'Dairy',
+    'aquaculture': 'Aquaculture',
     'eco-products': 'Eco Products',
-    'sustainable-fashion': 'Sustainable Fashion',
-    'green-tech': 'Green Tech',
-    'food-beverage': 'Food & Beverage',
-    'wellness': 'Health & Wellness',
-    other: 'General'
+    'farm-equipment': 'Farm Equipment',
+    'seeds': 'Seeds & Inputs',
+    'agro-services': 'Agro Services',
+    other: 'General',
 };
 
 const businessTypeColors: Record<string, string> = {
-    'organic-farm': 'bg-green-100 text-green-700',
+    'fresh-produce': 'bg-green-100 text-green-700',
+    'livestock': 'bg-amber-100 text-amber-700',
+    'grains': 'bg-yellow-100 text-yellow-700',
+    'processed-foods': 'bg-orange-100 text-orange-700',
+    'dairy': 'bg-blue-100 text-blue-700',
+    'aquaculture': 'bg-cyan-100 text-cyan-700',
     'eco-products': 'bg-emerald-100 text-emerald-700',
-    'sustainable-fashion': 'bg-purple-100 text-purple-700',
-    'green-tech': 'bg-blue-100 text-blue-700',
-    'food-beverage': 'bg-orange-100 text-orange-700',
-    'wellness': 'bg-pink-100 text-pink-700',
-    other: 'bg-gray-100 text-gray-700'
+    'farm-equipment': 'bg-gray-100 text-gray-700',
+    'seeds': 'bg-lime-100 text-lime-700',
+    'agro-services': 'bg-purple-100 text-purple-700',
+    other: 'bg-gray-100 text-gray-700',
 };
 
 export default function VendorCard({

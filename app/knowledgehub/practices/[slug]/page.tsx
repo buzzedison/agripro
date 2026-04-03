@@ -6,6 +6,7 @@ import { urlForImage } from '@/lib/image'
 import { PortableText } from '@portabletext/react'
 import { format } from 'date-fns'
 import { ArrowLeft, Info, AlertTriangle, CheckCircle, XCircle, Lightbulb } from 'lucide-react'
+import ArticleDonationBanner from '../../components/ArticleDonationBanner'
 
 type Props = {
   params: Promise<{ slug: string }>
@@ -288,6 +289,7 @@ export default async function BestPracticePage({ params }: Props) {
           )}
         </div>
       </div>
+      <ArticleDonationBanner />
     </div>
   )
 }

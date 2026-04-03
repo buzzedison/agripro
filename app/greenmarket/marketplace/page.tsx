@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -44,12 +44,16 @@ interface Category {
 }
 
 const businessTypes = [
-    { id: 'organic-farm', label: 'Organic Farm', icon: '🌱' },
-    { id: 'eco-products', label: 'Eco Products', icon: '♻️' },
-    { id: 'sustainable-fashion', label: 'Sustainable Fashion', icon: '👕' },
-    { id: 'green-tech', label: 'Green Tech', icon: '💡' },
-    { id: 'food-beverage', label: 'Food & Beverage', icon: '🍽️' },
-    { id: 'wellness', label: 'Health & Wellness', icon: '🌿' }
+    { id: 'fresh-produce', label: 'Fresh Produce' },
+    { id: 'livestock', label: 'Livestock' },
+    { id: 'grains', label: 'Grains & Cereals' },
+    { id: 'processed-foods', label: 'Processed Foods' },
+    { id: 'dairy', label: 'Dairy' },
+    { id: 'aquaculture', label: 'Aquaculture' },
+    { id: 'eco-products', label: 'Eco Products' },
+    { id: 'farm-equipment', label: 'Farm Equipment' },
+    { id: 'seeds', label: 'Seeds & Inputs' },
+    { id: 'agro-services', label: 'Agro Services' },
 ];
 
 export default function MarketplacePage() {
@@ -64,9 +68,22 @@ export default function MarketplacePage() {
     const [showFilters, setShowFilters] = useState(false);
     const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
 
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
     useEffect(() => {
         fetchCategories();
     }, []);
+
+    // Debounced live search — fires 400ms after the user stops typing
+    useEffect(() => {
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(() => {
+            fetchVendors();
+        }, 400);
+        return () => {
+            if (debounceRef.current) clearTimeout(debounceRef.current);
+        };
+    }, [searchQuery]);
 
     useEffect(() => {
         fetchVendors();
@@ -136,17 +153,26 @@ export default function MarketplacePage() {
                         </div>
                         <div className="bg-white/10 rounded-2xl p-5">
                             <form onSubmit={handleSearch} className="relative">
-                                <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-200" />
+                                <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                                 <input
                                     type="text"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    placeholder="Search vendors, products, or services..."
-                                    className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white text-gray-900 shadow-lg focus:outline-none"
+                                    placeholder="Search by name, location, product type..."
+                                    className="w-full pl-12 pr-28 py-4 rounded-2xl bg-white text-gray-900 shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-400"
                                 />
+                                {searchQuery && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setSearchQuery('')}
+                                        className="absolute right-24 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                )}
                                 <button
                                     type="submit"
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 px-6 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700"
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 px-5 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 font-medium text-sm"
                                 >
                                     Search
                                 </button>
@@ -182,19 +208,26 @@ export default function MarketplacePage() {
                         <button
                             key={type.id}
                             onClick={() => setSelectedCategory(type.id)}
-                            className={`px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-2 transition-colors ${
+                            className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
                                 selectedCategory === type.id
                                     ? 'bg-emerald-600 text-white'
                                     : 'bg-white border border-gray-200 hover:border-emerald-300'
                             }`}
                         >
-                            <span>{type.icon}</span>
                             {type.label}
                         </button>
                     ))}
                 </div>
 
                 <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 text-sm">
+                        {!loading && (
+                            <span className="text-gray-500">
+                                {vendors.length} vendor{vendors.length !== 1 ? 's' : ''}
+                                {searchQuery && <span className="text-emerald-600 font-medium"> for &ldquo;{searchQuery}&rdquo;</span>}
+                            </span>
+                        )}
+                    </div>
                     <div className="flex items-center gap-4 text-sm">
                         <label className="flex items-center gap-2">
                             <input

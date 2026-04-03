@@ -2,48 +2,92 @@
 
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { BookOpen, BarChart2, Users, Cpu, ArrowRight } from 'lucide-react';
+
+const resources = [
+  {
+    icon: BookOpen,
+    title: 'Research & Reports',
+    description: 'In-depth market research, agronomic studies, and sector analysis from across the continent.',
+    count: '200+ papers',
+  },
+  {
+    icon: BarChart2,
+    title: 'Market Intelligence',
+    description: 'Commodity prices, trade flow data, and demand forecasts across African markets.',
+    count: 'Live data',
+  },
+  {
+    icon: Users,
+    title: 'Expert Insights',
+    description: 'Articles and practical advice from agronomists, economists, and industry leaders.',
+    count: '50+ experts',
+  },
+  {
+    icon: Cpu,
+    title: 'AI Assistant',
+    description: 'Ask questions, get agronomic advice, and analyse your farm data — instantly.',
+    count: 'Available 24/7',
+  },
+];
 
 export default function KnowledgeHub() {
   return (
-    <section className="bg-green-50 py-24">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section className="bg-gray-950 py-24 relative overflow-hidden">
+      <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-[0.03]" />
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-500/5 rounded-full blur-[120px]" />
+
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+        {/* Header row */}
         <motion.div
-          initial={{ opacity: 0, y: 50 }}
+          initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-          className="text-center"
+          transition={{ duration: 0.6 }}
+          className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-14"
         >
-          <h2 className="text-4xl md:text-4xl font-extrabold text-green-900 mb-6">
-            <span className="block">Discover Agricultural Excellence at the</span>
-            <span className="block bg-gradient-to-r from-green-600 to-emerald-600 text-transparent bg-clip-text">
-              AgriPro Knowledge Hub
+          <div>
+            <span className="inline-block px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-bold uppercase tracking-[0.25em] text-gray-400 mb-5">
+              Knowledge Hub
             </span>
-          </h2>
-          <p className="mt-4 max-w-2xl mx-auto text-xl text-gray-500">
-            Your gateway to comprehensive agricultural resources, expert insights, and a thriving 
-            community of agripreneurs. Access research papers, best practices, courses, and connect 
-            with industry experts - all in one place.
-          </p>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8, delay: 0.4 }}
-          className="mt-12 flex justify-center"
-        >
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white leading-tight">
+              Everything you need to<br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-400">
+                make better decisions.
+              </span>
+            </h2>
+          </div>
           <Link
             href="/knowledgehub"
-            className="inline-flex items-center px-8 py-4 border border-transparent text-lg font-medium rounded-full shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-300"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-white/5 border border-white/10 text-white font-semibold rounded-full hover:bg-white/10 transition-all duration-300 text-sm shrink-0"
           >
-            Explore Knowledge Hub
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
+            Explore all resources
+            <ArrowRight size={16} />
           </Link>
         </motion.div>
+
+        {/* Feature cards */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {resources.map((item, index) => (
+            <motion.div
+              key={item.title}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
+              className="relative rounded-2xl p-6 border border-white/8 bg-white/5 hover:bg-white/8 transition-all duration-300 group"
+            >
+              <div className="w-10 h-10 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                <item.icon className="w-5 h-5 text-green-400" />
+              </div>
+              <h3 className="font-bold text-white text-base mb-2">{item.title}</h3>
+              <p className="text-gray-400 text-sm leading-relaxed mb-5">{item.description}</p>
+              <span className="text-xs font-bold uppercase tracking-wider text-green-400">{item.count}</span>
+            </motion.div>
+          ))}
+        </div>
+
       </div>
     </section>
   );

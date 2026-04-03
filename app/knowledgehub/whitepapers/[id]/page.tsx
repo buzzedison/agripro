@@ -7,6 +7,7 @@ import { urlForImage } from '@/lib/image';
 import { format } from 'date-fns';
 import KnowledgeHubNavbar from '../../components/KnowledgeHubNavbar';
 import KnowledgeHubFooter from '../../components/KnowledgeHubFooter';
+import ArticleDonationBanner from '../../components/ArticleDonationBanner';
 import Breadcrumb from '../../components/Breadcrumb';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
@@ -169,6 +170,7 @@ export default function WhitepaperPage({ params }: { params: Promise<{ id: strin
           </div>
         )}
       </main>
+      <ArticleDonationBanner />
       <KnowledgeHubFooter />
     </div>
   );

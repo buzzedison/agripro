@@ -10,6 +10,7 @@ import { PortableText } from '@portabletext/react';
 import { format } from 'date-fns';
 import KnowledgeHubNavbar from '../../components/KnowledgeHubNavbar';
 import KnowledgeHubFooter from '../../components/KnowledgeHubFooter';
+import ArticleDonationBanner from '../../components/ArticleDonationBanner';
 import { ArrowLeft, Calendar, Tag, Download, Info, AlertTriangle, CheckCircle, XCircle, Lightbulb } from 'lucide-react';
 
 interface ResearchPaper {
@@ -354,6 +355,7 @@ const ResearchPaperPage = () => {
         </div>
       </main>
       
+      <ArticleDonationBanner />
       <KnowledgeHubFooter />
     </div>
   );

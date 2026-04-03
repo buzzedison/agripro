@@ -24,6 +24,7 @@ import ArticleStats from '../../components/ArticleStats'
 import ArticleViewTracker from '../../components/ArticleViewTracker'
 import AuthorBadge, { type AuthorPerson } from '../../components/AuthorBadge'
 import ShareButtons from './ShareButtons'
+import ArticleDonationBanner from '../../components/ArticleDonationBanner'
 
 interface Params {
   params: Promise<{ slug: string }>
@@ -620,6 +621,8 @@ export default async function InsightPage({ params }: Params) {
           </aside>
         </div>
       </div>
+
+      <ArticleDonationBanner />
 
       {/* Back to top / More articles CTA */}
       <div className="border-t border-gray-100 bg-gray-50 py-12">

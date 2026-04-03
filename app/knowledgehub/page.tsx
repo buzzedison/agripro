@@ -8,6 +8,7 @@ import WhitepapersSection from './components/WhitepapersSection';
 import ResearchPapersSection from './components/ResearchPapersSection';
 import InsightsSection from './components/InsightsSection';
 import NewsletterCTA from './components/NewsletterCTA';
+import DonateCTA from './components/DonateCTA';
 import SearchAndFilter from './components/SearchAndFilter';
 import ToolsSection from './components/ToolsSection';
 import { filterAndSearchContent } from './utils/search';
@@ -376,14 +377,8 @@ export default function KnowledgeHub() {
             </section>
           )}
 
-          <div className="bg-gradient-to-r from-green-700 to-green-900 rounded-2xl p-4 sm:p-8 shadow-xl text-white overflow-hidden relative">
-            <div className="absolute top-0 right-0 p-10 opacity-10">
-              <svg width="200" height="200" viewBox="0 0 20 20" fill="white">
-                <path d="M10 2a8 8 0 100 16 8 8 0 000-16z" />
-              </svg>
-            </div>
-            <NewsletterCTA />
-          </div>
+          <DonateCTA />
+          <NewsletterCTA />
         </div>
       </main>
 

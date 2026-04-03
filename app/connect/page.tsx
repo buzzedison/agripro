@@ -2,161 +2,189 @@
 
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { Users, ShoppingBag, Lightbulb, Wrench, ArrowRight, Globe, CheckCircle } from 'lucide-react';
+import { Wheat, ShoppingBag, Lightbulb, Wrench, ArrowRight, ArrowUpRight, UserPlus, Search, Handshake } from 'lucide-react';
 
-const userTypes = [
+const roles = [
     {
         id: 'farmer',
         title: 'Farmers & Producers',
-        description: 'Showcase your farm, connect with buyers, and access market opportunities.',
-        icon: Users,
-        color: 'bg-green-500',
-        lightColor: 'bg-green-50',
-        textColor: 'text-green-700',
+        description: 'Showcase your farm, connect with buyers, and unlock new markets across Africa.',
+        icon: Wheat,
+        count: '200+',
     },
     {
         id: 'buyer',
         title: 'Buyers & Traders',
-        description: 'Source quality produce directly from verified African farmers.',
+        description: 'Source quality produce directly from verified African farmers and cooperatives.',
         icon: ShoppingBag,
-        color: 'bg-blue-500',
-        lightColor: 'bg-blue-50',
-        textColor: 'text-blue-700',
+        count: '50+',
     },
     {
         id: 'expert',
         title: 'Experts & Advisors',
-        description: 'Share your expertise and connect with agripreneurs who need guidance.',
+        description: 'Share your expertise and connect with agripreneurs who need your guidance.',
         icon: Lightbulb,
-        color: 'bg-amber-500',
-        lightColor: 'bg-amber-50',
-        textColor: 'text-amber-700',
+        count: '30+',
     },
     {
         id: 'service_provider',
         title: 'Service Providers',
-        description: 'Offer your services to the agricultural community—logistics, finance, tech, and more.',
+        description: 'Offer logistics, finance, agri-tech, and more to a continent-wide client base.',
         icon: Wrench,
-        color: 'bg-purple-500',
-        lightColor: 'bg-purple-50',
-        textColor: 'text-purple-700',
+        count: '40+',
     },
 ];
 
-const stats = [
-    { label: 'Countries', value: '15+' },
-    { label: 'Value Chains', value: '25+' },
-    { label: 'Active Members', value: '500+' },
+const steps = [
+    {
+        num: '01',
+        icon: UserPlus,
+        title: 'Create your profile',
+        description: 'Tell us your role, what you do, and who you want to reach. Takes under 3 minutes.',
+    },
+    {
+        num: '02',
+        icon: Search,
+        title: 'Get discovered',
+        description: 'Your profile goes live in our directory — searchable by buyers, partners, and collaborators.',
+    },
+    {
+        num: '03',
+        icon: Handshake,
+        title: 'Connect & grow',
+        description: 'Message members directly, get matched to opportunities, and build lasting relationships.',
+    },
 ];
 
-const benefits = [
-    'Get discovered by buyers and partners worldwide',
-    'Access verified contacts across the agricultural value chain',
-    'Join a trusted network of African agribusiness professionals',
-    'Receive opportunities matched to your profile',
-];
+const flags = ['🇬🇭', '🇳🇬', '🇰🇪', '🇪🇹', '🇷🇼', '🇺🇬', '🇿🇦', '🇸🇳'];
 
 export default function ConnectPage() {
     return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Hero Section */}
-            <section className="relative bg-gradient-to-br from-green-900 via-green-800 to-emerald-900 text-white overflow-hidden">
-                <div className="absolute inset-0 opacity-10">
-                    <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full blur-3xl translate-x-1/2 -translate-y-1/2" />
-                    <div className="absolute bottom-0 left-0 w-96 h-96 bg-emerald-400 rounded-full blur-3xl -translate-x-1/2 translate-y-1/2" />
+        <div className="min-h-screen bg-white">
+
+            {/* ── Hero ── */}
+            <section className="relative bg-[#050A08] overflow-hidden">
+                <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute top-0 left-0 right-0 h-[400px] bg-gradient-to-b from-green-950/40 to-transparent" />
                 </div>
 
-                <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32">
+                <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-28 lg:py-36">
                     <motion.div
-                        initial={{ opacity: 0, y: 20 }}
+                        initial={{ opacity: 0, y: 24 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.6 }}
-                        className="text-center max-w-3xl mx-auto"
+                        transition={{ duration: 0.7 }}
+                        className="max-w-3xl"
                     >
-                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md rounded-full mb-6">
-                            <Globe className="w-4 h-4 text-emerald-300" />
-                            <span className="text-sm font-medium text-emerald-200">The Global Gateway to African Agribusiness</span>
+                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full mb-8">
+                            <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+                            <span className="text-sm text-gray-300 font-medium">AgriPro Connect</span>
                         </div>
 
-                        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black mb-6 leading-tight">
-                            Connect with the
-                            <span className="block text-emerald-300">Agricultural Community</span>
+                        <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-white leading-[1.02] tracking-tight mb-6">
+                            The people behind<br />
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-400">
+                                African agriculture.
+                            </span>
                         </h1>
 
-                        <p className="text-xl text-gray-200 mb-8 max-w-2xl mx-auto">
-                            Join Africa&apos;s premier network of farmers, buyers, experts, and service providers.
-                            Build relationships that grow your agribusiness.
+                        <p className="text-lg text-gray-400 mb-10 max-w-xl leading-relaxed">
+                            One network for farmers, buyers, experts, and service providers.
+                            Find the right people and build relationships that move business.
                         </p>
 
-                        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                        <div className="flex flex-col sm:flex-row gap-4 mb-14">
                             <Link
                                 href="/connect/onboarding"
-                                className="inline-flex items-center justify-center px-8 py-4 bg-white text-green-900 font-bold rounded-full hover:bg-emerald-100 transition-colors"
+                                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-gray-900 font-bold rounded-full hover:bg-green-50 transition-all duration-300 shadow-xl shadow-black/20"
                             >
                                 Join the Network
-                                <ArrowRight className="ml-2 w-5 h-5" />
+                                <ArrowRight size={16} />
                             </Link>
                             <Link
                                 href="/connect/directory"
-                                className="inline-flex items-center justify-center px-8 py-4 border-2 border-white/30 text-white font-medium rounded-full hover:bg-white/10 transition-colors"
+                                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white/5 border border-white/10 text-white font-medium rounded-full hover:bg-white/10 transition-all duration-300"
                             >
                                 Browse Directory
                             </Link>
                         </div>
-                    </motion.div>
 
-                    {/* Stats */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.6, delay: 0.2 }}
-                        className="mt-16 grid grid-cols-3 gap-8 max-w-lg mx-auto"
-                    >
-                        {stats.map((stat) => (
-                            <div key={stat.label} className="text-center">
-                                <p className="text-3xl font-bold text-white">{stat.value}</p>
-                                <p className="text-sm text-emerald-200">{stat.label}</p>
+                        {/* Live community strip */}
+                        <div className="flex flex-wrap items-center gap-6">
+                            <div className="flex -space-x-2">
+                                {flags.map((flag, i) => (
+                                    <div key={i} className="w-8 h-8 rounded-full bg-gray-800 border-2 border-[#050A08] flex items-center justify-center text-xs">
+                                        {flag}
+                                    </div>
+                                ))}
                             </div>
-                        ))}
+                            <div className="flex items-center gap-6 divide-x divide-white/10">
+                                {[
+                                    { value: '500+', label: 'Members' },
+                                    { value: '15+', label: 'Countries' },
+                                    { value: '25+', label: 'Value chains' },
+                                ].map((s) => (
+                                    <div key={s.label} className="pl-6 first:pl-0">
+                                        <span className="text-white font-black text-xl">{s.value}</span>
+                                        <span className="text-gray-500 text-sm ml-2">{s.label}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     </motion.div>
                 </div>
             </section>
 
-            {/* User Types Section */}
-            <section className="py-20">
+            {/* ── Who's here ── */}
+            <section className="py-24 bg-gray-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="text-center mb-12">
-                        <h2 className="text-3xl font-bold text-gray-900 mb-4">Join as...</h2>
-                        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                            Select your role in the agricultural value chain and start connecting
-                        </p>
-                    </div>
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.6 }}
+                        className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-12"
+                    >
+                        <div>
+                            <span className="inline-block px-4 py-1.5 rounded-full bg-white border border-gray-200 text-gray-400 text-xs font-bold uppercase tracking-[0.2em] mb-5">
+                                Who&apos;s on AgriPro Connect
+                            </span>
+                            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-gray-900 leading-tight">
+                                Join as your role<br />in the value chain.
+                            </h2>
+                        </div>
+                        <Link
+                            href="/connect/directory"
+                            className="inline-flex items-center gap-2 px-6 py-3 border-2 border-gray-900 text-gray-900 font-bold rounded-full hover:bg-gray-900 hover:text-white transition-all duration-300 text-sm shrink-0"
+                        >
+                            Browse all members
+                            <ArrowUpRight size={15} />
+                        </Link>
+                    </motion.div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {userTypes.map((type, index) => (
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {roles.map((role, index) => (
                             <motion.div
-                                key={type.id}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.5, delay: index * 0.1 }}
+                                key={role.id}
+                                initial={{ opacity: 0, y: 24 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ duration: 0.5, delay: index * 0.08 }}
                             >
                                 <Link
-                                    href={`/connect/onboarding?type=${type.id}`}
-                                    className="group block h-full p-6 bg-white rounded-2xl border border-gray-100 hover:border-green-200 hover:shadow-xl transition-all duration-300"
+                                    href={`/connect/onboarding?type=${role.id}`}
+                                    className="group flex flex-col h-full bg-white rounded-2xl p-7 border border-gray-100 hover:border-green-200 hover:shadow-lg transition-all duration-300"
                                 >
-                                    <div className={`w-14 h-14 ${type.lightColor} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                                        <type.icon className={`w-7 h-7 ${type.textColor}`} />
+                                    <div className="w-11 h-11 rounded-xl bg-green-50 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300">
+                                        <role.icon className="w-5 h-5 text-green-600" />
                                     </div>
-                                    <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-green-700 transition-colors">
-                                        {type.title}
-                                    </h3>
-                                    <p className="text-sm text-gray-600 mb-4">
-                                        {type.description}
-                                    </p>
-                                    <span className="inline-flex items-center text-sm font-semibold text-green-600 group-hover:text-green-700">
-                                        Get Started
-                                        <ArrowRight className="ml-1 w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                                    </span>
+                                    <h3 className="font-black text-gray-900 text-base mb-2">{role.title}</h3>
+                                    <p className="text-sm text-gray-500 leading-relaxed flex-1">{role.description}</p>
+                                    <div className="flex items-center justify-between mt-5 pt-5 border-t border-gray-100">
+                                        <span className="text-xs font-bold text-gray-400">{role.count} members</span>
+                                        <span className="inline-flex items-center gap-1 text-sm font-bold text-green-600 group-hover:gap-2 transition-all">
+                                            Join <ArrowRight size={14} />
+                                        </span>
+                                    </div>
                                 </Link>
                             </motion.div>
                         ))}
@@ -164,78 +192,90 @@ export default function ConnectPage() {
                 </div>
             </section>
 
-            {/* Benefits Section */}
-            <section className="py-20 bg-white">
+            {/* ── How it works ── */}
+            <section className="py-24 bg-white">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="grid lg:grid-cols-2 gap-12 items-center">
-                        <div>
-                            <h2 className="text-3xl font-bold text-gray-900 mb-6">
-                                Why Join the AgriPro Network?
-                            </h2>
-                            <p className="text-lg text-gray-600 mb-8">
-                                AgriPro Connect is more than a directory—it&apos;s your gateway to the African agricultural ecosystem.
-                            </p>
-                            <ul className="space-y-4">
-                                {benefits.map((benefit, index) => (
-                                    <li key={index} className="flex items-start gap-3">
-                                        <CheckCircle className="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" />
-                                        <span className="text-gray-700">{benefit}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                            <div className="mt-8">
-                                <Link
-                                    href="/connect/onboarding"
-                                    className="inline-flex items-center px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors"
-                                >
-                                    Create Your Profile
-                                    <ArrowRight className="ml-2 w-5 h-5" />
-                                </Link>
-                            </div>
-                        </div>
-                        <div className="relative">
-                            <div className="aspect-square bg-gradient-to-br from-green-100 to-emerald-50 rounded-3xl p-8 flex items-center justify-center">
-                                <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
-                                    {userTypes.map((type) => (
-                                        <div
-                                            key={type.id}
-                                            className={`${type.lightColor} p-4 rounded-xl flex flex-col items-center text-center`}
-                                        >
-                                            <type.icon className={`w-8 h-8 ${type.textColor} mb-2`} />
-                                            <span className="text-xs font-medium text-gray-700">{type.title.split(' ')[0]}</span>
-                                        </div>
-                                    ))}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.6 }}
+                        className="mb-14"
+                    >
+                        <span className="inline-block px-4 py-1.5 rounded-full bg-gray-100 text-gray-400 text-xs font-bold uppercase tracking-[0.2em] mb-5">
+                            How it works
+                        </span>
+                        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-gray-900 leading-tight">
+                            Up and running<br />in minutes.
+                        </h2>
+                    </motion.div>
+
+                    <div className="grid md:grid-cols-3 gap-6">
+                        {steps.map((step, index) => (
+                            <motion.div
+                                key={step.num}
+                                initial={{ opacity: 0, y: 24 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ duration: 0.5, delay: index * 0.1 }}
+                                className="relative bg-gray-50 rounded-2xl p-8 border border-gray-100"
+                            >
+                                <span className="absolute top-6 right-7 text-6xl font-black text-gray-900/[0.04] select-none leading-none">
+                                    {step.num}
+                                </span>
+                                <div className="w-11 h-11 rounded-xl bg-green-50 flex items-center justify-center mb-6">
+                                    <step.icon className="w-5 h-5 text-green-600" />
                                 </div>
-                            </div>
-                        </div>
+                                <h3 className="font-black text-gray-900 text-lg mb-3">{step.title}</h3>
+                                <p className="text-gray-500 text-sm leading-relaxed">{step.description}</p>
+                            </motion.div>
+                        ))}
                     </div>
                 </div>
             </section>
 
-            {/* CTA Section */}
-            <section className="py-20 bg-green-900 text-white">
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                    <h2 className="text-3xl font-bold mb-4">Ready to Connect?</h2>
-                    <p className="text-xl text-green-200 mb-8">
-                        Join hundreds of agricultural professionals building the future of African agribusiness.
-                    </p>
-                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                        <Link
-                            href="/connect/onboarding"
-                            className="inline-flex items-center justify-center px-8 py-4 bg-white text-green-900 font-bold rounded-full hover:bg-green-100 transition-colors"
-                        >
-                            Join the Network
-                            <ArrowRight className="ml-2 w-5 h-5" />
-                        </Link>
-                        <Link
-                            href="/connect/directory"
-                            className="inline-flex items-center justify-center px-8 py-4 border-2 border-white/30 text-white font-medium rounded-full hover:bg-white/10 transition-colors"
-                        >
-                            Explore Directory
-                        </Link>
-                    </div>
+            {/* ── Final CTA ── */}
+            <section className="py-24 bg-gray-50">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.6 }}
+                        className="bg-gray-950 rounded-3xl px-8 py-16 sm:px-16 text-center relative overflow-hidden"
+                    >
+                        <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-[0.04]" />
+                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[200px] bg-green-500/10 rounded-full blur-[80px]" />
+                        <div className="relative">
+                            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white mb-4 leading-tight">
+                                Ready to build your<br />
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-400">
+                                    African network?
+                                </span>
+                            </h2>
+                            <p className="text-gray-400 text-lg mb-10 max-w-xl mx-auto">
+                                Join hundreds of agripreneurs already connecting, trading, and growing together.
+                            </p>
+                            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                                <Link
+                                    href="/connect/onboarding"
+                                    className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-gray-900 font-bold rounded-full hover:bg-green-50 transition-all duration-300"
+                                >
+                                    Create Your Profile
+                                    <ArrowRight size={16} />
+                                </Link>
+                                <Link
+                                    href="/connect/directory"
+                                    className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white/5 border border-white/10 text-white font-medium rounded-full hover:bg-white/10 transition-all duration-300"
+                                >
+                                    Browse Directory
+                                </Link>
+                            </div>
+                        </div>
+                    </motion.div>
                 </div>
             </section>
+
         </div>
     );
 }

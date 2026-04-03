@@ -62,16 +62,16 @@ export default function GreenMarketPromo() {
             <div className="flex flex-wrap gap-4">
               <Link
                 href="/greenmarket/marketplace"
-                className="inline-flex items-center gap-2 px-8 py-4 bg-white text-green-800 rounded-2xl font-semibold hover:bg-green-50 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+                className="inline-flex items-center gap-2 px-8 py-4 bg-white text-green-800 rounded-full font-bold hover:bg-green-50 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
               >
                 Browse Marketplace
                 <FaArrowRight className="w-4 h-4" />
               </Link>
               <Link
                 href="/greenmarket/vendors"
-                className="inline-flex items-center gap-2 px-8 py-4 bg-white/10 backdrop-blur-md text-white border border-white/30 rounded-2xl font-semibold hover:bg-white/20 transition-all"
+                className="inline-flex items-center gap-2 px-8 py-4 bg-white/10 backdrop-blur-md text-white border border-white/20 rounded-full font-medium hover:bg-white/20 transition-all"
               >
-                <FaStore className="w-5 h-5" />
+                <FaStore className="w-4 h-4" />
                 Start Selling
               </Link>
             </div>
