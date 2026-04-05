@@ -45,12 +45,17 @@ export default function ChatMessage({ message, isTyping }: ChatMessageProps) {
     });
   };
 
-  const modelColor = {
+  const modelColorMap: Record<string, string> = {
     'claude': 'text-purple-600 bg-purple-50 border-purple-200',
     'gemini': 'text-blue-600 bg-blue-50 border-blue-200',
     'gpt-4': 'text-emerald-600 bg-emerald-50 border-emerald-200',
     'mistral': 'text-sky-600 bg-sky-50 border-sky-200',
-  }[model || 'claude'];
+    'llama-70b': 'text-green-600 bg-green-50 border-green-200',
+    'llama-8b': 'text-green-600 bg-green-50 border-green-200',
+    'qwen-72b': 'text-teal-600 bg-teal-50 border-teal-200',
+    'qwen-qwq': 'text-indigo-600 bg-indigo-50 border-indigo-200',
+  };
+  const modelColor = modelColorMap[model || ''] ?? 'text-green-600 bg-green-50 border-green-200';
 
   return (
     <div className={`p-5 rounded-xl mb-5 ${getBgColorClass()} border border-gray-100 shadow-sm transition-all hover:shadow-md`}>

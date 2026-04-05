@@ -8,6 +8,7 @@ import { format } from 'date-fns';
 import KnowledgeHubNavbar from '../../components/KnowledgeHubNavbar';
 import KnowledgeHubFooter from '../../components/KnowledgeHubFooter';
 import ArticleDonationBanner from '../../components/ArticleDonationBanner';
+import ArticleAISummary from '../../components/ArticleAISummary';
 import Breadcrumb from '../../components/Breadcrumb';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
@@ -149,6 +150,11 @@ export default function WhitepaperPage({ params }: { params: Promise<{ id: strin
                   <h2 className="text-xl font-semibold mb-4">Summary</h2>
                   <p className="text-gray-700 whitespace-pre-line">{whitepaper.summary}</p>
                 </div>
+                <ArticleAISummary
+                  title={whitepaper.title}
+                  content={whitepaper.summary}
+                  category={whitepaper.category}
+                />
                 
                 <div className="mt-8 pt-6 border-t border-gray-200">
                   <Link 

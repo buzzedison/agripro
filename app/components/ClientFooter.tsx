@@ -7,8 +7,9 @@ export default function ClientFooter() {
   const pathname = usePathname();
   const isKnowledgeHub = pathname?.startsWith('/knowledgehub');
   const isSummit = pathname?.startsWith('/africa-food-futures');
+  const isChat = pathname?.startsWith('/chat');
 
-  if (isKnowledgeHub || isSummit) {
+  if (isKnowledgeHub || isSummit || isChat) {
     return null;
   }
 

@@ -3,20 +3,21 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
-import { 
-  FaSeedling, 
-  FaChartLine, 
-  FaShieldAlt, 
-  FaMoneyBillWave, 
-  FaFileAlt, 
-  FaHandshake, 
-  FaUsers, 
-  FaUserTie, 
+import {
+  FaSeedling,
+  FaChartLine,
+  FaShieldAlt,
+  FaMoneyBillWave,
+  FaFileAlt,
+  FaHandshake,
+  FaUsers,
+  FaUserTie,
   FaRegCalendarCheck,
   FaCheck,
   FaExclamationTriangle
 } from 'react-icons/fa'
 import { submitFarmSmartForm } from './actions'
+import CropAdvisor from './components/CropAdvisor'
 
 const FarmForwardPage = () => {
   const [formData, setFormData] = useState({
@@ -497,6 +498,22 @@ const FarmForwardPage = () => {
               )}
             </form>
           </div>
+        </div>
+      </section>
+
+      {/* AI Crop Advisor */}
+      <section className="py-20 bg-gray-50">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <span className="inline-block px-4 py-1.5 rounded-full bg-white border border-gray-200 text-gray-400 text-xs font-bold uppercase tracking-widest mb-4">
+              AI-powered
+            </span>
+            <h2 className="text-3xl font-black text-gray-900 mb-3">Ask our AI Crop Advisor</h2>
+            <p className="text-gray-500 max-w-md mx-auto text-sm leading-relaxed">
+              Expert agronomic guidance for African farmers — crops, diseases, soil, markets. Free. Instant.
+            </p>
+          </div>
+          <CropAdvisor />
         </div>
       </section>
     </div>

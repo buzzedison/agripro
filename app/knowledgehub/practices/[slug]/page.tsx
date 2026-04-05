@@ -7,6 +7,8 @@ import { PortableText } from '@portabletext/react'
 import { format } from 'date-fns'
 import { ArrowLeft, Info, AlertTriangle, CheckCircle, XCircle, Lightbulb } from 'lucide-react'
 import ArticleDonationBanner from '../../components/ArticleDonationBanner'
+import ArticleAISummary from '../../components/ArticleAISummary';
+import ArticleChat from '../../components/ArticleChat';
 
 type Props = {
   params: Promise<{ slug: string }>
@@ -182,9 +184,18 @@ export default async function BestPracticePage({ params }: Props) {
           )}
 
           {/* Main Content */}
+          <ArticleAISummary
+            title={practice.title}
+            content={practice.summary ?? practice.title}
+            category={practice.category}
+          />
           <div className="prose prose-lg prose-green max-w-none mb-12">
             <PortableText value={practice.mainContent} components={portableTextComponents} />
           </div>
+          <ArticleChat
+            articleTitle={practice.title}
+            articleContent={practice.summary ?? practice.title}
+          />
 
           {/* PDF Attachments Section */}
           {practice.pdfAttachments && practice.pdfAttachments.length > 0 && (

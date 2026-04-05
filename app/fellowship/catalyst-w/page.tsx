@@ -9,6 +9,7 @@ import {
     MapPin, Clock, ChevronDown, Heart, Star, Zap,
     DollarSign, BadgeCheck, Plane, Network,
 } from 'lucide-react';
+import EssayFeedback from '../components/EssayFeedback';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -762,6 +763,11 @@ export default function CatalystWFellowshipPage() {
                                                     rows={4}
                                                     placeholder="What draws you to this fellowship and what do you hope to contribute..."
                                                     className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-600 text-sm focus:outline-none focus:border-green-500/50 transition-all resize-none"
+                                                />
+                                                <EssayFeedback
+                                                    essay={form.motivation}
+                                                    role={ROLE_OPTIONS.find(r => r.value === form.role)?.label}
+                                                    minLength={80}
                                                 />
                                             </div>
 

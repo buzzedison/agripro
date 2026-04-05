@@ -25,6 +25,8 @@ import ArticleViewTracker from '../../components/ArticleViewTracker'
 import AuthorBadge, { type AuthorPerson } from '../../components/AuthorBadge'
 import ShareButtons from './ShareButtons'
 import ArticleDonationBanner from '../../components/ArticleDonationBanner'
+import ArticleAISummary from '../../components/ArticleAISummary'
+import ArticleChat from '../../components/ArticleChat'
 
 interface Params {
   params: Promise<{ slug: string }>
@@ -513,9 +515,18 @@ export default async function InsightPage({ params }: Params) {
         <div className="grid gap-12 lg:grid-cols-[1fr_200px]">
           {/* Main Content */}
           <div className="min-w-0">
+            <ArticleAISummary
+              title={insight.title}
+              content={typeof insight.content === 'string' ? insight.content : JSON.stringify(insight.content)}
+              category={insight.category}
+            />
             <div className="prose prose-lg prose-gray max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-h2:mt-12 prose-h2:text-2xl prose-h3:mt-8 prose-h3:text-xl prose-p:leading-relaxed prose-a:text-green-700 prose-a:no-underline hover:prose-a:underline prose-strong:text-gray-900 prose-blockquote:border-green-500 prose-blockquote:bg-green-50/50 prose-blockquote:py-1 prose-blockquote:not-italic">
               <PortableText value={insight.content} components={components} />
             </div>
+            <ArticleChat
+              articleTitle={insight.title}
+              articleContent={typeof insight.content === 'string' ? insight.content : JSON.stringify(insight.content)}
+            />
 
             {/* Tags */}
             {allTags.length > 0 && (

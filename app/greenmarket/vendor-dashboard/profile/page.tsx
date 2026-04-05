@@ -10,6 +10,7 @@ import {
     Save, Globe, Phone, Mail, MapPin, Building2, Leaf, X
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import AIDescriptionBoost from '@/app/greenmarket/components/AIDescriptionBoost';
 
 interface Vendor {
     id: string;
@@ -400,6 +401,14 @@ export default function VendorProfilePage() {
                                     onChange={(e) => setFormData({ ...formData, product_description: e.target.value })}
                                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
                                     placeholder="Describe what you sell and what makes your products special..."
+                                />
+                                <AIDescriptionBoost
+                                    businessName={formData.business_name}
+                                    businessType={formData.business_type}
+                                    city={formData.city}
+                                    country={formData.country}
+                                    currentDescription={formData.product_description}
+                                    onApply={(improved) => setFormData({ ...formData, product_description: improved })}
                                 />
                             </div>
                         </div>

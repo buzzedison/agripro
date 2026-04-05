@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowLeft, Save, Loader2, Check, Camera, Youtube, X, Play, Lock, Globe, Users, Plus, Award, Handshake, Zap, BadgeCheck, Star } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Check, Camera, Youtube, X, Play, Lock, Globe, Users, Plus, Award, Handshake, Zap, BadgeCheck, Star, Sparkles } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
 import { PrivacySettings } from '../../actions';
 
@@ -61,6 +61,50 @@ function getYouTubeVideoId(url: string): string | null {
         if (match) return match[1];
     }
     return null;
+}
+
+function AIBioImprover({ bio, userType, onAccept }: { bio: string; userType: string; onAccept: (v: string) => void }) {
+  const [suggestion, setSuggestion] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [visible, setVisible] = useState(false);
+
+  const improve = async () => {
+    setLoading(true);
+    setVisible(false);
+    try {
+      const res = await fetch('/api/ai/improve-bio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bio, userType }),
+      });
+      const data = await res.json();
+      if (data.improved) { setSuggestion(data.improved); setVisible(true); }
+    } catch {}
+    finally { setLoading(false); }
+  };
+
+  return (
+    <div className="mt-2">
+      <button
+        type="button"
+        onClick={improve}
+        disabled={loading}
+        className="flex items-center gap-1.5 text-xs text-green-700 hover:text-green-800 font-medium disabled:opacity-50"
+      >
+        <Sparkles className="w-3.5 h-3.5" />
+        {loading ? 'Improving...' : '✨ AI Improve'}
+      </button>
+      {visible && suggestion && (
+        <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-gray-800">
+          <p className="mb-2">{suggestion}</p>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => { onAccept(suggestion); setVisible(false); }} className="text-xs px-3 py-1 bg-green-600 text-white rounded-full hover:bg-green-700">Use this</button>
+            <button type="button" onClick={() => setVisible(false)} className="text-xs px-3 py-1 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200">Dismiss</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function EditProfilePage() {
@@ -578,6 +622,14 @@ export default function EditProfilePage() {
                                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                                 placeholder="Tell us about yourself..."
                             />
+                            {/* AI Bio Improvement */}
+                            {formData.bio && formData.bio.length > 20 && (
+                                <AIBioImprover
+                                    bio={formData.bio}
+                                    userType={formData.user_type}
+                                    onAccept={(improved) => setFormData(prev => ({ ...prev, bio: improved }))}
+                                />
+                            )}
                         </div>
 
                         <div>

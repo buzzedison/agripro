@@ -11,6 +11,8 @@ import { format } from 'date-fns';
 import KnowledgeHubNavbar from '../../components/KnowledgeHubNavbar';
 import KnowledgeHubFooter from '../../components/KnowledgeHubFooter';
 import ArticleDonationBanner from '../../components/ArticleDonationBanner';
+import ArticleAISummary from '../../components/ArticleAISummary';
+import ArticleChat from '../../components/ArticleChat';
 import { ArrowLeft, Calendar, Tag, Download, Info, AlertTriangle, CheckCircle, XCircle, Lightbulb } from 'lucide-react';
 
 interface ResearchPaper {
@@ -342,14 +344,23 @@ const ResearchPaperPage = () => {
                 </div>
               )}
               
+              <ArticleAISummary
+                title={paper.title}
+                content={typeof paper.content === 'string' ? paper.content : JSON.stringify(paper.content)}
+                category={paper.category}
+              />
               <div className="prose prose-lg prose-green max-w-none">
                 {paper.content && (
-                  <PortableText 
+                  <PortableText
                     value={paper.content}
                     components={components}
                   />
                 )}
               </div>
+              <ArticleChat
+                articleTitle={paper.title}
+                articleContent={typeof paper.content === 'string' ? paper.content : JSON.stringify(paper.content)}
+              />
             </div>
           </div>
         </div>

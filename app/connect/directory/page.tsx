@@ -8,7 +8,7 @@ import Image from 'next/image';
 import {
     Search, Filter, MapPin, Users, ShoppingBag,
     Lightbulb, Wrench, ChevronDown, X, Loader2,
-    Globe, CheckCircle
+    Globe, CheckCircle, Sparkles
 } from 'lucide-react';
 import { nameToUniqueSlug } from '@/lib/utils/mentions';
 
@@ -95,6 +95,39 @@ function DirectoryContent() {
         country: '',
         valueChain: '',
     });
+
+    const [aiQuery, setAiQuery] = useState('');
+    const [aiLoading, setAiLoading] = useState(false);
+    const [aiActive, setAiActive] = useState(false);
+
+    const handleAISearch = async (query: string) => {
+        if (!query.trim()) return;
+        setAiLoading(true);
+        try {
+            const res = await fetch('/api/ai/find-people', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query }),
+            });
+            const data = await res.json();
+            const f = data.filters ?? {};
+            setFilters(prev => ({
+                ...prev,
+                ...(f.user_type ? { userType: f.user_type } : {}),
+                ...(f.country ? { country: f.country } : {}),
+                ...(f.value_chains?.length ? { valueChain: f.value_chains[0] } : {}),
+                ...(f.keywords ? { search: f.keywords } : {}),
+            }));
+            setAiActive(true);
+        } catch {}
+        finally { setAiLoading(false); }
+    };
+
+    const clearAISearch = () => {
+        setAiQuery('');
+        setAiActive(false);
+        setFilters({ search: '', userType: '', country: '', valueChain: '' });
+    };
 
     useEffect(() => {
         fetchProfiles();
@@ -212,8 +245,38 @@ function DirectoryContent() {
                         </button>
                     </div>
 
+                    {/* AI Smart Search */}
+                    <div className="mt-6 mb-4">
+                        <div className="flex gap-2 items-center p-3 bg-green-50 border border-green-200 rounded-2xl focus-within:border-green-400 transition-all">
+                            <Sparkles className="w-4 h-4 text-green-600 shrink-0" />
+                            <input
+                                type="text"
+                                value={aiQuery}
+                                onChange={(e) => setAiQuery(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleAISearch(aiQuery)}
+                                placeholder="Describe who you're looking for... cocoa buyer in Ghana, maize farmer in East Africa"
+                                className="flex-1 bg-transparent text-sm text-gray-700 placeholder-gray-400 focus:outline-none"
+                            />
+                            {aiActive && (
+                                <button onClick={clearAISearch} className="text-xs text-gray-400 hover:text-gray-600">
+                                    <X className="w-3.5 h-3.5" />
+                                </button>
+                            )}
+                            <button
+                                onClick={() => handleAISearch(aiQuery)}
+                                disabled={aiLoading || !aiQuery.trim()}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-xl hover:bg-green-700 disabled:opacity-50 transition-all"
+                            >
+                                {aiLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Search'}
+                            </button>
+                        </div>
+                        {aiActive && (
+                            <p className="text-xs text-green-600 mt-1.5 px-1">✨ AI-filtered results — <button onClick={clearAISearch} className="underline">clear</button></p>
+                        )}
+                    </div>
+
                     {/* Search & Filters */}
-                    <div className="mt-6 flex flex-col sm:flex-row gap-4">
+                    <div className="flex flex-col sm:flex-row gap-4">
                         <div className="flex-1 relative">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                             <input

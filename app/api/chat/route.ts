@@ -1,190 +1,233 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { Message, AIModel } from '../../chat/types';
+import { NextRequest } from 'next/server';
+import { groq, AGRIPRO_SYSTEM_PROMPT } from '@/lib/groq';
+import { webSearch, SearchSource } from '@/lib/search';
+import { AIModel, MODEL_META } from '../../chat/types';
 
-// Sample agricultural knowledge prompts for different topics
-const AGRICULTURE_CONTEXT = `
-You are an AI assistant for AgriPro, a platform dedicated to advancing sustainable agriculture practices.
-You specialize in providing expert information about farming, crops, agricultural technologies, and sustainable practices.
-Focus on being helpful, accurate, and educational in the agricultural domain.
-If you don't know the answer to a question, admit it instead of making up information.
-Always provide practical, actionable advice when possible, citing best practices in the agricultural industry.
-`;
+const MODEL_SETTINGS: Record<AIModel, { maxTokens: number; temperature: number; supportsTools: boolean }> = {
+    'llama-70b': { maxTokens: 1536, temperature: 0.65, supportsTools: true },
+    'llama-8b':  { maxTokens: 800,  temperature: 0.7,  supportsTools: true },
+    'qwen-72b':  { maxTokens: 1536, temperature: 0.65, supportsTools: false },
+    'qwen-qwq':  { maxTokens: 2048, temperature: 0.4,  supportsTools: false },
+};
 
-export interface ChatRequest {
-  message: string;
-  model: AIModel;
-  history: Message[];
-}
+const WEB_SEARCH_TOOL = {
+    type: 'function' as const,
+    function: {
+        name: 'web_search',
+        description: 'Search the web for current market prices, recent news, research papers, policies, or any information that may have changed recently. Use this when the user asks about current prices, latest developments, specific statistics, or anything that benefits from up-to-date information.',
+        parameters: {
+            type: 'object',
+            properties: {
+                query: {
+                    type: 'string',
+                    description: 'A focused search query. Include context like country or crop name for better results.',
+                },
+            },
+            required: ['query'],
+        },
+    },
+};
 
 export async function POST(request: NextRequest) {
-  try {
-    const { message, model, history } = await request.json() as ChatRequest;
-    
-    if (!message) {
-      return NextResponse.json(
-        { error: 'Message is required' },
-        { status: 400 }
-      );
-    }
-
-    // Format conversation history for context
-    const formattedHistory = history.map(msg => `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`).join('\n');
-    
-    let aiResponse = '';
-
-    if (model === 'gemini') {
-      try {
-        const apiKey = process.env.GEMINI_API_KEY;
-        if (!apiKey) {
-          throw new Error('Gemini API key not set in environment variables');
-        }
-        // Gemini API expects a specific format
-        const geminiUrl = 'https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=' + apiKey;
-        const geminiMessages = [
-          { role: 'user', parts: [{ text: AGRICULTURE_CONTEXT }] },
-          ...history.map((msg) => ({
-            role: msg.role,
-            parts: [{ text: msg.content }]
-          })),
-          { role: 'user', parts: [{ text: message }] },
-        ];
-        const geminiBody = {
-          contents: geminiMessages,
-          generationConfig: {
-            temperature: 0.7,
-            topP: 1,
-            maxOutputTokens: 1024,
-          },
+    try {
+        const { message, model, history } = await request.json() as {
+            message: string;
+            model: AIModel;
+            history: Array<{ role: 'user' | 'assistant'; content: string }>;
         };
-        const geminiRes = await fetch(geminiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(geminiBody),
-        });
-        if (!geminiRes.ok) {
-          const errText = await geminiRes.text();
-          throw new Error('Gemini API error: ' + errText);
+
+        if (!message?.trim()) {
+            return new Response(
+                JSON.stringify({ error: 'Message is required' }),
+                { status: 400, headers: { 'Content-Type': 'application/json' } }
+            );
         }
-        const geminiData = await geminiRes.json();
-        aiResponse = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || 'Sorry, I could not generate a response.';
-      } catch (err) {
-        console.error('Gemini API error:', err);
-        aiResponse = 'Sorry, there was an error connecting to Gemini. Please try again later.';
-      }
-    } else {
-      // For demo purposes, keep simulated responses for other models
-      const responses = {
-        'claude': generateSimulatedResponse(message, model),
-        'gemini': generateSimulatedResponse(message, model),
-        'gpt-4': generateSimulatedResponse(message, model),
-        'mistral': generateSimulatedResponse(message, model),
-      };
-      aiResponse = responses[model] || responses['claude'];
+
+        if (!groq) {
+            return new Response(
+                JSON.stringify({ error: 'AI service not configured. Add GROQ_API_KEY to your environment.' }),
+                { status: 503, headers: { 'Content-Type': 'application/json' } }
+            );
+        }
+
+        const modelMeta = MODEL_META[model] ?? MODEL_META['llama-70b'];
+        const settings = MODEL_SETTINGS[model] ?? MODEL_SETTINGS['llama-70b'];
+
+        const recentHistory = (history ?? [])
+            .filter((m) => m.role === 'user' || m.role === 'assistant')
+            .slice(-20)
+            .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+
+        const baseMessages: Array<{ role: string; content: string }> = [
+            { role: 'system', content: AGRIPRO_SYSTEM_PROMPT },
+            ...recentHistory,
+            { role: 'user', content: message },
+        ];
+
+        // ── Round 1: tool-calling decision (non-streaming, fast) ────────────
+        let searchSources: SearchSource[] = [];
+        let toolMessages: any[] = [];
+
+        if (settings.supportsTools && process.env.TAVILY_API_KEY) {
+            try {
+                const decision = await groq.chat.completions.create({
+                    model: modelMeta.groqId,
+                    messages: baseMessages as any,
+                    tools: [WEB_SEARCH_TOOL],
+                    tool_choice: 'auto',
+                    max_tokens: 200,
+                    temperature: settings.temperature,
+                });
+
+                const choice = decision.choices[0];
+                if (choice?.finish_reason === 'tool_calls' && choice.message.tool_calls?.length) {
+                    const toolCall = choice.message.tool_calls[0];
+                    if (toolCall.function.name === 'web_search') {
+                        const { query } = JSON.parse(toolCall.function.arguments);
+                        searchSources = await webSearch(query);
+
+                        toolMessages = [
+                            choice.message,
+                            {
+                                role: 'tool',
+                                tool_call_id: toolCall.id,
+                                content: JSON.stringify(
+                                    searchSources.map((s) => ({
+                                        title: s.title,
+                                        url: s.url,
+                                        content: s.snippet,
+                                    }))
+                                ),
+                            },
+                        ];
+                    }
+                }
+            } catch {
+                // Tool calling failed — proceed without search
+            }
+        }
+
+        // ── Round 2: streaming final answer ─────────────────────────────────
+        const finalMessages = toolMessages.length
+            ? [...baseMessages, ...toolMessages]
+            : baseMessages;
+
+        const stream = await groq.chat.completions.create({
+            model: modelMeta.groqId,
+            messages: finalMessages as any,
+            max_tokens: settings.maxTokens,
+            temperature: settings.temperature,
+            stream: true,
+        });
+
+        const encoder = new TextEncoder();
+        const readable = new ReadableStream({
+            async start(controller) {
+                try {
+                    // Emit sources line first if we have any
+                    if (searchSources.length > 0) {
+                        controller.enqueue(
+                            encoder.encode(`__SOURCES__:${JSON.stringify(searchSources)}\n`)
+                        );
+                    }
+
+                    // Stream response — strip <think> blocks
+                    let inThink = false;
+                    let buf = '';
+                    let firstChunk = true;
+
+                    for await (const chunk of stream) {
+                        const text = chunk.choices[0]?.delta?.content ?? '';
+                        if (!text) continue;
+
+                        buf += text;
+                        let output = '';
+
+                        while (buf.length > 0) {
+                            if (inThink) {
+                                const end = buf.indexOf('</think>');
+                                if (end !== -1) {
+                                    buf = buf.slice(end + 8);
+                                    inThink = false;
+                                } else {
+                                    buf = buf.slice(-9);
+                                    break;
+                                }
+                            } else {
+                                const start = buf.indexOf('<think>');
+                                if (start !== -1) {
+                                    output += buf.slice(0, start);
+                                    buf = buf.slice(start + 7);
+                                    inThink = true;
+                                } else {
+                                    const tail = buf.match(/<(?:t(?:h(?:i(?:n(?:k)?)?)?)?)?$/);
+                                    if (tail?.index !== undefined) {
+                                        output += buf.slice(0, tail.index);
+                                        buf = buf.slice(tail.index);
+                                    } else {
+                                        output += buf;
+                                        buf = '';
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (firstChunk && output) {
+                            output = output.replace(/^\s+/, '');
+                            if (output) firstChunk = false;
+                        }
+
+                        if (output) controller.enqueue(encoder.encode(output));
+                    }
+
+                    if (!inThink && buf) controller.enqueue(encoder.encode(buf));
+
+                } catch (err) {
+                    controller.error(err);
+                } finally {
+                    controller.close();
+                }
+            },
+        });
+
+        return new Response(readable, {
+            headers: {
+                'Content-Type': 'text/plain; charset=utf-8',
+                'Cache-Control': 'no-cache, no-store',
+                'X-Accel-Buffering': 'no',
+            },
+        });
+
+    } catch (error: any) {
+        console.error('Chat API error:', {
+            status: error?.status,
+            message: error?.message,
+            groqError: error?.error,
+        });
+
+        if (error?.status === 429) {
+            return new Response(
+                JSON.stringify({ error: 'Too many requests — please wait a moment and try again.' }),
+                { status: 429, headers: { 'Content-Type': 'application/json' } }
+            );
+        }
+        if (error?.status === 401) {
+            return new Response(
+                JSON.stringify({ error: 'AI service authentication failed. Please check your API key.' }),
+                { status: 401, headers: { 'Content-Type': 'application/json' } }
+            );
+        }
+        if (error?.status === 400 || error?.status === 404) {
+            return new Response(
+                JSON.stringify({ error: `Model unavailable: ${error?.error?.message ?? error?.message ?? 'unknown error'}` }),
+                { status: 400, headers: { 'Content-Type': 'application/json' } }
+            );
+        }
+
+        return new Response(
+            JSON.stringify({ error: error?.message ?? 'Something went wrong. Please try again.' }),
+            { status: 500, headers: { 'Content-Type': 'application/json' } }
+        );
     }
-
-    return NextResponse.json({ message: aiResponse });
-    
-  } catch (error) {
-    console.error('Chat API error:', error);
-    return NextResponse.json(
-      { error: 'Failed to process request' },
-      { status: 500 }
-    );
-  }
 }
-
-// Helper function to generate simulated responses
-function generateSimulatedResponse(message: string, model: AIModel): string {
-  const lowerMessage = message.toLowerCase();
-  
-  // Handle slash commands
-  if (message.startsWith('/code')) {
-    const content = message.replace('/code', '').trim();
-    return content ? `\`\`\`\n${content}\n\`\`\`` : "```\n// Your code here\n```";
-  }
-  
-  if (message.startsWith('/')) {
-    // Handle other potential slash commands
-    return `I see you're trying to use a slash command. Currently supported commands:
-- \`/code\` - Create a code block
-- For other formatting, you can use markdown syntax directly.`;
-  }
-  
-  // Check for common agricultural topics
-  if (lowerMessage.includes('sustainable') || lowerMessage.includes('practice')) {
-    return `## Sustainable Agricultural Practices
-
-Based on current research, here are some sustainable farming practices that can help reduce environmental impact while maintaining productivity:
-
-1. **Crop Rotation** - Alternating crops in a specific sequence to improve soil health and reduce pest pressure
-2. **Cover Cropping** - Planting specific crops to cover soil between growing seasons to prevent erosion and add organic matter
-3. **Reduced Tillage** - Minimizing soil disturbance to preserve soil structure and reduce erosion
-4. **Precision Agriculture** - Using technology (GPS, sensors, drones) to apply inputs exactly where and when needed
-5. **Integrated Pest Management (IPM)** - Using a combination of practices to control pests while minimizing chemical use
-
-These practices not only benefit the environment but can also improve long-term farm profitability by reducing input costs and improving soil health.`;
-  }
-  
-  if (lowerMessage.includes('crop') && (lowerMessage.includes('disease') || lowerMessage.includes('pest'))) {
-    return `## Crop Disease Management
-
-Effective crop disease management requires an integrated approach:
-
-1. **Prevention**:
-   - Choose disease-resistant varieties when available
-   - Ensure proper crop rotation to break disease cycles
-   - Maintain optimal plant spacing for air circulation
-
-2. **Monitoring**:
-   - Scout fields regularly (at least weekly during growing season)
-   - Look for symptoms on leaves, stems, and fruit
-   - Consider using disease prediction models where available
-
-3. **Intervention**:
-   - Cultural: Remove infected plant material
-   - Biological: Use beneficial organisms when appropriate
-   - Chemical: Apply fungicides or bactericides only when necessary
-
-Early detection is critical - most diseases are much easier to manage when caught early. Consider working with an extension service for assistance with diagnosis and treatment recommendations.`;
-  }
-  
-  if (lowerMessage.includes('water') || lowerMessage.includes('irrigation')) {
-    return `## Optimizing Irrigation for Water Conservation
-
-Water conservation in agriculture is increasingly important as water resources become more constrained. Here are key strategies:
-
-1. **Irrigation Scheduling**:
-   - Use soil moisture sensors to determine when to irrigate
-   - Consider evapotranspiration (ET) data to estimate crop water needs
-   - Irrigate during cooler times of day to reduce evaporation
-
-2. **Efficient Delivery Systems**:
-   - Drip irrigation can be 90% efficient compared to 50-70% for sprinklers
-   - Subsurface drip irrigation further reduces evaporation losses
-   - Maintain and inspect systems regularly for leaks or clogs
-
-3. **Agronomic Practices**:
-   - Build soil organic matter to increase water-holding capacity
-   - Use mulch to reduce evaporation from soil surface
-   - Consider deficit irrigation for certain crops during non-critical growth stages
-
-4. **Technology Adoption**:
-   - Smart irrigation controllers that adjust based on weather conditions
-   - Remote monitoring systems to track soil moisture and system performance
-   - Variable rate irrigation to apply different amounts based on field conditions
-
-These approaches can typically reduce water use by 15-30% while maintaining crop yields.`;
-  }
-  
-  // Default response if no specific topic is matched
-  return `Thank you for your question about "${message}". 
-
-As an agricultural assistant, I'm here to help with questions about farming techniques, crop management, sustainable practices, agricultural technology, and related topics.
-
-Could you provide a bit more detail about your specific interest in this area? For example:
-- Are you looking for information about a specific crop or farming system?
-- Do you have a particular challenge you're trying to address?
-- Are you interested in conventional or organic approaches?
-
-With more context, I can provide more targeted and useful information for your situation.`;
-} 
