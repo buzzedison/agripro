@@ -54,7 +54,7 @@ export default function ArticleAISummary({ title, content, category }: Props) {
                     <div>
                         <span className="font-bold text-green-900 text-sm">AI Summary</span>
                         <span className="ml-2 text-[11px] text-green-600 bg-green-100 border border-green-200 px-2 py-0.5 rounded-full font-semibold">
-                            Powered by Groq
+                            AgriPro AI
                         </span>
                     </div>
                 </div>

@@ -396,7 +396,7 @@ export default async function InsightPage({ params }: Params) {
   const authors = (insight.authors ?? []).map(mapSanityPerson).filter(Boolean) as Person[]
   const contributors = (insight.contributors ?? []).map(mapSanityPerson).filter(Boolean) as Person[]
   const readingTime = calculateReadingTime(insight.content)
-  const allTags = [...(insight.tags || []), ...(insight.topics || [])].slice(0, 5)
+  const allTags = [...new Set([...(insight.tags || []), ...(insight.topics || [])])].slice(0, 5)
 
   return (
     <article className="min-h-screen bg-white">

@@ -69,7 +69,7 @@ export default function CropAdvisor() {
                 </div>
                 <div className="flex items-center gap-2">
                     <span className="text-[11px] px-2.5 py-1 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 font-semibold">
-                        Powered by Groq
+                        AgriPro AI
                     </span>
                     {messages.length > 0 && (
                         <button
