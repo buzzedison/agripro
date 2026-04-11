@@ -8,8 +8,9 @@ export default function ClientFooter() {
   const isKnowledgeHub = pathname?.startsWith('/knowledgehub');
   const isSummit = pathname?.startsWith('/africa-food-futures');
   const isChat = pathname?.startsWith('/chat');
+  const isAdmin = pathname?.startsWith('/admin');
 
-  if (isKnowledgeHub || isSummit || isChat) {
+  if (isKnowledgeHub || isSummit || isChat || isAdmin) {
     return null;
   }
 

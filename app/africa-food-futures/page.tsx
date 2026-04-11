@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -19,11 +19,43 @@ import {
     Hotel
 } from 'lucide-react';
 import AFFFormModal from './AFFFormModal';
+import { client } from '@/sanity/lib/client';
+import { groq } from 'next-sanity';
 
 type FormType = 'register' | 'speaker' | 'partner' | 'sponsor' | 'exhibitor';
 
+interface AFFContent {
+    heroTagline?: string;
+    heroTitle?: string;
+    heroSubheading?: string;
+    eventDates?: string;
+    eventLocation?: string;
+    finalCtaHeadline?: string;
+    footerNote?: string;
+    pillars?: { title: string; description: string }[];
+    speakerIntroText?: string;
+    speakerTracks?: string[];
+    agendaDays?: { dayNumber: string; date: string; theme: string; description: string }[];
+    kigaliTagline?: string;
+    registrationTiers?: { name: string; price: string; features: string[]; highlighted?: boolean }[];
+    getInvolvedRoles?: { title: string; description: string; ctaLabel: string; formType: string }[];
+}
+
+const AFF_QUERY = groq`*[_type == "africaFoodFutures"][0]{
+    heroTagline, heroTitle, heroSubheading, eventDates, eventLocation,
+    finalCtaHeadline, footerNote, pillars, speakerIntroText, speakerTracks,
+    agendaDays, kigaliTagline, registrationTiers, getInvolvedRoles
+}`;
+
 const AfricaFoodFuturesPage = () => {
     const [activeForm, setActiveForm] = useState<FormType | null>(null);
+    const [cms, setCms] = useState<AFFContent>({});
+
+    useEffect(() => {
+        client.fetch<AFFContent>(AFF_QUERY)
+            .then((data) => { if (data) setCms(data); })
+            .catch(() => {});
+    }, []);
 
     // Animation variants
     const fadeInUp = {
@@ -67,20 +99,19 @@ const AfricaFoodFuturesPage = () => {
                                 variants={fadeInUp}
                                 className="inline-block px-4 py-1.5 rounded-full bg-[#F4C430]/20 border border-[#F4C430]/30 text-[#F4C430] font-bold text-sm tracking-[0.2em] uppercase mb-8"
                             >
-                                The Premier Global Gathering
+                                {cms.heroTagline ?? 'The Premier Global Gathering'}
                             </motion.span>
                             <motion.h1
                                 variants={fadeInUp}
                                 className="text-5xl md:text-8xl font-black text-white leading-[1.1] mb-6 tracking-tight"
                             >
-                                AFRICA FOOD <br />
-                                <span className="text-[#F4C430]">FUTURES 2026.</span>
+                                {cms.heroTitle ?? <>AFRICA FOOD <br /><span className="text-[#F4C430]">FUTURES 2026.</span></>}
                             </motion.h1>
                             <motion.p
                                 variants={fadeInUp}
                                 className="text-xl md:text-2xl text-white/80 max-w-3xl mx-auto mb-12 font-light leading-relaxed"
                             >
-                                Where Women, Capital, and Climate converge to redefine the $1 Trillion African agricultural legacy.
+                                {cms.heroSubheading ?? "Where Women, Capital, and Climate converge to redefine the $1 Trillion African agricultural legacy."}
                             </motion.p>
 
                             <motion.div
@@ -94,11 +125,11 @@ const AfricaFoodFuturesPage = () => {
                                 <div className="flex items-center gap-8 text-white/90 font-medium">
                                     <div className="flex flex-col items-start px-6 border-l border-white/20">
                                         <span className="text-[#F4C430] font-bold uppercase text-xs tracking-widest">When</span>
-                                        <span>Oct 14-16, 2026</span>
+                                        <span>{cms.eventDates ?? 'Oct 14-16, 2026'}</span>
                                     </div>
                                     <div className="flex flex-col items-start px-6 border-l border-white/20">
                                         <span className="text-[#F4C430] font-bold uppercase text-xs tracking-widest">Where</span>
-                                        <span>Kigali, Rwanda</span>
+                                        <span>{cms.eventLocation ?? 'Kigali, Rwanda'}</span>
                                     </div>
                                 </div>
                             </motion.div>

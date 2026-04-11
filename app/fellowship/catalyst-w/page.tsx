@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -10,6 +10,25 @@ import {
     DollarSign, BadgeCheck, Plane, Network,
 } from 'lucide-react';
 import EssayFeedback from '../components/EssayFeedback';
+import { client } from '@/sanity/lib/client';
+import { groq } from 'next-sanity';
+
+interface CWContent {
+    heroBadge1?: string;
+    heroBadge2?: string;
+    heroHeadline?: string;
+    heroSubheading?: string;
+    applyCtaLabel?: string;
+    learnMoreCtaLabel?: string;
+    applicationDeadline?: string;
+    applicationNote?: string;
+    stats?: { value: string; label: string }[];
+}
+
+const CW_QUERY = groq`*[_type == "catalystWAccelerator"][0]{
+    heroBadge1, heroBadge2, heroHeadline, heroSubheading,
+    applyCtaLabel, learnMoreCtaLabel, applicationDeadline, applicationNote, stats
+}`;
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -179,6 +198,13 @@ const REGION_OPTIONS = [
 export default function CatalystWFellowshipPage() {
     const formRef = useRef<HTMLDivElement>(null);
     const [openRole, setOpenRole] = useState<number | null>(null);
+    const [cms, setCms] = useState<CWContent>({});
+
+    useEffect(() => {
+        client.fetch<CWContent>(CW_QUERY)
+            .then((data) => { if (data) setCms(data); })
+            .catch(() => {});
+    }, []);
 
     // Form state
     const [form, setForm] = useState({
@@ -236,23 +262,20 @@ export default function CatalystWFellowshipPage() {
                         <div className="flex flex-wrap items-center gap-3 mb-8">
                             <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full">
                                 <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
-                                <span className="text-sm text-gray-300 font-medium">AgriPro Fellowship · Cohort 2</span>
+                                <span className="text-sm text-gray-300 font-medium">{cms.heroBadge1 ?? 'AgriPro Fellowship · Cohort 2'}</span>
                             </div>
                             <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/10 border border-purple-500/20 rounded-full">
                                 <Heart className="w-3.5 h-3.5 text-purple-400" />
-                                <span className="text-sm text-purple-300 font-medium">Women Catalyst Track</span>
+                                <span className="text-sm text-purple-300 font-medium">{cms.heroBadge2 ?? 'Women Catalyst Track'}</span>
                             </div>
                         </div>
 
                         <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-white leading-[1.02] tracking-tight mb-6">
-                            Help run Africa&apos;s<br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-400">
-                                next great accelerator.
-                            </span>
+                            {cms.heroHeadline ?? <>Help run Africa&apos;s<br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-400">next great accelerator.</span></>}
                         </h1>
 
                         <p className="text-lg text-gray-400 mb-10 max-w-xl leading-relaxed">
-                            We&apos;re building a 25–30 person distributed team to recruit, support, and accelerate 40 women-led agribusiness ventures across Africa. This isn&apos;t volunteering — it&apos;s a performance-based fellowship with real pay, real credentials, and a direct path to a full-time role.
+                            {cms.heroSubheading ?? "We're building a 25–30 person distributed team to recruit, support, and accelerate 40 women-led agribusiness ventures across Africa. This isn't volunteering — it's a performance-based fellowship with real pay, real credentials, and a direct path to a full-time role."}
                         </p>
 
                         <div className="flex flex-col sm:flex-row gap-4 mb-14">
@@ -260,24 +283,24 @@ export default function CatalystWFellowshipPage() {
                                 onClick={() => formRef.current?.scrollIntoView({ behavior: 'smooth' })}
                                 className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-gray-900 font-bold rounded-full hover:bg-green-50 transition-all shadow-xl shadow-black/20"
                             >
-                                Apply now <ArrowRight size={16} />
+                                {cms.applyCtaLabel ?? 'Apply now'} <ArrowRight size={16} />
                             </button>
                             <Link
                                 href="/impact/catalyst-w"
                                 className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white/5 border border-white/10 text-white font-medium rounded-full hover:bg-white/10 transition-all"
                             >
-                                About Catalyst W
+                                {cms.learnMoreCtaLabel ?? 'About Catalyst W'}
                             </Link>
                         </div>
 
                         {/* Stats strip */}
                         <div className="flex flex-wrap items-center gap-x-8 gap-y-4 divide-x divide-white/10">
-                            {[
+                            {(cms.stats ?? [
                                 { value: '25–30', label: 'Fellows' },
                                 { value: '5', label: 'Regions' },
                                 { value: '16', label: 'Week accelerator' },
                                 { value: '40', label: 'Ventures to support' },
-                            ].map((s, i) => (
+                            ]).map((s, i) => (
                                 <div key={s.label} className={i > 0 ? 'pl-8' : ''}>
                                     <span className="text-white font-black text-2xl">{s.value}</span>
                                     <span className="text-gray-500 text-sm ml-2">{s.label}</span>

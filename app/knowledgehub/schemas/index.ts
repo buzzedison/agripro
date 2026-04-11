@@ -6,6 +6,8 @@ import insight from './insight'
 import research from './research'
 import event from './event'
 import video from './video'
+import africaFoodFutures from './africaFoodFutures'
+import catalystWAccelerator from './catalystWAccelerator'
 
 export const schemaTypes = [
   expert,
@@ -15,7 +17,9 @@ export const schemaTypes = [
   bestPractices,
   insight,
   event,
-  video
+  video,
+  africaFoodFutures,
+  catalystWAccelerator,
 ]
 
 export default schemaTypes
