@@ -31,7 +31,7 @@ export async function getKnowledgeHubSession(): Promise<
     }
   }
 
-  const adminAccess = await getAdminAccessByEmail(user.email)
+  const adminAccess = await getAdminAccessByEmail(user.email.toLowerCase())
 
   return {
     ok: true,

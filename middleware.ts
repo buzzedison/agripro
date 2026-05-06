@@ -63,7 +63,7 @@ export async function middleware(request: NextRequest) {
     }
 
     // For other users, check if they are admin
-    const isAdmin = await checkIfUserIsAdmin(user.email!)
+    const isAdmin = await checkIfUserIsAdmin(user.email!.toLowerCase())
     if (!isAdmin) {
       // Redirect to unauthorized page
       const url = request.nextUrl.clone()
@@ -118,7 +118,7 @@ async function checkIfUserIsAdmin(email: string): Promise<boolean> {
     const { data, error } = await supabase
       .from('admin_users')
       .select('id')
-      .eq('email', email)
+      .eq('email', email.toLowerCase())
       .eq('is_active', true)
       .single()
 

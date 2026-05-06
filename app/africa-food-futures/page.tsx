@@ -629,16 +629,6 @@ const AfricaFoodFuturesPage = () => {
                                 </button>
                             </div>
 
-                            <div className="max-w-5xl mx-auto">
-                                <h6 className="uppercase text-xs font-black tracking-[0.5em] text-slate-400 mb-12">Potential Global Alliances</h6>
-                                <div className="flex flex-wrap justify-center items-center gap-16 md:gap-32 grayscale opacity-40 hover:opacity-100 transition-all duration-700">
-                                    <div className="text-3xl font-black opacity-30">UNEP</div>
-                                    <div className="text-3xl font-black opacity-30">WORLD BANK</div>
-                                    <div className="text-3xl font-black opacity-30">AFRICAN UNION</div>
-                                    <div className="text-3xl font-black opacity-30">BILL &amp; MELINDA GATES</div>
-                                    <div className="text-3xl font-black opacity-30">AGRA</div>
-                                </div>
-                            </div>
                         </motion.div>
                     </div>
                     {/* Visual texture */}

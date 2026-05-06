@@ -35,7 +35,7 @@ export async function getAdminAccessByEmail(email?: string | null): Promise<Admi
     const { data, error } = await supabase
       .from('admin_users')
       .select('email, role, is_active')
-      .eq('email', email)
+      .eq('email', email.toLowerCase())
       .eq('is_active', true)
       .maybeSingle()
 
