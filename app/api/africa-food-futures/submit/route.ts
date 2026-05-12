@@ -16,6 +16,7 @@ const typeLabels: Record<string, string> = {
     partner: '🌍 Partnership Enquiry',
     sponsor: '🏆 Sponsorship Enquiry',
     exhibitor: '📊 Exhibition Space',
+    pitch: '🚀 Pitch Application',
 }
 
 const confirmationCopy: Record<string, string> = {
@@ -24,6 +25,7 @@ const confirmationCopy: Record<string, string> = {
     partner: `Thank you for your interest in partnering with Africa Food Futures 2026! Our partnerships team will be in touch shortly to discuss how we can work together.`,
     sponsor: `Thank you for your interest in sponsoring Africa Food Futures 2026! Our sponsorship team will reach out with our full packages and pricing guide.`,
     exhibitor: `Thank you for your interest in exhibiting at Africa Food Futures 2026! Our events team will be in touch to discuss available floor space and packages.`,
+    pitch: `Thank you for applying to pitch at Africa Food Futures 2026! Our team will review your application and contact you with next steps for the Deal Room & Pitch Showcase.`,
 }
 
 export async function POST(req: NextRequest) {
@@ -99,7 +101,7 @@ export async function POST(req: NextRequest) {
             </div>
             <p style="color:#6b7280;font-size:13px">Questions? Reply to this email or contact us at <a href="mailto:summit@agriprohub.com" style="color:#0B2C24">summit@agriprohub.com</a></p>
             <hr style="border:none;border-top:1px solid #e5e7eb;margin:28px 0">
-            <p style="color:#9ca3af;font-size:12px;margin:0">Africa Food Futures 2026 · Kigali Convention Centre, Rwanda<br>Organised by AgriPro Hub</p>
+            <p style="color:#9ca3af;font-size:12px;margin:0">Africa Food Futures 2026 · Kigali Convention Centre, Rwanda<br>Organised by Agripro</p>
           </div>
         </div>
       `,
