@@ -25,7 +25,7 @@ export default async function FellowPortalPage({
   } = await supabase.auth.getUser()
 
   if (!user) {
-    redirect('/auth/login?redirect=/fellowship/portal')
+    redirect('/auth/signup?redirectTo=/fellowship/portal')
   }
 
   const { fellow: requestedFellowId } = await searchParams
