@@ -59,6 +59,7 @@ const NAV: NavGroup[] = [
     label: 'Fellowship',
     items: [
       { href: '/admin/fellowship', label: 'All Fellowships', icon: GraduationCap },
+      { href: '/admin/fellows', label: 'Catalyst Fellows', icon: Sparkles },
     ],
   },
   {

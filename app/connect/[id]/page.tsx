@@ -20,7 +20,7 @@ import {
     Lightbulb, Wrench, Loader2, MessageCircle, UserPlus,
     UserCheck, Share2, Youtube, Play, UserMinus, Clock, X,
     FileText, Repeat2, Heart, Store, BookOpen, ExternalLink,
-    Award, Star, Handshake, BadgeCheck, Zap
+    Award, Star, Handshake, BadgeCheck, Zap, Sparkles
 } from 'lucide-react';
 
 // Extract YouTube video ID from various URL formats
@@ -116,6 +116,7 @@ export default function ProfilePage() {
     const [currentUser, setCurrentUser] = useState<any>(null);
     const [isFollowing, setIsFollowing] = useState(false);
     const [followLoading, setFollowLoading] = useState(false);
+    const [catalystFellowSlug, setCatalystFellowSlug] = useState<string | null>(null);
 
     // Connection State
     const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('none');
@@ -202,6 +203,7 @@ export default function ProfilePage() {
                 setProfile(result.data);
                 fetchStats(result.data.id);
                 fetchActivity(result.data.id);
+                fetchCatalystFellowBadge(result.data.id);
                 // Check follow status with the actual profile ID
                 if (user) {
                     checkFollowStatus(user.id, result.data.id);
@@ -213,6 +215,19 @@ export default function ProfilePage() {
         }
 
         setLoading(false);
+    };
+
+    const fetchCatalystFellowBadge = async (profileId: string) => {
+        try {
+            const { data } = await supabase
+                .from('catalyst_fellows_directory')
+                .select('slug')
+                .eq('user_id', profileId)
+                .maybeSingle();
+            setCatalystFellowSlug(data?.slug || null);
+        } catch {
+            setCatalystFellowSlug(null);
+        }
     };
 
     const fetchStats = async (profileId: string) => {
@@ -677,6 +692,15 @@ export default function ProfilePage() {
                                     <CheckCircle className="w-3 h-3" />
                                     Verified
                                 </span>
+                            )}
+                            {catalystFellowSlug && (
+                                <Link
+                                    href={`/fellowship/fellows/${catalystFellowSlug}`}
+                                    className="inline-flex items-center gap-1 text-xs font-medium text-amber-800 bg-amber-100 px-2 py-1 rounded-full hover:bg-amber-200 transition-colors"
+                                >
+                                    <Sparkles className="w-3 h-3" />
+                                    Catalyst Fellow
+                                </Link>
                             )}
                         </div>
 

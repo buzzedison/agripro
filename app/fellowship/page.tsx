@@ -34,14 +34,20 @@ export default function Fellowship() {
               Apply to Agripro
               <FaArrowRight className="ml-2" />
             </Link>
-            <Link 
+            <Link
               href="/fellowship/guide"
               className="inline-flex items-center px-8 py-4 border-2 border-white text-white font-bold rounded-full hover:bg-white hover:text-green-700 transition-all"
             >
               Get the Track Guide
             </Link>
+            <Link
+              href="/fellowship/fellows"
+              className="inline-flex items-center px-8 py-4 border-2 border-white/50 text-white font-bold rounded-full hover:bg-white hover:text-green-700 transition-all"
+            >
+              Meet the Fellows
+            </Link>
           </div>
-          
+
           <p className="text-green-200 text-sm">
             <FaStar className="inline mr-2" />
             Limited spots. Part of the 6-month Taskwit Amplify Fellowship.

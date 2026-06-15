@@ -10,6 +10,7 @@ import {
     DollarSign, BadgeCheck, Plane, Network,
 } from 'lucide-react';
 import EssayFeedback from '../components/EssayFeedback';
+import FellowsTeamStrip from '../components/FellowsTeamStrip';
 import { client } from '@/sanity/lib/client';
 import { groq } from 'next-sanity';
 
@@ -549,6 +550,9 @@ export default function CatalystWFellowshipPage() {
                     </div>
                 </div>
             </section>
+
+            {/* ── Meet the team ─────────────────────────────────────────────── */}
+            <FellowsTeamStrip />
 
             {/* ── Who we're looking for ────────────────────────────────────── */}
             <section className="py-24 bg-gray-50">
