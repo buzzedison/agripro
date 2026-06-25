@@ -125,7 +125,7 @@ const AfricaFoodFuturesPage = () => {
                                 <div className="flex items-center gap-8 text-white/90 font-medium">
                                     <div className="flex flex-col items-start px-6 border-l border-white/20">
                                         <span className="text-[#F4C430] font-bold uppercase text-xs tracking-widest">When</span>
-                                        <span>{cms.eventDates ?? 'Oct 14-16, 2026'}</span>
+                                        <span>{cms.eventDates ?? 'Dec 2-4, 2026'}</span>
                                     </div>
                                     <div className="flex flex-col items-start px-6 border-l border-white/20">
                                         <span className="text-[#F4C430] font-bold uppercase text-xs tracking-widest">Where</span>
@@ -299,7 +299,7 @@ const AfricaFoodFuturesPage = () => {
                                     className="relative flex flex-col md:flex-row gap-8 p-10 rounded-[2rem] bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group cursor-default"
                                 >
                                     <div className="md:w-1/3">
-                                        <span className="text-[#F4C430] font-black tracking-widest block mb-1">Day 01 | Oct 14</span>
+                                        <span className="text-[#F4C430] font-black tracking-widest block mb-1">Day 01 | Dec 2</span>
                                         <h4 className="text-2xl font-bold group-hover:text-[#F4C430] transition-colors">THE OPENING BELL</h4>
                                     </div>
                                     <div className="md:w-2/3">
@@ -318,7 +318,7 @@ const AfricaFoodFuturesPage = () => {
                                     className="relative flex flex-col md:flex-row gap-8 p-10 rounded-[2rem] bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group cursor-default"
                                 >
                                     <div className="md:w-1/3">
-                                        <span className="text-[#F4C430] font-black tracking-widest block mb-1">Day 02 | Oct 15</span>
+                                        <span className="text-[#F4C430] font-black tracking-widest block mb-1">Day 02 | Dec 3</span>
                                         <h4 className="text-2xl font-bold group-hover:text-[#F4C430] transition-colors">CAPITAL &amp; CLIMATE</h4>
                                     </div>
                                     <div className="md:w-2/3">
@@ -343,7 +343,7 @@ const AfricaFoodFuturesPage = () => {
                                     </div>
                                     <div className="relative z-10 flex flex-col md:flex-row gap-8 p-10">
                                         <div className="md:w-1/3">
-                                            <span className="text-[#F4C430] font-black tracking-widest block mb-1">Day 03 | Oct 16</span>
+                                            <span className="text-[#F4C430] font-black tracking-widest block mb-1">Day 03 | Dec 4</span>
                                             <h4 className="text-2xl font-bold group-hover:text-[#F4C430] transition-colors">SHE HARVESTS GALA</h4>
                                         </div>
                                         <div className="md:w-2/3">
@@ -414,7 +414,7 @@ const AfricaFoodFuturesPage = () => {
                         <div className="text-center mb-20">
                             <h2 className="text-4xl md:text-7xl font-black mb-6">Choose Your Access.</h2>
                             <p className="text-slate-500 max-w-2xl mx-auto text-xl">
-                                Join policy makers, global investors, and tech leaders in October 2026.
+                                Join policy makers, global investors, and tech leaders in December 2026.
                             </p>
                         </div>
 
@@ -670,7 +670,7 @@ const AfricaFoodFuturesPage = () => {
                             <div>
                                 <h6 className="font-black uppercase text-xs tracking-widest mb-6">Contact</h6>
                                 <a href="mailto:info@agriprohub.com" className="text-slate-500 hover:text-[#0B2C24] transition-colors mb-6 block">info@agriprohub.com</a>
-                                <p className="text-slate-400 text-xs italic">Rwanda · October 14–16, 2026</p>
+                                <p className="text-slate-400 text-xs italic">Rwanda · December 2–4, 2026</p>
                             </div>
                         </div>
                     </div>

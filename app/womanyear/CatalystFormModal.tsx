@@ -19,9 +19,9 @@ const FORM_CONFIG = {
         cta: 'Submit Application',
     },
     prospectus: {
-        title: 'Request the Prospectus',
-        subtitle: 'Get the full programme details, curriculum & fee structure',
-        cta: 'Send Me the Prospectus',
+        title: 'Download the Prospectus',
+        subtitle: 'The full programme, the 12-week model & fee structure',
+        cta: 'Download the Prospectus',
     },
     plan: {
         title: 'Select Your Plan',
@@ -55,8 +55,23 @@ export default function CatalystFormModal({ type, planTier, onClose }: CatalystF
     const [submitting, setSubmitting] = useState(false)
     const [success, setSuccess] = useState(false)
     const [error, setError] = useState('')
+    const [downloadFailed, setDownloadFailed] = useState(false)
 
     const set = (k: string, v: string) => setForm(prev => ({ ...prev, [k]: v }))
+
+    // Generate the prospectus PDF in-browser and trigger a download.
+    const deliverProspectus = async () => {
+        const { generateProspectusBlob } = await import('./ProspectusDocument')
+        const blob = await generateProspectusBlob()
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'AgriPro-Catalyst-W-Prospectus-2026.pdf'
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        URL.revokeObjectURL(url)
+    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -70,6 +85,15 @@ export default function CatalystFormModal({ type, planTier, onClose }: CatalystF
             })
             const data = await res.json()
             if (!res.ok) throw new Error(data.error || 'Submission failed')
+
+            // Lead captured — for the prospectus, serve the PDF instantly.
+            if (type === 'prospectus') {
+                try {
+                    await deliverProspectus()
+                } catch {
+                    setDownloadFailed(true)
+                }
+            }
             setSuccess(true)
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
@@ -126,14 +150,26 @@ export default function CatalystFormModal({ type, planTier, onClose }: CatalystF
                                     <CheckCircle className="text-green-600" size={32} />
                                 </div>
                                 <h3 className="text-xl font-black text-gray-900 mb-2">
-                                    {type === 'prospectus' ? 'Prospectus on its way!' : 'Submission Received!'}
+                                    {type === 'prospectus'
+                                        ? (downloadFailed ? 'Your prospectus is ready' : 'Your prospectus is downloading')
+                                        : 'Submission Received!'}
                                 </h3>
                                 <p className="text-gray-500 text-sm leading-relaxed max-w-sm mx-auto">
                                     {type === 'prospectus'
-                                        ? `We'll send the full prospectus to ${form.email} within 2 business days.`
+                                        ? (downloadFailed
+                                            ? 'Your download didn’t start automatically. Tap the button below to get it.'
+                                            : 'The download should have started automatically. We’ve also got your details and will keep you posted on Cohort 2026.')
                                         : `Thank you! A confirmation has been sent to ${form.email}. Our team will be in touch within 10 business days.`}
                                 </p>
-                                <button onClick={onClose} className="mt-8 px-8 py-3 bg-[#0B2C24] text-white font-bold rounded-full hover:bg-[#0d3a2e] transition-colors">
+                                {type === 'prospectus' && (
+                                    <button
+                                        onClick={() => { deliverProspectus().catch(() => setDownloadFailed(true)) }}
+                                        className="mt-6 px-8 py-3 bg-[#F4C430] text-[#0B2C24] font-black rounded-full hover:bg-[#D4AF37] transition-colors inline-flex items-center gap-2"
+                                    >
+                                        {downloadFailed ? 'Download Prospectus' : 'Download again'} <ArrowRight size={16} />
+                                    </button>
+                                )}
+                                <button onClick={onClose} className="mt-8 ml-0 sm:ml-3 px-8 py-3 bg-[#0B2C24] text-white font-bold rounded-full hover:bg-[#0d3a2e] transition-colors">
                                     Close
                                 </button>
                             </motion.div>

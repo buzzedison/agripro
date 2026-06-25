@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import CatalystFormModal, { CatalystFormType } from './CatalystFormModal';
+import CatalystFellowsStrip from './CatalystFellowsStrip';
 import {
     ArrowRight,
     Download,
@@ -35,55 +36,115 @@ const WomanYearPage = () => {
         <>
             <div className="min-h-screen bg-white text-[#0B2C24] overflow-x-hidden font-sans">
                 {/* Section 1: The Hero */}
-                <section className="relative h-[90vh] flex items-center justify-center overflow-hidden">
-                    {/* Visual Asset: Video Loop / High-Quality Image */}
+                <section className="relative min-h-screen flex items-center overflow-hidden bg-[#06140E]">
+                    {/* Background image */}
                     <div className="absolute inset-0 z-0">
-                        <div className="absolute inset-0 bg-black/50 z-10" />
                         <Image
                             src="/images/catalyst-hero.png"
-                            alt="AgriPro Hero"
+                            alt="Women agripreneurs across Africa"
                             fill
-                            className="object-cover"
+                            className="object-cover object-center"
                             priority
                         />
-                        {/* Fallback pattern/gradient if image fails or to enhance it */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#0B2C24]/90 via-transparent to-transparent z-10" />
+                        {/* Restrained editorial gradient — legible left column, image visible on the right */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-[#06140E] via-[#06140E]/90 to-[#06140E]/30" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#06140E] via-transparent to-transparent" />
                     </div>
 
-                    <div className="container mx-auto px-6 relative z-20 text-white text-center">
+                    <div className="container mx-auto px-6 relative z-20 text-white pt-32 pb-20">
                         <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.8 }}
+                            initial="hidden"
+                            animate="show"
+                            variants={{ hidden: {}, show: { transition: { staggerChildren: 0.1 } } }}
+                            className="max-w-3xl"
                         >
-                            <h1 className="text-4xl md:text-7xl font-bold leading-tight mb-4">
-                                The Pan-African Launchpad <br />
-                                <span className="text-[#F4C430]">for Women Agripreneurs.</span>
-                            </h1>
-                            <p className="text-xl md:text-2xl max-w-3xl mx-auto mb-8 font-light italic">
-                                2026 is the UN International Year of the Woman Farmer. This is your moment to harness the <span className="font-bold text-[#F4C430]">$1 Trillion Gender Dividend.</span>
-                            </p>
-                            <p className="text-lg md:text-xl font-medium tracking-widest uppercase mb-12">
-                                Don’t just pitch your business. Build your legacy.
-                            </p>
+                            {/* Kicker */}
+                            <motion.div
+                                variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}
+                                className="flex items-center gap-4 mb-9"
+                            >
+                                <span className="h-px w-10 bg-[#F4C430]" />
+                                <span className="text-[11px] md:text-xs uppercase tracking-[0.28em] text-white/75 font-medium">
+                                    Catalyst&nbsp;W · Women&apos;s Agribusiness Accelerator
+                                </span>
+                            </motion.div>
 
-                            <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
+                            {/* Headline */}
+                            <motion.h1
+                                variants={{ hidden: { opacity: 0, y: 18 }, show: { opacity: 1, y: 0 } }}
+                                className="text-[2.5rem] leading-[1.08] md:text-5xl lg:text-[3.75rem] lg:leading-[1.06] font-semibold tracking-tight mb-8"
+                            >
+                                The Pan-African launchpad<br className="hidden sm:block" /> for{' '}
+                                <span className="text-[#F4C430]">women agripreneurs</span>.
+                            </motion.h1>
+
+                            {/* Standfirst */}
+                            <motion.p
+                                variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0 } }}
+                                className="text-lg md:text-xl text-white/65 max-w-xl leading-relaxed font-light mb-11"
+                            >
+                                A 12-week, action-oriented accelerator connecting 40 women agribusiness owners directly to the partners, markets and capital they need. Not a course — a catalyst.
+                            </motion.p>
+
+                            {/* CTAs */}
+                            <motion.div
+                                variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0 } }}
+                                className="flex flex-col sm:flex-row sm:items-center gap-5 mb-16"
+                            >
                                 <button
                                     onClick={() => openForm('apply')}
-                                    className="px-8 py-4 bg-[#F4C430] hover:bg-[#D4AF37] text-[#0B2C24] font-bold rounded-full transition-all flex items-center gap-2 transform hover:scale-105 shadow-lg"
+                                    className="group px-7 py-3.5 bg-[#F4C430] hover:bg-white text-[#0B2C24] font-semibold rounded-sm transition-colors flex items-center justify-center gap-2.5"
                                 >
                                     Apply for Cohort 2026
-                                    <ArrowRight size={20} />
+                                    <ArrowRight size={17} className="group-hover:translate-x-0.5 transition-transform" />
                                 </button>
                                 <button
                                     onClick={() => openForm('prospectus')}
-                                    className="px-8 py-4 border-2 border-white hover:bg-white hover:text-[#0B2C24] text-white font-bold rounded-full transition-all flex items-center gap-2"
+                                    className="group inline-flex items-center justify-center gap-2.5 text-white/85 hover:text-white font-medium transition-colors"
                                 >
-                                    Download Prospectus
-                                    <Download size={20} />
+                                    <Download size={17} className="text-[#F4C430]" />
+                                    Download prospectus
                                 </button>
-                            </div>
+                            </motion.div>
+
+                            {/* Metadata row */}
+                            <motion.div
+                                variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0 } }}
+                                className="grid grid-cols-2 sm:grid-cols-4 gap-y-6 border-t border-white/15 pt-7 max-w-2xl"
+                            >
+                                {[
+                                    { value: "40", label: "Founders" },
+                                    { value: "12 weeks", label: "Sep 1 – Nov 23" },
+                                    { value: "4", label: "Impact tracks" },
+                                    { value: "Kigali", label: "Summit · December" },
+                                ].map((s) => (
+                                    <div key={s.label} className="flex flex-col">
+                                        <span className="text-xl md:text-2xl font-semibold text-white leading-none">{s.value}</span>
+                                        <span className="text-[11px] uppercase tracking-[0.14em] text-white/45 mt-2">{s.label}</span>
+                                    </div>
+                                ))}
+                            </motion.div>
                         </motion.div>
+                    </div>
+                </section>
+
+                {/* Section 1.5: Key Dates Band */}
+                <section className="bg-[#0B2C24] border-y border-white/10">
+                    <div className="container mx-auto px-6">
+                        <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-white/10">
+                            {[
+                                { icon: <Calendar className="text-[#F4C430]" size={20} />, label: "Applications open", value: "July 6, 2026" },
+                                { icon: <Calendar className="text-[#F4C430]" size={20} />, label: "Applications close", value: "End of Aug 2026" },
+                                { icon: <Zap className="text-[#F4C430]" size={20} />, label: "Accelerator (12 weeks)", value: "Sep 1 – Nov 23" },
+                                { icon: <Target className="text-[#F4C430]" size={20} />, label: "Africa Food Futures Summit", value: "First week of Dec" },
+                            ].map((d, i) => (
+                                <div key={i} className="flex flex-col items-center text-center gap-2 py-8 px-3">
+                                    <div className="hidden sm:block">{d.icon}</div>
+                                    <span className="text-[10px] md:text-xs uppercase tracking-[0.15em] text-green-300/70 font-bold">{d.label}</span>
+                                    <span className="text-base md:text-2xl font-black text-white leading-tight">{d.value}</span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </section>
 
@@ -152,44 +213,52 @@ const WomanYearPage = () => {
                     </div>
                 </section>
 
-                {/* Section 3: The AgriPro Difference */}
+                {/* Section 3: Why Our Connections Are Real */}
                 <section className="py-24 bg-[#F9FAF9]">
-                    <div className="container mx-auto px-6 text-center">
-                        <motion.h2
-                            initial={{ opacity: 0 }}
-                            whileInView={{ opacity: 1 }}
-                            viewport={{ once: true }}
-                            className="text-4xl md:text-5xl font-bold mb-6"
-                        >
-                            We Don&apos;t Just Offer Advice. <br />
-                            <span className="text-[#F4C430]">We Offer Infrastructure.</span>
-                        </motion.h2>
-                        <p className="text-xl max-w-3xl mx-auto mb-16 text-gray-600">
-                            Most accelerators end with a pitch deck. We begin with operations. Through the
-                            <span className="font-bold text-[#0B2C24]"> AgriPro Flywheel</span>, you get immediate integration into a living ecosystem:
-                        </p>
+                    <div className="container mx-auto px-6">
+                        <div className="max-w-3xl mb-16">
+                            <span className="inline-block px-4 py-1.5 rounded-full bg-[#0B2C24]/5 text-[#0B2C24] text-xs font-black uppercase tracking-[0.2em] mb-5">
+                                The unfair advantage
+                            </span>
+                            <motion.h2
+                                initial={{ opacity: 0, y: 16 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                className="text-4xl md:text-5xl font-bold mb-6 leading-tight"
+                            >
+                                Most accelerators give you a contact.<br />
+                                <span className="text-[#F4C430]">We give you a connection that&apos;s real.</span>
+                            </motion.h2>
+                            <p className="text-xl text-gray-600 leading-relaxed">
+                                A warm intro you chase for months isn&apos;t access. Because AgriPro <span className="font-bold text-[#0B2C24]">operates the market rails</span> — data, logistics, offtake and policy access — the partners we connect you to can actually transact. When we open a door, it&apos;s already open.
+                            </p>
+                        </div>
 
-                        <div className="grid md:grid-cols-4 gap-8">
+                        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
                             {[
                                 {
                                     icon: <Zap className="text-[#F4C430]" />,
-                                    title: "The Ayeeko Platform",
-                                    desc: "Real-time market data & digital advisory."
+                                    rail: "Market data",
+                                    title: "Real numbers behind your pitch",
+                                    desc: "Live pricing and demand data from the Ayeeko platform — so the figures you take to an investor are defensible, not guessed."
                                 },
                                 {
                                     icon: <Truck className="text-[#F4C430]" />,
-                                    title: "SmartChain Infrastructure",
-                                    desc: "Access to cold storage, aggregation, and logistics."
+                                    rail: "Logistics",
+                                    title: "Supply you can actually fulfil",
+                                    desc: "Cold storage, aggregation and transport through SmartChain — so a new buyer order is one you can deliver on, at scale."
                                 },
                                 {
                                     icon: <Handshake className="text-[#F4C430]" />,
-                                    title: "Green Markets",
-                                    desc: "Guaranteed offtake trials and premium pricing."
+                                    rail: "Offtake",
+                                    title: "A buyer intro that becomes an order",
+                                    desc: "Guaranteed offtake trials and premium pricing via Green Markets — turning a market connection into a real first contract."
                                 },
                                 {
                                     icon: <Building2 className="text-[#F4C430]" />,
-                                    title: "Policy & Insights Lab",
-                                    desc: "Your voice, amplified to government ministers."
+                                    rail: "Policy access",
+                                    title: "A seat at the table that sets the rules",
+                                    desc: "Direct lines to ministries through our Policy & Insights Lab — so your voice reaches the people who shape the market you operate in."
                                 }
                             ].map((item, i) => (
                                 <motion.div
@@ -198,27 +267,21 @@ const WomanYearPage = () => {
                                     whileInView={{ opacity: 1, y: 0 }}
                                     viewport={{ once: true }}
                                     transition={{ delay: i * 0.1 }}
-                                    className="bg-white p-8 rounded-2xl shadow-sm hover:shadow-xl transition-all border border-gray-100 group"
+                                    className="bg-white p-7 rounded-2xl shadow-sm hover:shadow-xl transition-all border border-gray-100 group flex flex-col"
                                 >
-                                    <div className="w-12 h-12 bg-gray-50 rounded-lg flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                                    <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                                         {item.icon}
                                     </div>
-                                    <h4 className="text-xl font-bold mb-3">{item.title}</h4>
-                                    <p className="text-gray-600">{item.desc}</p>
+                                    <span className="text-[11px] uppercase tracking-[0.18em] text-gray-400 font-bold mb-2">{item.rail}</span>
+                                    <h4 className="text-lg font-bold mb-3 leading-snug text-[#0B2C24]">{item.title}</h4>
+                                    <p className="text-gray-600 text-sm leading-relaxed">{item.desc}</p>
                                 </motion.div>
                             ))}
                         </div>
 
-                        {/* Visualizing the Flywheel (simplified placeholder for interactive diagram) */}
-                        <div className="mt-20 relative h-96 max-w-2xl mx-auto flex items-center justify-center">
-                            <div className="absolute inset-0 border-4 border-dashed border-gray-200 rounded-full animate-spin-slow" />
-                            <div className="relative z-10 w-48 h-48 bg-[#0B2C24] text-white rounded-full flex flex-col items-center justify-center shadow-2xl">
-                                <Users size={40} className="mb-2" />
-                                <span className="font-bold text-center">Female Foundress</span>
-                            </div>
-                            {/* Pulsing glow effect */}
-                            <div className="absolute w-64 h-64 bg-[#F4C430]/20 rounded-full blur-3xl" />
-                        </div>
+                        <p className="text-center text-gray-500 max-w-2xl mx-auto mt-14 text-sm">
+                            We own the rails. That&apos;s why the connections we make in the next 12 weeks hold up after the program ends.
+                        </p>
                     </div>
                 </section>
 
@@ -292,22 +355,82 @@ const WomanYearPage = () => {
                     </div>
                 </section>
 
-                {/* Section 5: The Journey - Timeline */}
+                {/* Section 5: How It Works — The Engine */}
+                <section className="py-24 bg-[#F9FAF9]">
+                    <div className="container mx-auto px-6">
+                        <div className="text-center max-w-3xl mx-auto mb-16">
+                            <span className="inline-block px-4 py-1.5 rounded-full bg-[#0B2C24]/5 text-[#0B2C24] text-xs font-black uppercase tracking-[0.2em] mb-5">
+                                How it works
+                            </span>
+                            <h2 className="text-4xl md:text-5xl font-bold mb-6">
+                                We don&apos;t teach you a curriculum.<br />
+                                <span className="text-[#F4C430]">We solve your specific problem.</span>
+                            </h2>
+                            <p className="text-xl text-gray-600">
+                                Every founder enters with a different bottleneck. So we run a simple, repeatable engine on <span className="font-bold text-[#0B2C24]">your</span> business — diagnosing the real constraint, then making the exact connection that breaks it.
+                            </p>
+                        </div>
+
+                        {/* The 3-step engine */}
+                        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+                            {[
+                                {
+                                    step: "01",
+                                    title: "Assess",
+                                    desc: "We diagnose your single biggest constraint right now — capital, market access, supply, or compliance. No generic syllabus.",
+                                    icon: <Target className="text-[#F4C430]" size={28} />
+                                },
+                                {
+                                    step: "02",
+                                    title: "Connect",
+                                    desc: "We introduce you directly to the one partner who can move the needle — an investor, an offtake buyer, a logistics provider, or a policymaker.",
+                                    icon: <Handshake className="text-[#F4C430]" size={28} />
+                                },
+                                {
+                                    step: "03",
+                                    title: "Equip",
+                                    desc: "Targeted prep — pitch coaching, data room, term-sheet readiness — so you walk into that connection ready to close, not just talk.",
+                                    icon: <Zap className="text-[#F4C430]" size={28} />
+                                }
+                            ].map((s, i) => (
+                                <motion.div
+                                    key={i}
+                                    initial={{ opacity: 0, y: 24 }}
+                                    whileInView={{ opacity: 1, y: 0 }}
+                                    viewport={{ once: true }}
+                                    transition={{ delay: i * 0.12 }}
+                                    className="relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100"
+                                >
+                                    <span className="absolute top-6 right-7 text-5xl font-black text-gray-100 select-none">{s.step}</span>
+                                    <div className="w-14 h-14 bg-[#0B2C24] rounded-2xl flex items-center justify-center mb-6">
+                                        {s.icon}
+                                    </div>
+                                    <h4 className="text-2xl font-bold mb-3 text-[#0B2C24]">{s.title}</h4>
+                                    <p className="text-gray-600 leading-relaxed">{s.desc}</p>
+                                </motion.div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                {/* Section 5b: The 12-Week Timeline */}
                 <section className="py-24 bg-[#0B2C24] text-white">
                     <div className="container mx-auto px-6">
-                        <h2 className="text-4xl md:text-5xl font-bold mb-16 text-center">16 Weeks. From Field to Future.</h2>
+                        <div className="text-center mb-16">
+                            <h2 className="text-4xl md:text-5xl font-bold mb-4">12 Weeks of Action.</h2>
+                            <p className="text-xl text-green-200">September 1 – November 23, 2026. Then we take it to the Summit.</p>
+                        </div>
 
                         <div className="relative">
                             {/* Timeline Line */}
                             <div className="absolute top-1/2 left-0 w-full h-1 bg-white/20 -translate-y-1/2 hidden md:block" />
 
-                            <div className="grid md:grid-cols-5 gap-8 relative z-10">
+                            <div className="grid md:grid-cols-4 gap-8 relative z-10">
                                 {[
-                                    { month: "May 2026", title: "Onboarding", desc: "Ayeeko Setup" },
-                                    { month: "June", title: "Sprint 1: Grounding", desc: "Market trials & farm shadowing" },
-                                    { month: "July", title: "Sprint 2: Growth", desc: "Unit economics & climate risk modeling" },
-                                    { month: "August", title: "Sprint 3: Capital", desc: "Investment readiness & negotiations" },
-                                    { month: "Sept", title: "Sprint 4: Scale", desc: "Logistics integration & cross-border expansion" }
+                                    { week: "Weeks 1–3", title: "Diagnose", desc: "Deep-dive on your business. We pinpoint the constraint to break." },
+                                    { week: "Weeks 4–7", title: "Matchmake", desc: "Direct introductions to the partner who can unlock your next stage." },
+                                    { week: "Weeks 8–10", title: "Prepare", desc: "Pitch, data room and negotiation prep — built for the specific deal." },
+                                    { week: "Weeks 11–12", title: "Close", desc: "Convert the connection. Lock in capital, offtake, or partnership." }
                                 ].map((step, i) => (
                                     <motion.div
                                         key={i}
@@ -315,9 +438,9 @@ const WomanYearPage = () => {
                                         whileInView={{ opacity: 1, y: 0 }}
                                         viewport={{ once: true }}
                                         transition={{ delay: i * 0.1 }}
-                                        className="bg-white/5 p-6 rounded-2xl backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-colors"
+                                        className="bg-white/5 p-6 rounded-2xl backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-colors relative"
                                     >
-                                        <span className="block text-[#F4C430] font-bold mb-2">{step.month}</span>
+                                        <span className="block text-[#F4C430] font-bold mb-2">{step.week}</span>
                                         <h4 className="text-xl font-bold mb-2">{step.title}</h4>
                                         <p className="text-gray-400 text-sm leading-relaxed">{step.desc}</p>
                                         <div className="w-4 h-4 bg-[#F4C430] rounded-full absolute -bottom-2 md:bottom-auto md:top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 border-4 border-[#0B2C24] hidden md:block" />
@@ -327,7 +450,7 @@ const WomanYearPage = () => {
                         </div>
                         <div className="mt-12 text-center">
                             <span className="inline-block px-8 py-3 bg-[#F4C430] text-[#0B2C24] font-bold rounded-full text-xl shadow-[0_0_20px_rgba(244,196,48,0.4)]">
-                                October 2026: THE FINALE
+                                First Week of December: THE SUMMIT
                             </span>
                         </div>
                     </div>
@@ -369,28 +492,31 @@ const WomanYearPage = () => {
                                     <MapPin size={14} className="text-[#F4C430]" /> Kigali, Rwanda
                                 </span>
                                 <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/10 border border-white/20 text-sm font-bold uppercase tracking-widest">
-                                    <Calendar size={14} className="text-[#F4C430]" /> October 2026
+                                    <Calendar size={14} className="text-[#F4C430]" /> First Week of December 2026
                                 </span>
                             </div>
 
                             {/* Theme */}
-                            <p className="text-2xl md:text-3xl font-light italic text-white/80 mb-14 border-l-4 border-[#F4C430] pl-6">
-                                Theme: Women, Capital &amp; Climate.
+                            <p className="text-2xl md:text-3xl font-light italic text-white/80 mb-6 border-l-4 border-[#F4C430] pl-6">
+                                Where the 40 accelerator founders &amp; 25 fellows turn momentum into deals.
+                            </p>
+                            <p className="text-lg text-white/70 mb-14 max-w-2xl">
+                                Not another conference of abstract panels. The Summit mobilizes every attendee into focused work groups built to deliver tangible support — capital, contracts and commitments — to the founders on stage.
                             </p>
 
                             {/* Benefit cards */}
                             <ul className="grid sm:grid-cols-3 gap-5 mb-14">
                                 <li className="flex flex-col gap-4 p-7 bg-white/8 backdrop-blur-sm rounded-2xl border border-white/15 hover:border-[#F4C430]/50 transition-colors">
+                                    <Users size={24} className="text-[#F4C430]" />
+                                    <p className="font-semibold text-base leading-snug">Showcase the 40 founders &amp; 25 fellows.</p>
+                                </li>
+                                <li className="flex flex-col gap-4 p-7 bg-white/8 backdrop-blur-sm rounded-2xl border border-white/15 hover:border-[#F4C430]/50 transition-colors">
+                                    <Handshake size={24} className="text-[#F4C430]" />
+                                    <p className="font-semibold text-base leading-snug">Mobilize work groups, not just discussions.</p>
+                                </li>
+                                <li className="flex flex-col gap-4 p-7 bg-white/8 backdrop-blur-sm rounded-2xl border border-white/15 hover:border-[#F4C430]/50 transition-colors">
                                     <Target size={24} className="text-[#F4C430]" />
-                                    <p className="font-semibold text-base leading-snug">Pitch to the Terranova LP Consortium.</p>
-                                </li>
-                                <li className="flex flex-col gap-4 p-7 bg-white/8 backdrop-blur-sm rounded-2xl border border-white/15 hover:border-[#F4C430]/50 transition-colors">
-                                    <Globe size={24} className="text-[#F4C430]" />
-                                    <p className="font-semibold text-base leading-snug">Secure deals with buyers like Unilever &amp; OCP.</p>
-                                </li>
-                                <li className="flex flex-col gap-4 p-7 bg-white/8 backdrop-blur-sm rounded-2xl border border-white/15 hover:border-[#F4C430]/50 transition-colors">
-                                    <Zap size={24} className="text-[#F4C430]" />
-                                    <p className="font-semibold text-base leading-snug">Celebrate at the &quot;She Harvests&quot; Gala.</p>
+                                    <p className="font-semibold text-base leading-snug">Leave with tangible commitments secured.</p>
                                 </li>
                             </ul>
 
@@ -405,6 +531,9 @@ const WomanYearPage = () => {
                         </motion.div>
                     </div>
                 </section>
+
+                {/* Section 6b: The Fellows who run the accelerator */}
+                <CatalystFellowsStrip />
 
                 {/* Section 7: Partners — hidden until confirmed
             <section className="py-20 bg-gray-50 border-y border-gray-100">
@@ -508,7 +637,7 @@ const WomanYearPage = () => {
                         >
                             <h2 className="text-5xl md:text-7xl font-bold mb-6">The Harvest is Waiting.</h2>
                             <p className="text-2xl mb-12 text-green-100 max-w-2xl mx-auto">
-                                Applications open March 2026. Don&apos;t miss the chance to define the future of food.
+                                Applications open <span className="font-bold text-[#F4C430]">July 6, 2026</span> and close end of August. Don&apos;t miss the chance to define the future of food.
                             </p>
 
                             <button

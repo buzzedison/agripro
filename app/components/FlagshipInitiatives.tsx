@@ -147,7 +147,7 @@ export default function FlagshipInitiatives() {
                                     Where Women, Capital & Climate Converge.
                                 </h3>
                                 <p className="text-white/60 text-base leading-relaxed mb-8 max-w-md">
-                                    The premier gathering of 2,000+ policy makers, investors, and agri-food innovators from 40+ countries. Kigali, Rwanda · October 2026.
+                                    The premier gathering of 2,000+ policy makers, investors, and agri-food innovators from 40+ countries. Kigali, Rwanda · December 2026.
                                 </p>
 
                                 {/* Stats */}
