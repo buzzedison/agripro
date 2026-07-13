@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getFellowContributions } from '@/lib/fellows'
 import type { CatalystFellow } from '@/lib/fellows'
+import { designationLabel } from '@/lib/fellows/designation'
 import { createFellowsPublicClient, getFellowEmailBySlug } from '@/lib/fellows/server'
 import {
   MapPin, Briefcase, Linkedin, Twitter, Globe, BookOpen,
@@ -76,7 +77,7 @@ export default async function FellowProfilePage({
             <div>
               <div className="inline-flex items-center gap-1.5 text-amber-300 text-xs font-medium mb-1.5">
                 <Sparkles className="w-3.5 h-3.5" />
-                {fellow.designation === 'director' ? 'Fellowship Director' : 'Catalyst Fellow'}
+                {designationLabel(fellow.designation)}
               </div>
               <h1 className="text-3xl font-bold mb-1">{fellow.full_name}</h1>
               {fellow.role_in_agripro && (

@@ -6,6 +6,30 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+function normalizeSession(row: any) {
+  if (!row) return row;
+  return {
+    ...row,
+    session_date: row.scheduled_date,
+    session_time: row.scheduled_time,
+    facilitator_name: row.facilitator,
+  };
+}
+
+function normalizeUpdateBody(body: Record<string, unknown>) {
+  const next = { ...body };
+  if ('session_date' in next && !('scheduled_date' in next)) {
+    next.scheduled_date = next.session_date;
+  }
+  if ('session_time' in next && !('scheduled_time' in next)) {
+    next.scheduled_time = next.session_time;
+  }
+  if ('facilitator_name' in next && !('facilitator' in next)) {
+    next.facilitator = next.facilitator_name;
+  }
+  return next;
+}
+
 // GET - Fetch single session
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -24,7 +48,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: 'Failed to fetch session' }, { status: 500 });
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json(normalizeSession(data));
   } catch (err: any) {
     console.error('API error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -35,7 +59,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const body = await request.json();
+    const body = normalizeUpdateBody(await request.json());
     const ALLOWED = [
       'title', 'type', 'scheduled_date', 'scheduled_time', 'duration_minutes',
       'facilitator', 'facilitator_org', 'description', 'recording_url',
@@ -66,7 +90,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ error: 'Failed to update session' }, { status: 500 });
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json(normalizeSession(data));
   } catch (err: any) {
     console.error('API error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

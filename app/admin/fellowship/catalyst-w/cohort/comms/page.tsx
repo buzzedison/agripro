@@ -224,7 +224,7 @@ export default function CommsPage() {
   }
 
   function audienceDescription(record: CommRecord): string {
-    if (record.audience === 'all') return 'All Fellows';
+    if (record.audience === 'all') return 'All Operating Fellows';
     if (record.audience === 'role' && record.audience_role) return `Role: ${ROLE_LABELS[record.audience_role] ?? record.audience_role}`;
     if (record.audience === 'region' && record.audience_region) return `Region: ${REGION_LABELS[record.audience_region] ?? record.audience_region}`;
     return record.audience;
@@ -285,7 +285,7 @@ export default function CommsPage() {
                     : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
                 }`}
               >
-                All Fellows ({activeFellows.length})
+                All Operating Fellows ({activeFellows.length})
               </button>
               <button
                 onClick={() => setAudienceType('role')}
@@ -356,7 +356,7 @@ export default function CommsPage() {
             <div className="flex items-center gap-2 mb-2">
               <Users className="w-3.5 h-3.5 text-green-700" />
               <span className="text-sm font-semibold text-green-800">
-                Sending to {recipients.length} fellow{recipients.length !== 1 ? 's' : ''}
+                Sending to {recipients.length} operating fellow{recipients.length !== 1 ? 's' : ''}
               </span>
             </div>
             {recipients.length > 0 ? (
@@ -376,7 +376,7 @@ export default function CommsPage() {
                 )}
               </div>
             ) : (
-              <p className="text-xs text-gray-400">No fellows match this selection</p>
+              <p className="text-xs text-gray-400">No operating fellows match this selection</p>
             )}
           </div>
 
@@ -408,7 +408,7 @@ export default function CommsPage() {
               className="flex items-center gap-2 px-5 py-2.5 bg-green-700 hover:bg-green-800 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
             >
               {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              {sending ? 'Sending…' : `Send to ${recipients.length} fellow${recipients.length !== 1 ? 's' : ''}`}
+              {sending ? 'Sending…' : `Send to ${recipients.length} operating fellow${recipients.length !== 1 ? 's' : ''}`}
             </button>
           </div>
         </div>

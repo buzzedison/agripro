@@ -49,6 +49,30 @@ const STAGES = [
 
 const PLAN_TIERS = ['Standard Access ($1,000)', 'Subsidized ($399 — LDCs & Climate-Vulnerable)', 'Scholarship (Fully Funded)']
 
+const REFERRAL_SOURCES = [
+    'Instagram',
+    'LinkedIn',
+    'Facebook',
+    'X (Twitter)',
+    'WhatsApp',
+    'Friend or colleague',
+    'AgriPro event or webinar',
+    'Partner organisation',
+    'Google / search',
+    'News or press',
+    'Other',
+]
+
+const PARTNER_NEEDS = [
+    'Investor / working capital',
+    'Offtake buyer / market access',
+    'Logistics / cold chain',
+    'Equipment or processing support',
+    'Technical advisor',
+    'Policy / compliance support',
+    'Data room / pitch support',
+]
+
 export default function CatalystFormModal({ type, planTier, onClose }: CatalystFormModalProps) {
     const config = FORM_CONFIG[type]
     const [form, setForm] = useState<Record<string, string>>(planTier ? { plan_tier: planTier } : {})
@@ -245,12 +269,45 @@ export default function CatalystFormModal({ type, planTier, onClose }: CatalystF
                                         </div>
 
                                         <div>
+                                            <label className={labelCls}>What specific business problem do you need to solve? *</label>
+                                            <textarea required rows={3} className={inputCls} placeholder="e.g. We have demand but cannot meet buyer volume because of processing capacity..." onChange={e => set('primary_constraint', e.target.value)} />
+                                        </div>
+
+                                        <div>
+                                            <label className={labelCls}>What support would move the needle fastest? *</label>
+                                            <textarea required rows={3} className={inputCls} placeholder="Tell us what kind of partner, capital, market access, logistics, or technical support you need." onChange={e => set('support_needed', e.target.value)} />
+                                        </div>
+
+                                        <div>
+                                            <label className={labelCls}>Partner / Resource Need</label>
+                                            <select className={inputCls} defaultValue="" onChange={e => set('partner_needs', e.target.value)}>
+                                                <option value="">Select the most urgent need</option>
+                                                {PARTNER_NEEDS.map(p => <option key={p}>{p}</option>)}
+                                            </select>
+                                        </div>
+
+                                        <div>
                                             <label className={labelCls}>Preferred Plan</label>
                                             <select className={inputCls} defaultValue={planTier || ''} onChange={e => set('plan_tier', e.target.value)}>
                                                 <option value="">No preference / Need guidance</option>
                                                 {PLAN_TIERS.map(p => <option key={p}>{p}</option>)}
                                             </select>
                                         </div>
+
+                                        <div>
+                                            <label className={labelCls}>How did you hear about us? *</label>
+                                            <select required className={inputCls} defaultValue="" onChange={e => set('referral_source', e.target.value)}>
+                                                <option value="" disabled>Select an option</option>
+                                                {REFERRAL_SOURCES.map(s => <option key={s}>{s}</option>)}
+                                            </select>
+                                        </div>
+
+                                        {form.referral_source === 'Other' && (
+                                            <div>
+                                                <label className={labelCls}>Where exactly?</label>
+                                                <input className={inputCls} placeholder="Tell us where you heard about us" onChange={e => set('referral_detail', e.target.value)} />
+                                            </div>
+                                        )}
                                     </>
                                 )}
 

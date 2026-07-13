@@ -6,7 +6,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// POST - Import accepted applications as fellows into a cohort
+// POST - Import accepted fellow applications as the operating team for an accelerator cohort
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required field: cohort_id' }, { status: 400 });
     }
 
-    // Fetch all accepted applications
+    // Fetch all accepted fellow applications
     const { data: applications, error: fetchError } = await supabase
       .from('catalyst_w_fellowship_applications')
       .select('*')

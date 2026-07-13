@@ -24,6 +24,8 @@ type Submission = {
     organisation?: string;
     role?: string;
     interest?: string;
+    referral_source?: string;
+    referral_detail?: string;
     admin_notes?: string;
     created_at: string;
 };
@@ -79,11 +81,12 @@ export default function CatalystWAdminPage() {
     };
 
     const exportCSV = () => {
-        const headers = ['ID', 'Type', 'Status', 'Name', 'Email', 'Country', 'Business', 'Stage', 'Sector', 'Plan', 'Revenue', 'Team', 'Website', 'Organisation', 'Role', 'Date'];
+        const headers = ['ID', 'Type', 'Status', 'Name', 'Email', 'Country', 'Business', 'Stage', 'Sector', 'Plan', 'Revenue', 'Team', 'Website', 'Organisation', 'Role', 'Heard about us', 'Source detail', 'Date'];
         const rows = filtered.map(s => [
             s.id, s.type, s.status, s.full_name, s.email, s.country || '',
             s.business_name || '', s.business_stage || '', s.sector || '', s.plan_tier || '',
             s.revenue || '', s.team_size || '', s.website || '', s.organisation || '', s.role || '',
+            s.referral_source || '', s.referral_detail || '',
             new Date(s.created_at).toLocaleDateString(),
         ]);
         const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
@@ -280,6 +283,7 @@ export default function CatalystWAdminPage() {
                                     ['Organisation', selected.organisation],
                                     ['Role', selected.role],
                                     ['Interest', selected.interest],
+                                    ['Heard about us', selected.referral_detail ? `${selected.referral_source} (${selected.referral_detail})` : selected.referral_source],
                                     ['Submitted', new Date(selected.created_at).toLocaleString()],
                                 ].filter(([, v]) => v).map(([k, v]) => (
                                     <div key={k as string} className="flex gap-3 py-2.5 border-b border-gray-50">

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createFellowsPublicClient } from '@/lib/fellows/server'
 import type { CatalystFellow } from '@/lib/fellows'
+import { designationLabel, isLeadership, designationRank } from '@/lib/fellows/designation'
 import { MapPin, Briefcase, Sparkles } from 'lucide-react'
 
 export const metadata = {
@@ -20,8 +21,11 @@ export default async function FellowsDirectoryPage() {
     .order('full_name', { ascending: true })
 
   const fellows = (data || []) as CatalystFellow[]
-  const directors = fellows.filter((f) => f.designation === 'director')
-  const team = fellows.filter((f) => f.designation !== 'director')
+  const leadership = fellows
+    .filter((f) => isLeadership(f.designation))
+    .sort((a, b) => designationRank(a.designation) - designationRank(b.designation))
+  const team = fellows.filter((f) => !isLeadership(f.designation))
+  const leadershipHeading = leadership.length > 1 ? 'Fellowship Leadership' : 'Fellowship Director'
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -47,18 +51,18 @@ export default async function FellowsDirectoryPage() {
           </p>
         ) : (
           <>
-            {directors.length > 0 && (
+            {leadership.length > 0 && (
               <section className="mb-12">
-                <h2 className="text-lg font-semibold text-gray-900 mb-5">Fellowship Director</h2>
+                <h2 className="text-lg font-semibold text-gray-900 mb-5">{leadershipHeading}</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {directors.map((fellow) => (
+                  {leadership.map((fellow) => (
                     <FellowCard key={fellow.id} fellow={fellow} highlight />
                   ))}
                 </div>
               </section>
             )}
             <section>
-              {directors.length > 0 && (
+              {leadership.length > 0 && (
                 <h2 className="text-lg font-semibold text-gray-900 mb-5">Fellows</h2>
               )}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -75,10 +79,7 @@ export default async function FellowsDirectoryPage() {
 }
 
 function FellowCard({ fellow, highlight = false }: { fellow: CatalystFellow; highlight?: boolean }) {
-  const role =
-    fellow.designation === 'director'
-      ? 'Fellowship Director'
-      : fellow.role_in_agripro || 'Catalyst Fellow'
+  const role = designationLabel(fellow.designation, fellow.role_in_agripro)
 
   return (
     <Link

@@ -26,6 +26,49 @@ const confirmationCopy: Record<string, string> = {
     plan: `Thank you for selecting your Catalyst W programme plan. Our team will reach out to confirm your place and guide you through the next steps. Applications open March 2026 — we will keep you updated.`,
 }
 
+const LEGACY_FIELDS = new Set([
+    'full_name',
+    'email',
+    'country',
+    'phone',
+    'business_name',
+    'business_stage',
+    'sector',
+    'plan_tier',
+    'why_apply',
+    'revenue',
+    'team_size',
+    'website',
+    'organisation',
+    'role',
+    'interest',
+    'referral_source',
+    'referral_detail',
+])
+
+function normalizeSubmissionFields(fields: Record<string, any>) {
+    const next = { ...fields }
+    if (typeof next.partner_needs === 'string' && next.partner_needs.trim()) {
+        next.partner_needs = [next.partner_needs.trim()]
+    }
+    if (next.type === 'apply' || fields.primary_constraint || fields.support_needed) {
+        next.participant_status = next.participant_status ?? 'applicant'
+        next.support_priority = next.support_priority ?? 'medium'
+        next.readiness_stage = next.readiness_stage ?? 'diagnosis'
+        next.cohort_year = next.cohort_year ?? 2026
+    }
+    return next
+}
+
+function legacyOnly(fields: Record<string, any>) {
+    return Object.fromEntries(Object.entries(fields).filter(([key]) => LEGACY_FIELDS.has(key)))
+}
+
+function isMissingOpsColumn(error: any) {
+    const message = String(error?.message ?? '')
+    return error?.code === '42703' || error?.code === 'PGRST204' || message.includes('schema cache')
+}
+
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json()
@@ -35,15 +78,33 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
         }
 
+        const normalizedFields = normalizeSubmissionFields({ ...fields, type })
+        const insertPayload = { type, ...normalizedFields }
+
         // 1. Save to Supabase
-        const { data, error } = await supabase
+        let { data, error } = await supabase
             .from('catalyst_submissions')
-            .insert({ type, ...fields })
+            .insert(insertPayload)
             .select('id')
             .single()
 
+        if (error && isMissingOpsColumn(error)) {
+            const retry = await supabase
+                .from('catalyst_submissions')
+                .insert({ type, ...legacyOnly(fields) })
+                .select('id')
+                .single()
+            data = retry.data
+            error = retry.error
+        }
+
         if (error) {
             console.error('Supabase insert error:', error)
+            return NextResponse.json({ error: 'Failed to save submission' }, { status: 500 })
+        }
+
+        if (!data) {
+            console.error('Supabase insert returned no submission row')
             return NextResponse.json({ error: 'Failed to save submission' }, { status: 500 })
         }
 

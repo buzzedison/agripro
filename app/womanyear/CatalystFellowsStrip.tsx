@@ -5,12 +5,13 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { designationLabel, type FellowDesignation } from '@/lib/fellows/designation';
 
 type StripFellow = {
     id: string;
     slug: string;
     full_name: string;
-    designation: 'fellow' | 'director';
+    designation: FellowDesignation;
     role_in_agripro: string | null;
     photo_url: string | null;
     bio: string | null;
@@ -31,9 +32,10 @@ export default function CatalystFellowsStrip() {
             .eq('status', 'active')
             .then(({ data }) => {
                 if (!data || data.length === 0) return;
-                // Director first, then prefer profiles with a photo and bio
+                // Leadership first (director, then deputy), then prefer profiles with a photo and bio
                 const score = (f: StripFellow) =>
-                    (f.designation === 'director' ? 4 : 0) + (f.photo_url ? 2 : 0) + (f.bio ? 1 : 0);
+                    (f.designation === 'director' ? 10 : f.designation === 'deputy_director' ? 6 : 0) +
+                    (f.photo_url ? 2 : 0) + (f.bio ? 1 : 0);
                 const sorted = [...(data as StripFellow[])].sort((a, b) => score(b) - score(a));
                 setFellows(sorted.slice(0, 6));
             });
@@ -112,9 +114,7 @@ export default function CatalystFellowsStrip() {
                                             {fellow.full_name}
                                         </p>
                                         <p className="text-[#F4C430] text-xs font-medium mt-0.5">
-                                            {fellow.designation === 'director'
-                                                ? 'Fellowship Director'
-                                                : fellow.role_in_agripro || 'Catalyst Fellow'}
+                                            {designationLabel(fellow.designation, fellow.role_in_agripro)}
                                         </p>
                                     </div>
                                 </div>

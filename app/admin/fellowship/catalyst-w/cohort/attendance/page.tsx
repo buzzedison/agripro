@@ -135,7 +135,7 @@ function SessionView({
   sessions: Session[];
   fellows: Fellow[];
   attendance: AttendanceRecord[];
-  onSave: (records: AttendanceRecord[]) => void;
+  onSave: (records: AttendanceRecord[], sessionId: string) => void;
   addToast: (msg: string, type?: 'success' | 'error') => void;
 }) {
   const [selectedSessionId, setSelectedSessionId] = useState<string>(sessions[0]?.id ?? '');
@@ -166,17 +166,21 @@ function SessionView({
   async function saveAttendance() {
     setSaving(true);
     try {
+      const selectedSession = sessions.find(s => s.id === selectedSessionId);
       const records = fellows
-        .filter(f => localAttendance[f.id] && localAttendance[f.id] !== 'absent')
-        .map(f => ({ session_id: selectedSessionId, fellow_id: f.id, status: localAttendance[f.id] }));
+        .map(f => ({ session_id: selectedSessionId, fellow_id: f.id, status: localAttendance[f.id] ?? 'absent' }));
       const res = await fetch('/api/admin/fellowship/catalyst-w/attendance/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: selectedSessionId, records }),
+        body: JSON.stringify({
+          session_id: selectedSessionId,
+          cohort_id: selectedSession?.cohort_id,
+          attendances: records,
+        }),
       });
       if (!res.ok) throw new Error('Failed to save attendance');
       const data = await res.json();
-      onSave(data.records ?? records);
+      onSave(data.records ?? records.filter(r => r.status !== 'absent'), selectedSessionId);
       addToast('Attendance saved');
     } catch (err: any) {
       addToast(err.message, 'error');
@@ -480,9 +484,8 @@ export default function AttendancePage() {
     load();
   }, [addToast]);
 
-  function handleSave(records: AttendanceRecord[]) {
+  function handleSave(records: AttendanceRecord[], sessionId: string) {
     setAttendance(prev => {
-      const sessionId = records[0]?.session_id;
       if (!sessionId) return prev;
       const filtered = prev.filter(a => a.session_id !== sessionId);
       return [...filtered, ...records];
@@ -507,7 +510,7 @@ export default function AttendancePage() {
               Back to Applications
             </Link>
             <span className="text-green-700">|</span>
-            <span className="text-sm text-gray-300">Attendance</span>
+            <span className="text-sm text-gray-300">Fellows Team Attendance</span>
           </div>
           {cohort && (
             <div className="flex items-center gap-2">
@@ -527,7 +530,7 @@ export default function AttendancePage() {
         {/* View toggle */}
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h2 className="font-semibold text-gray-900">Attendance Management</h2>
+            <h2 className="font-semibold text-gray-900">Fellows Team Attendance</h2>
             <p className="text-sm text-gray-500 mt-0.5">
               {attendance.filter(a => a.status === 'present').length} present records across {sessions.length} sessions
             </p>

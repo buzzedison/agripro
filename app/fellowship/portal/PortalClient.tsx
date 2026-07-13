@@ -4,10 +4,12 @@ import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import type { CatalystFellow, FellowContribution } from '@/lib/fellows';
+import { designationLabel } from '@/lib/fellows/designation';
+import { graceInfo, RATING_LABEL, RATING_BADGE, GRACE_PERIOD_DAYS, type WeeklyScore } from '@/lib/fellows/accountability';
 import { updateFellowProfile } from './actions';
 import {
     User, Briefcase, Link2, BookOpen, Eye, EyeOff, Camera,
-    CheckCircle, AlertCircle, ExternalLink, Loader2, Sparkles, ShieldCheck,
+    CheckCircle, AlertCircle, ExternalLink, Loader2, Sparkles, ShieldCheck, Clock,
 } from 'lucide-react';
 
 const STATUS_BADGES: Record<string, string> = {
@@ -21,11 +23,13 @@ const STATUS_BADGES: Record<string, string> = {
 export default function PortalClient({
     fellow,
     contributions,
+    scores = [],
     viewerId,
     adminMode = false,
 }: {
     fellow: CatalystFellow;
     contributions: FellowContribution[];
+    scores?: WeeklyScore[];
     viewerId: string;
     adminMode?: boolean;
 }) {
@@ -98,7 +102,7 @@ export default function PortalClient({
                         {adminMode ? fellow.full_name : `Welcome, ${fellow.full_name.split(' ')[0]}`}
                     </h1>
                     <p className="text-white/70 text-sm">
-                        {fellow.designation === 'director' ? 'Fellowship Director' : 'Catalyst Fellow'}
+                        {designationLabel(fellow.designation)}
                         {adminMode
                             ? ' · Changes save directly to their profile.'
                             : ' · This is your profile across AgriPro — keep it fresh.'}
@@ -129,6 +133,66 @@ export default function PortalClient({
                     </div>
                 </div>
             </div>
+
+            {/* Weekly commitment / accountability */}
+            {fellow.weekly_hours_committed != null && (() => {
+                const g = graceInfo(fellow.commitment_started_at ?? null);
+                const rating = fellow.performance_rating ?? 'unrated';
+                const ends = g.graceEndsAt?.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                return (
+                    <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-6">
+                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-wrap items-center gap-x-8 gap-y-4">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-[#0B2C24]/5 flex items-center justify-center">
+                                    <Clock className="w-5 h-5 text-[#0B2C24]" />
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-400 uppercase tracking-wide">Weekly commitment</p>
+                                    <p className="text-lg font-bold text-gray-900">{fellow.weekly_hours_committed} hrs/week</p>
+                                </div>
+                            </div>
+                            <div className="h-8 w-px bg-gray-100 hidden sm:block" />
+                            <div>
+                                <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Standing</p>
+                                {g.inGrace ? (
+                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                                        Grace period · ends {ends}
+                                    </span>
+                                ) : (
+                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${RATING_BADGE[rating]}`}>
+                                        {RATING_LABEL[rating]}
+                                    </span>
+                                )}
+                            </div>
+                            <div className="h-8 w-px bg-gray-100 hidden sm:block" />
+                            <div>
+                                <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Points</p>
+                                <p className="text-lg font-bold text-gray-900">{fellow.total_points ?? 0}</p>
+                            </div>
+                            <p className="text-xs text-gray-400 basis-full sm:basis-auto sm:ml-auto sm:max-w-xs sm:text-right">
+                                {adminMode
+                                    ? 'Weekly task scores are recorded from the admin fellows panel.'
+                                    : `Complete your weekly tasks to earn points. After a ${GRACE_PERIOD_DAYS}-day grace period, activity is reviewed.`}
+                            </p>
+
+                            {scores.length > 0 && (
+                                <div className="basis-full mt-1 pt-4 border-t border-gray-100 flex flex-wrap gap-2">
+                                    {scores.slice(0, 5).map((sc) => (
+                                    <span
+                                        key={sc.id}
+                                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${RATING_BADGE[sc.rating]}`}
+                                        title={`${sc.tasks_done}${sc.tasks_assigned != null ? `/${sc.tasks_assigned}` : ''} tasks · ${sc.points} pts`}
+                                    >
+                                            {new Date(sc.week_start).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                            <span className="opacity-70">· {sc.points}pt</span>
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            })()}
 
             <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Profile form */}

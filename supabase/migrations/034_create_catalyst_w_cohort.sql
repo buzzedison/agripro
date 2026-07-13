@@ -1,5 +1,7 @@
 -- 034_create_catalyst_w_cohort.sql
--- Cohort management for Women Catalyst Fellowship
+-- Cohort management for the Catalyst W accelerator.
+-- catalyst_w_fellows stores the operating fellows assigned to run each cohort,
+-- not the accelerator founders/participants.
 
 CREATE TABLE IF NOT EXISTS public.catalyst_w_cohorts (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -8,7 +10,7 @@ CREATE TABLE IF NOT EXISTS public.catalyst_w_cohorts (
   status        TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('draft','active','completed','archived')),
   start_date    DATE NOT NULL,
   end_date      DATE NOT NULL,
-  total_weeks   INTEGER NOT NULL DEFAULT 10,
+  total_weeks   INTEGER NOT NULL DEFAULT 12,
   description   TEXT,
   admin_notes   TEXT,
   created_at    TIMESTAMPTZ DEFAULT NOW(),
@@ -98,6 +100,14 @@ ALTER TABLE public.catalyst_w_fellows      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.catalyst_w_sessions     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.catalyst_w_attendance   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.catalyst_w_announcements ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE public.catalyst_w_cohorts ALTER COLUMN total_weeks SET DEFAULT 12;
+
+DROP POLICY IF EXISTS "auth_all_cohorts" ON public.catalyst_w_cohorts;
+DROP POLICY IF EXISTS "auth_all_fellows" ON public.catalyst_w_fellows;
+DROP POLICY IF EXISTS "auth_all_sessions" ON public.catalyst_w_sessions;
+DROP POLICY IF EXISTS "auth_all_attendance" ON public.catalyst_w_attendance;
+DROP POLICY IF EXISTS "auth_all_announcements" ON public.catalyst_w_announcements;
 
 CREATE POLICY "auth_all_cohorts"       ON public.catalyst_w_cohorts       FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "auth_all_fellows"       ON public.catalyst_w_fellows        FOR ALL TO authenticated USING (true) WITH CHECK (true);

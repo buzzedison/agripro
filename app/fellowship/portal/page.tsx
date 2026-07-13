@@ -4,8 +4,19 @@ import { createClient } from '@/lib/supabase/server'
 import { isPlatformAdmin } from '@/lib/fellows/server'
 import { getFellowContributions } from '@/lib/fellows'
 import type { CatalystFellow } from '@/lib/fellows'
+import type { WeeklyScore } from '@/lib/fellows/accountability'
 import { CheckCircle2, Circle, ShieldCheck } from 'lucide-react'
 import PortalClient from './PortalClient'
+import type { SupabaseClient } from '@supabase/supabase-js'
+
+async function fetchWeeklyScores(supabase: SupabaseClient, fellowId: string): Promise<WeeklyScore[]> {
+  const { data } = await supabase
+    .from('catalyst_fellow_weekly_scores')
+    .select('id, fellow_id, week_start, tasks_done, tasks_assigned, points, rating, note, created_at')
+    .eq('fellow_id', fellowId)
+    .order('week_start', { ascending: false })
+  return (data || []) as WeeklyScore[]
+}
 
 export const metadata = {
   title: 'Catalyst Fellow Portal | AgriPro',
@@ -43,10 +54,12 @@ export default async function FellowPortalPage({
       const contributions = fellow.email
         ? await getFellowContributions(fellow.email)
         : []
+      const scores = await fetchWeeklyScores(supabase, fellow.id)
       return (
         <PortalClient
           fellow={fellow}
           contributions={contributions}
+          scores={scores}
           viewerId={user.id}
           adminMode
         />
@@ -63,8 +76,9 @@ export default async function FellowPortalPage({
 
   if (fellow) {
     const contributions = user.email ? await getFellowContributions(user.email) : []
+    const scores = await fetchWeeklyScores(supabase, fellow.id)
     return (
-      <PortalClient fellow={fellow} contributions={contributions} viewerId={user.id} />
+      <PortalClient fellow={fellow} contributions={contributions} scores={scores} viewerId={user.id} />
     )
   }
 
@@ -159,6 +173,11 @@ function AdminRosterPicker({ fellows }: { fellows: CatalystFellow[] }) {
                       {fellow.designation === 'director' && (
                         <span className="ml-2 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[11px] font-medium">
                           Director
+                        </span>
+                      )}
+                      {fellow.designation === 'deputy_director' && (
+                        <span className="ml-2 px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 text-[11px] font-medium">
+                          Deputy Director
                         </span>
                       )}
                     </p>

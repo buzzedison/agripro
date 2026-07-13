@@ -12,13 +12,13 @@ const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KE
 function buildEmailHtml(subject: string, fellow_name: string, body_html: string, cohort_number: number): string {
   return `<div style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;color:#111827;">
   <div style="background:#0B2C24;padding:24px 32px;border-radius:12px 12px 0 0;">
-    <p style="color:#6ee7b7;font-size:12px;font-weight:700;letter-spacing:0.05em;margin:0 0 4px;">WOMEN CATALYST FELLOWSHIP · COHORT ${cohort_number}</p>
+    <p style="color:#6ee7b7;font-size:12px;font-weight:700;letter-spacing:0.05em;margin:0 0 4px;">CATALYST W ACCELERATOR · COHORT ${cohort_number}</p>
     <h1 style="color:#fff;font-size:20px;margin:0;">${subject}</h1>
   </div>
   <div style="padding:28px 32px;border:1px solid #e5e7eb;border-top:none;">
     <p>Hi ${fellow_name},</p>
     ${body_html}
-    <p style="margin-top:24px;color:#6b7280;font-size:13px;">— The AgriPro Fellowship Team</p>
+    <p style="margin-top:24px;color:#6b7280;font-size:13px;">— The AgriPro Catalyst W Team</p>
   </div>
 </div>`;
 }
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Send announcement to fellows
+// POST - Send announcement to the operating fellows assigned to an accelerator cohort
 export async function POST(request: NextRequest) {
   try {
     if (!resend) {
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!fellows || fellows.length === 0) {
-      return NextResponse.json({ error: 'No fellows match the audience criteria' }, { status: 400 });
+      return NextResponse.json({ error: 'No operating fellows match the audience criteria' }, { status: 400 });
     }
 
     // Send emails individually (Resend free tier limitation)
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
     for (const fellow of fellows) {
       try {
         await resend.emails.send({
-          from: 'AgriPro Fellowship <noreply@agriprohub.com>',
+          from: 'AgriPro Catalyst W <noreply@agriprohub.com>',
           to: fellow.email,
           subject,
           html: buildEmailHtml(subject, fellow.full_name, body_html, cohort.cohort_number),

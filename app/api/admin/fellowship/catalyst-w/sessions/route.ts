@@ -6,6 +6,37 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+function normalizeSession(row: any) {
+  if (!row) return row;
+  return {
+    ...row,
+    session_date: row.scheduled_date,
+    session_time: row.scheduled_time,
+    facilitator_name: row.facilitator,
+  };
+}
+
+function toSessionInsert(body: any, session_number: number) {
+  return {
+    cohort_id: body.cohort_id,
+    week_number: body.week_number,
+    session_number,
+    title: body.title,
+    type: body.type ?? 'workshop',
+    scheduled_date: body.scheduled_date ?? body.session_date ?? null,
+    scheduled_time: body.scheduled_time ?? body.session_time ?? null,
+    duration_minutes: body.duration_minutes ?? 90,
+    facilitator: body.facilitator ?? body.facilitator_name ?? null,
+    facilitator_org: body.facilitator_org ?? null,
+    description: body.description ?? null,
+    timezone: body.timezone ?? 'Africa/Lagos',
+    notes: body.notes ?? null,
+    recording_url: body.recording_url ?? null,
+    materials_url: body.materials_url ?? null,
+    status: body.status ?? 'scheduled',
+  };
+}
+
 // GET - Fetch all sessions with optional filters
 export async function GET(request: NextRequest) {
   try {
@@ -32,7 +63,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch sessions' }, { status: 500 });
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json((data ?? []).map(normalizeSession));
   } catch (err: any) {
     console.error('API error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -47,15 +78,6 @@ export async function POST(request: NextRequest) {
       cohort_id,
       week_number,
       title,
-      type,
-      scheduled_date,
-      scheduled_time,
-      duration_minutes,
-      facilitator,
-      facilitator_org,
-      description,
-      timezone,
-      notes,
     } = body;
 
     if (!cohort_id || !week_number || !title) {
@@ -73,21 +95,7 @@ export async function POST(request: NextRequest) {
 
     const { data, error } = await supabase
       .from('catalyst_w_sessions')
-      .insert({
-        cohort_id,
-        week_number,
-        session_number,
-        title,
-        type,
-        scheduled_date,
-        scheduled_time,
-        duration_minutes,
-        facilitator,
-        facilitator_org,
-        description,
-        timezone,
-        notes,
-      })
+      .insert(toSessionInsert(body, session_number))
       .select()
       .single();
 
@@ -96,7 +104,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create session' }, { status: 500 });
     }
 
-    return NextResponse.json(data, { status: 201 });
+    return NextResponse.json(normalizeSession(data), { status: 201 });
   } catch (err: any) {
     console.error('API error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

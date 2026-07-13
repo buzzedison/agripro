@@ -5,7 +5,8 @@ import { usePathname } from 'next/navigation';
 
 const SUBNAV = [
   { label: 'Overview',   href: '/admin/fellowship/catalyst-w/cohort' },
-  { label: 'Fellows',    href: '/admin/fellowship/catalyst-w/cohort/fellows' },
+  { label: 'Fellows Team', href: '/admin/fellowship/catalyst-w/cohort/fellows' },
+  { label: 'Participants', href: '/admin/fellowship/catalyst-w/cohort/participants' },
   { label: 'Programme',  href: '/admin/fellowship/catalyst-w/cohort/programme' },
   { label: 'Attendance', href: '/admin/fellowship/catalyst-w/cohort/attendance' },
   { label: 'Comms',      href: '/admin/fellowship/catalyst-w/cohort/comms' },

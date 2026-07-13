@@ -1,5 +1,11 @@
 import { createClient } from 'next-sanity'
 import { apiVersion, dataset, projectId } from '@/sanity/env'
+import type { FellowDesignation } from './designation'
+import type { PerformanceRating } from './accountability'
+
+export type { FellowDesignation } from './designation'
+export { designationLabel, isLeadership, designationRank } from './designation'
+export type { PerformanceRating } from './accountability'
 
 export type CatalystFellow = {
   id: string
@@ -7,7 +13,7 @@ export type CatalystFellow = {
   slug: string
   email?: string
   full_name: string
-  designation: 'fellow' | 'director'
+  designation: FellowDesignation
   role_in_agripro: string | null
   bio: string | null
   expertise: string[]
@@ -28,6 +34,11 @@ export type CatalystFellow = {
   business_stage: string | null
   business_website: string | null
   status: 'active' | 'alumni' | 'inactive'
+  weekly_hours_committed?: number | null
+  commitment_started_at?: string | null
+  performance_rating?: PerformanceRating
+  rating_updated_at?: string | null
+  total_points?: number
   is_public?: boolean
   admin_notes?: string | null
   claimed_at?: string | null

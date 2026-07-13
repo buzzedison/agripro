@@ -154,8 +154,16 @@ function ToastBar({ toasts, remove }: { toasts: Toast[]; remove: (id: string) =>
 
 // ─── Create Cohort Form ────────────────────────────────────────────────────────
 
-function CreateCohortForm({ onCreated }: { onCreated: (c: Cohort) => void }) {
-  const [form, setForm] = useState({ name: '', start_date: '', end_date: '', total_weeks: 12 });
+function CreateCohortForm({ onCreated }: { onCreated: (c: Cohort, sessions?: Session[]) => void }) {
+  const [form, setForm] = useState({
+    name: 'AgriPro Catalyst W · Cohort 2026',
+    cohort_number: 2026,
+    start_date: '2026-09-01',
+    end_date: '2026-11-23',
+    total_weeks: 12,
+    description: 'A 12-week, action-oriented accelerator for 40 women agribusiness owners.',
+    seed_programme: true,
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -171,7 +179,7 @@ function CreateCohortForm({ onCreated }: { onCreated: (c: Cohort) => void }) {
       });
       if (!res.ok) throw new Error('Failed to create cohort');
       const data = await res.json();
-      onCreated(data.cohort ?? data);
+      onCreated(data.cohort ?? data, data.sessions ?? []);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -188,7 +196,7 @@ function CreateCohortForm({ onCreated }: { onCreated: (c: Cohort) => void }) {
           </div>
           <div>
             <h2 className="font-semibold text-gray-900">Set Up Your Cohort</h2>
-            <p className="text-sm text-gray-500">No active cohort found. Create one to get started.</p>
+            <p className="text-sm text-gray-500">No active accelerator cohort found. Create one to get started.</p>
           </div>
         </div>
         {error && (
@@ -203,6 +211,17 @@ function CreateCohortForm({ onCreated }: { onCreated: (c: Cohort) => void }) {
               placeholder="e.g. Cohort 2 · 2025"
               value={form.name}
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Cohort Number</label>
+            <input
+              type="number"
+              required
+              min={1}
+              value={form.cohort_number}
+              onChange={e => setForm(f => ({ ...f, cohort_number: Number(e.target.value) }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
             />
           </div>
@@ -240,6 +259,27 @@ function CreateCohortForm({ onCreated }: { onCreated: (c: Cohort) => void }) {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
             />
           </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea
+              rows={3}
+              value={form.description}
+              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+            />
+          </div>
+          <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={form.seed_programme}
+              onChange={e => setForm(f => ({ ...f, seed_programme: e.target.checked }))}
+              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-green-700 focus:ring-green-500"
+            />
+            <span>
+              <span className="font-medium text-gray-900">Create starter programme</span>
+              <span className="block text-xs text-gray-500">Adds the 12-week schedule from Diagnose through Summit readiness.</span>
+            </span>
+          </label>
           <button
             type="submit"
             disabled={loading}
@@ -310,7 +350,10 @@ export default function CohortOverview() {
   }
 
   if (!cohort) {
-    return <CreateCohortForm onCreated={c => { setCohort(c); }} />;
+    return <CreateCohortForm onCreated={(c, seededSessions) => {
+      setCohort(c);
+      if (seededSessions) setSessions(seededSessions);
+    }} />;
   }
 
   const weeksElapsed = Math.min(getWeeksElapsed(cohort.start_date), cohort.total_weeks);
@@ -334,8 +377,8 @@ export default function CohortOverview() {
   });
 
   const stats = [
-    { label: 'Total Fellows', value: fellows.length, border: 'border-l-green-500', text: 'text-green-700' },
-    { label: 'Active',        value: activeFellows.length, border: 'border-l-blue-500', text: 'text-blue-700' },
+    { label: 'Fellows Team', value: fellows.length, border: 'border-l-green-500', text: 'text-green-700' },
+    { label: 'Active Fellows', value: activeFellows.length, border: 'border-l-blue-500', text: 'text-blue-700' },
     { label: 'Sessions Done', value: completedSessions.length, border: 'border-l-purple-500', text: 'text-purple-700' },
     { label: 'Avg Attendance', value: avgAttendance, border: 'border-l-amber-500', text: 'text-amber-700' },
     { label: 'Weeks Completed', value: weeksElapsed, border: 'border-l-teal-500', text: 'text-teal-700' },
@@ -358,7 +401,7 @@ export default function CohortOverview() {
             <span className="text-green-700">|</span>
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-300">
-                {cohort.cohort_number ? `Cohort ${cohort.cohort_number}` : 'Cohort'} · Women Catalyst Fellowship
+                {cohort.cohort_number ? `Cohort ${cohort.cohort_number}` : 'Cohort'} · Catalyst W Accelerator
               </span>
             </div>
           </div>
@@ -497,7 +540,7 @@ export default function CohortOverview() {
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <div className="flex items-center gap-2 mb-4">
               <Users className="w-4 h-4 text-green-700" />
-              <h3 className="font-semibold text-gray-900">Fellows by Role</h3>
+              <h3 className="font-semibold text-gray-900">Fellows Team by Role</h3>
             </div>
             <div className="flex flex-wrap gap-2">
               {Object.entries(ROLE_LABELS).map(([key, label]) => {
@@ -519,7 +562,7 @@ export default function CohortOverview() {
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <div className="flex items-center gap-2 mb-4">
               <TrendingUp className="w-4 h-4 text-green-700" />
-              <h3 className="font-semibold text-gray-900">Fellows by Region</h3>
+              <h3 className="font-semibold text-gray-900">Fellows Team by Region</h3>
             </div>
             <div className="flex flex-wrap gap-2">
               {Object.entries(REGION_LABELS).map(([key, label]) => {

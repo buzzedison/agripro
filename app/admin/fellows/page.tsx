@@ -5,8 +5,12 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import {
     Plus, X, RefreshCw, CheckCircle2, Circle, Eye, EyeOff,
-    Trash2, ExternalLink, BookOpen, Sparkles,
+    Trash2, ExternalLink, BookOpen, Sparkles, Clock, ShieldAlert, Trophy,
 } from 'lucide-react';
+import {
+    type PerformanceRating, type WeeklyScore, RATING_LABEL, RATING_BADGE,
+    graceInfo, GRACE_PERIOD_DAYS, weekStartISO,
+} from '@/lib/fellows/accountability';
 
 type Fellow = {
     id: string;
@@ -14,7 +18,7 @@ type Fellow = {
     slug: string;
     email: string;
     full_name: string;
-    designation: 'fellow' | 'director';
+    designation: 'fellow' | 'director' | 'deputy_director';
     role_in_agripro: string | null;
     bio: string | null;
     expertise: string[];
@@ -32,6 +36,11 @@ type Fellow = {
     business_name: string | null;
     business_description: string | null;
     status: 'active' | 'alumni' | 'inactive';
+    weekly_hours_committed: number | null;
+    commitment_started_at: string | null;
+    performance_rating: PerformanceRating;
+    rating_updated_at: string | null;
+    total_points: number;
     is_public: boolean;
     admin_notes: string | null;
     claimed_at: string | null;
@@ -97,6 +106,8 @@ export default function AdminFellowsPage() {
     const [selected, setSelected] = useState<Fellow | null>(null);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [scores, setScores] = useState<WeeklyScore[]>([]);
+    const [view, setView] = useState<'roster' | 'leaderboard'>('roster');
 
     const supabase = createClient();
 
@@ -154,6 +165,49 @@ export default function AdminFellowsPage() {
         if (updateError) setError(updateError.message);
         await fetchFellows();
         setSelected((prev) => (prev && prev.id === id ? { ...prev, ...patch } as Fellow : prev));
+        setSaving(false);
+    };
+
+    // Load a fellow's weekly scores whenever the drawer opens on them.
+    const fetchScores = useCallback(async (fellowId: string) => {
+        const { data } = await supabase
+            .from('catalyst_fellow_weekly_scores')
+            .select('id, fellow_id, week_start, tasks_done, tasks_assigned, points, rating, note, created_at')
+            .eq('fellow_id', fellowId)
+            .order('week_start', { ascending: false });
+        setScores((data || []) as WeeklyScore[]);
+    }, [supabase]);
+
+    useEffect(() => {
+        if (selected) fetchScores(selected.id);
+        else setScores([]);
+    }, [selected, fetchScores]);
+
+    // Record (or overwrite) one week's task result. Points + rating + the fellow's
+    // total are derived by the DB trigger, so we just refetch afterwards.
+    const recordWeek = async (
+        fellowId: string,
+        entry: { week_start: string; tasks_done: number; tasks_assigned: number | null; note: string | null },
+    ) => {
+        setSaving(true);
+        const { error: upsertError } = await supabase
+            .from('catalyst_fellow_weekly_scores')
+            .upsert(
+                {
+                    fellow_id: fellowId,
+                    week_start: entry.week_start,
+                    tasks_done: entry.tasks_done,
+                    tasks_assigned: entry.tasks_assigned,
+                    points: entry.tasks_done, // trigger keeps this in sync; explicit avoids null
+                    note: entry.note,
+                },
+                { onConflict: 'fellow_id,week_start' },
+            );
+        if (upsertError) setError(upsertError.message);
+        await Promise.all([fetchScores(fellowId), fetchFellows()]);
+        // Trigger-derived totals/rating changed — pull the fresh row into the drawer.
+        const { data: fresh } = await supabase.from('catalyst_fellows').select('*').eq('id', fellowId).single();
+        if (fresh) setSelected((prev) => (prev && prev.id === fellowId ? (fresh as Fellow) : prev));
         setSaving(false);
     };
 
@@ -223,7 +277,26 @@ export default function AdminFellowsPage() {
                 </div>
             )}
 
-            {/* Table */}
+            {/* View toggle */}
+            <div className="inline-flex items-center gap-1 p-1 mb-4 rounded-lg bg-gray-100">
+                <button
+                    onClick={() => setView('roster')}
+                    className={`px-3.5 py-1.5 rounded-md text-sm font-medium transition-colors ${view === 'roster' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                    Roster
+                </button>
+                <button
+                    onClick={() => setView('leaderboard')}
+                    className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-sm font-medium transition-colors ${view === 'leaderboard' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                    <Trophy className="w-3.5 h-3.5" /> Leaderboard
+                </button>
+            </div>
+
+            {view === 'leaderboard' ? (
+                <Leaderboard fellows={fellows} onSelect={setSelected} />
+            ) : (
+            /* Table */
             <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
                 <table className="w-full text-sm">
                     <thead>
@@ -263,6 +336,16 @@ export default function AdminFellowsPage() {
                                                 {fellow.designation === 'director' && (
                                                     <span className="ml-2 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[11px] font-medium">
                                                         Director
+                                                    </span>
+                                                )}
+                                                {fellow.designation === 'deputy_director' && (
+                                                    <span className="ml-2 px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 text-[11px] font-medium">
+                                                        Deputy Director
+                                                    </span>
+                                                )}
+                                                {(fellow.performance_rating === 'at_risk' || fellow.performance_rating === 'underperforming') && (
+                                                    <span className={`ml-2 px-2 py-0.5 rounded-full text-[11px] font-medium ${RATING_BADGE[fellow.performance_rating]}`}>
+                                                        {RATING_LABEL[fellow.performance_rating]}
                                                     </span>
                                                 )}
                                             </div>
@@ -320,6 +403,7 @@ export default function AdminFellowsPage() {
                     </tbody>
                 </table>
             </div>
+            )}
 
             {/* Add modal */}
             {showAdd && (
@@ -412,6 +496,7 @@ export default function AdminFellowsPage() {
                                     disabled={saving}
                                 >
                                     <option value="fellow">Fellow</option>
+                                    <option value="deputy_director">Deputy Fellowship Director</option>
                                     <option value="director">Fellowship Director</option>
                                 </select>
                             </div>
@@ -438,6 +523,158 @@ export default function AdminFellowsPage() {
                                 />
                                 Visible on public directory
                             </label>
+                            {/* ── Accountability ─────────────────────────── */}
+                            <div className="pt-4 border-t border-gray-100">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center gap-2">
+                                        <Clock className="w-4 h-4 text-[#0B2C24]" />
+                                        <h4 className="text-sm font-semibold text-gray-900">Accountability</h4>
+                                    </div>
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#0B2C24]/5 text-[#0B2C24] text-xs font-bold">
+                                        <Trophy className="w-3.5 h-3.5" /> {selected.total_points ?? 0} pts
+                                    </span>
+                                </div>
+
+                                <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                                    Weekly hours committed
+                                </label>
+                                <input
+                                    type="number"
+                                    min={0}
+                                    defaultValue={selected.weekly_hours_committed ?? ''}
+                                    key={`${selected.id}-hours`}
+                                    onBlur={(e) => {
+                                        const raw = e.target.value.trim();
+                                        const val = raw === '' ? null : Math.max(0, parseInt(raw, 10) || 0);
+                                        if (val === (selected.weekly_hours_committed ?? null)) return;
+                                        const patch: Partial<Fellow> = { weekly_hours_committed: val };
+                                        // Start the one-week grace clock the first time hours are committed
+                                        if (val !== null && !selected.commitment_started_at) {
+                                            patch.commitment_started_at = new Date().toISOString();
+                                        }
+                                        updateFellow(selected.id, patch);
+                                    }}
+                                    placeholder="e.g. 10 hrs/week"
+                                    className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
+                                    disabled={saving}
+                                />
+
+                                {(() => {
+                                    const g = graceInfo(selected.commitment_started_at);
+                                    if (!g.committed) {
+                                        return (
+                                            <p className="mt-2 text-xs text-gray-400">
+                                                Set weekly hours to start the {GRACE_PERIOD_DAYS}-day grace period.
+                                            </p>
+                                        );
+                                    }
+                                    const ends = g.graceEndsAt?.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                                    return g.inGrace ? (
+                                        <p className="mt-2 text-xs text-amber-600 font-medium">
+                                            In grace period — rating opens {ends}.
+                                        </p>
+                                    ) : (
+                                        <p className="mt-2 text-xs text-gray-500">
+                                            Grace period ended — rating active.
+                                        </p>
+                                    );
+                                })()}
+
+                                <div className="mt-3">
+                                    <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                                        Performance rating
+                                    </label>
+                                    {(() => {
+                                        const g = graceInfo(selected.commitment_started_at);
+                                        const locked = g.committed && g.inGrace;
+                                        return (
+                                            <>
+                                                <select
+                                                    value={selected.performance_rating}
+                                                    onChange={(e) =>
+                                                        updateFellow(selected.id, {
+                                                            performance_rating: e.target.value as PerformanceRating,
+                                                            rating_updated_at: new Date().toISOString(),
+                                                        })
+                                                    }
+                                                    className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm disabled:bg-gray-50 disabled:text-gray-400"
+                                                    disabled={saving || locked}
+                                                >
+                                                    <option value="unrated">Unrated</option>
+                                                    <option value="on_track">On track</option>
+                                                    <option value="at_risk">At risk</option>
+                                                    <option value="underperforming">Underperforming</option>
+                                                </select>
+                                                <p className="mt-1.5 text-xs text-gray-400">
+                                                    {locked
+                                                        ? 'Rating opens once the grace period ends.'
+                                                        : 'Auto-set from the latest scored week — you can override.'}
+                                                </p>
+                                            </>
+                                        );
+                                    })()}
+                                </div>
+
+                                <div className="mt-3 flex flex-wrap items-center gap-2">
+                                    <button
+                                        onClick={() =>
+                                            updateFellow(selected.id, {
+                                                commitment_started_at: new Date().toISOString(),
+                                                performance_rating: 'unrated',
+                                                rating_updated_at: null,
+                                            })
+                                        }
+                                        disabled={saving || !selected.weekly_hours_committed}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                                    >
+                                        <RefreshCw className="w-3.5 h-3.5" /> Restart grace period
+                                    </button>
+                                    {selected.status !== 'inactive' && (
+                                        <button
+                                            onClick={() => {
+                                                if (!confirm(`Prune ${selected.full_name}? This sets them to Inactive and removes them from all public displays. You can reactivate them later.`)) return;
+                                                updateFellow(selected.id, { status: 'inactive' });
+                                            }}
+                                            disabled={saving}
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                                        >
+                                            <ShieldAlert className="w-3.5 h-3.5" /> Prune — set inactive
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* Weekly task scoring (tasks assigned in Stride) */}
+                                <div className="mt-4 pt-4 border-t border-dashed border-gray-100">
+                                    <p className="text-xs font-semibold text-gray-600 mb-1">Weekly task scoring</p>
+                                    <p className="text-[11px] text-gray-400 mb-3">
+                                        Record how many Stride tasks were done. Points accumulate and the latest week auto-sets the rating.
+                                    </p>
+                                    <WeeklyScoreForm
+                                        key={selected.id}
+                                        saving={saving}
+                                        onRecord={(entry) => recordWeek(selected.id, entry)}
+                                    />
+                                    {scores.length > 0 && (
+                                        <ul className="mt-3 space-y-1.5">
+                                            {scores.slice(0, 6).map((sc) => (
+                                                <li key={sc.id} className="flex items-center gap-2 text-xs">
+                                                    <span className="text-gray-500 w-20 shrink-0">
+                                                        {new Date(sc.week_start).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                    </span>
+                                                    <span className="text-gray-700 font-medium">
+                                                        {sc.tasks_done}{sc.tasks_assigned != null ? `/${sc.tasks_assigned}` : ''} done
+                                                    </span>
+                                                    <span className="text-gray-400">· {sc.points} pts</span>
+                                                    <span className={`ml-auto px-2 py-0.5 rounded-full font-medium ${RATING_BADGE[sc.rating]}`}>
+                                                        {RATING_LABEL[sc.rating]}
+                                                    </span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </div>
+                            </div>
+
                             <div>
                                 <label className="block text-xs font-medium text-gray-500 mb-1.5">Admin notes</label>
                                 <textarea
@@ -553,6 +790,7 @@ function AddFellowModal({
                         className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm"
                     >
                         <option value="fellow">Fellow</option>
+                        <option value="deputy_director">Deputy Fellowship Director</option>
                         <option value="director">Fellowship Director</option>
                     </select>
                     <button
@@ -564,6 +802,135 @@ function AddFellowModal({
                     </button>
                 </div>
             </div>
+        </div>
+    );
+}
+
+// Fellows ranked by accumulated points. Click a row to open their drawer.
+function Leaderboard({ fellows, onSelect }: { fellows: Fellow[]; onSelect: (f: Fellow) => void }) {
+    const ranked = [...fellows]
+        .filter((f) => f.status !== 'inactive')
+        .sort(
+            (a, b) =>
+                (b.total_points ?? 0) - (a.total_points ?? 0) ||
+                a.full_name.localeCompare(b.full_name),
+        );
+
+    if (ranked.length === 0) {
+        return (
+            <div className="bg-white rounded-xl border border-gray-200 p-10 text-center text-sm text-gray-400">
+                No fellows to rank yet.
+            </div>
+        );
+    }
+
+    const medal = (i: number) => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null);
+
+    return (
+        <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-50">
+            {ranked.map((f, i) => {
+                const rating = f.performance_rating ?? 'unrated';
+                return (
+                    <button
+                        key={f.id}
+                        onClick={() => onSelect(f)}
+                        className="w-full flex items-center gap-4 px-4 py-3 hover:bg-gray-50 text-left"
+                    >
+                        <span className="w-8 text-center text-lg font-bold text-gray-400 tabular-nums">
+                            {medal(i) ?? i + 1}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                            <p className="font-medium text-gray-900 truncate">{f.full_name}</p>
+                            <p className="text-xs text-gray-400 truncate">
+                                {f.role_in_agripro || 'Catalyst Fellow'}
+                            </p>
+                        </div>
+                        {rating !== 'unrated' && (
+                            <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${RATING_BADGE[rating]}`}>
+                                {RATING_LABEL[rating]}
+                            </span>
+                        )}
+                        <span className="w-16 text-right font-bold text-[#0B2C24] tabular-nums">
+                            {f.total_points ?? 0}
+                            <span className="text-xs text-gray-400 font-normal"> pts</span>
+                        </span>
+                    </button>
+                );
+            })}
+        </div>
+    );
+}
+
+// Compact form to record one week's task result. Resets per fellow via `key`.
+function WeeklyScoreForm({
+    saving,
+    onRecord,
+}: {
+    saving: boolean;
+    onRecord: (entry: { week_start: string; tasks_done: number; tasks_assigned: number | null; note: string | null }) => void;
+}) {
+    const [week, setWeek] = useState(weekStartISO());
+    const [done, setDone] = useState('');
+    const [assigned, setAssigned] = useState('');
+    const [note, setNote] = useState('');
+
+    const submit = () => {
+        const d = Math.max(0, parseInt(done || '0', 10) || 0);
+        const a = assigned.trim() === '' ? null : Math.max(0, parseInt(assigned, 10) || 0);
+        onRecord({ week_start: week, tasks_done: d, tasks_assigned: a, note: note.trim() || null });
+        setDone('');
+        setAssigned('');
+        setNote('');
+    };
+
+    return (
+        <div className="space-y-2">
+            <div className="grid grid-cols-3 gap-2">
+                <div>
+                    <label className="block text-[10px] uppercase tracking-wide text-gray-400 mb-1">Week of</label>
+                    <input
+                        type="date"
+                        value={week}
+                        onChange={(e) => setWeek(e.target.value)}
+                        className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs"
+                    />
+                </div>
+                <div>
+                    <label className="block text-[10px] uppercase tracking-wide text-gray-400 mb-1">Done</label>
+                    <input
+                        type="number"
+                        min={0}
+                        value={done}
+                        onChange={(e) => setDone(e.target.value)}
+                        placeholder="0"
+                        className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs"
+                    />
+                </div>
+                <div>
+                    <label className="block text-[10px] uppercase tracking-wide text-gray-400 mb-1">Assigned</label>
+                    <input
+                        type="number"
+                        min={0}
+                        value={assigned}
+                        onChange={(e) => setAssigned(e.target.value)}
+                        placeholder="—"
+                        className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs"
+                    />
+                </div>
+            </div>
+            <input
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="Note (optional)"
+                className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs"
+            />
+            <button
+                onClick={submit}
+                disabled={saving || done.trim() === ''}
+                className="w-full py-1.5 rounded-lg bg-[#0B2C24] text-white text-xs font-semibold hover:bg-[#10392f] disabled:opacity-50"
+            >
+                Record week
+            </button>
         </div>
     );
 }

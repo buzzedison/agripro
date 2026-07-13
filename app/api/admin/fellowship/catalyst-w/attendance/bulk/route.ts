@@ -46,13 +46,30 @@ async function recalculateFellowRate(fellow_id: string, cohort_id: string) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { session_id, cohort_id, attendances, marked_by } = body;
+    const { session_id, marked_by } = body;
+    const attendances = body.attendances ?? body.records;
+    let cohort_id = body.cohort_id;
 
-    if (!session_id || !cohort_id || !Array.isArray(attendances) || attendances.length === 0) {
-      return NextResponse.json({ error: 'Missing required fields: session_id, cohort_id, attendances[]' }, { status: 400 });
+    if (!session_id || !Array.isArray(attendances) || attendances.length === 0) {
+      return NextResponse.json({ error: 'Missing required fields: session_id, attendances[]' }, { status: 400 });
     }
 
-    const rows = attendances.map(({ fellow_id, status }: { fellow_id: string; status: string }) => ({
+    if (!cohort_id) {
+      const { data: session, error: sessionError } = await supabase
+        .from('catalyst_w_sessions')
+        .select('cohort_id')
+        .eq('id', session_id)
+        .single();
+
+      if (sessionError || !session?.cohort_id) {
+        return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+      }
+      cohort_id = session.cohort_id;
+    }
+
+    const rows = attendances
+      .filter(({ status }: { status: string }) => status !== 'absent')
+      .map(({ fellow_id, status }: { fellow_id: string; status: string }) => ({
       session_id,
       cohort_id,
       fellow_id,
@@ -60,21 +77,47 @@ export async function POST(request: NextRequest) {
       marked_by: marked_by ?? null,
     }));
 
-    const { data, error } = await supabase
-      .from('catalyst_w_attendance')
-      .upsert(rows, { onConflict: 'session_id,fellow_id' })
-      .select();
+    const absentFellowIds = attendances
+      .filter(({ status }: { status: string }) => status === 'absent')
+      .map(({ fellow_id }: { fellow_id: string }) => fellow_id);
 
-    if (error) {
-      console.error('Bulk upsert error:', error);
-      return NextResponse.json({ error: 'Failed to record attendance' }, { status: 500 });
+    let data: any[] = [];
+
+    if (rows.length > 0) {
+      const result = await supabase
+        .from('catalyst_w_attendance')
+        .upsert(rows, { onConflict: 'session_id,fellow_id' })
+        .select();
+
+      if (result.error) {
+        console.error('Bulk upsert error:', result.error);
+        return NextResponse.json({ error: 'Failed to record attendance' }, { status: 500 });
+      }
+      data = result.data ?? [];
+    }
+
+    if (absentFellowIds.length > 0) {
+      const { error: deleteError } = await supabase
+        .from('catalyst_w_attendance')
+        .delete()
+        .eq('session_id', session_id)
+        .in('fellow_id', absentFellowIds);
+
+      if (deleteError) {
+        console.error('Bulk absent delete error:', deleteError);
+        return NextResponse.json({ error: 'Failed to clear absent attendance' }, { status: 500 });
+      }
     }
 
     // Recalculate rates for all affected fellows
     const uniqueFellowIds = [...new Set(attendances.map((a: { fellow_id: string }) => a.fellow_id))];
     await Promise.all(uniqueFellowIds.map((fellow_id) => recalculateFellowRate(fellow_id as string, cohort_id)));
 
-    return NextResponse.json({ updated: data?.length ?? rows.length });
+    return NextResponse.json({
+      records: data,
+      updated: data.length,
+      deleted: absentFellowIds.length,
+    });
   } catch (err: any) {
     console.error('API error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
