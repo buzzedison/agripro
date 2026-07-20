@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
+import { buildBrandedEmail, plainTextToHtml } from '@/lib/email/branded-email';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const FROM = 'AgriPro Catalyst W <noreply@agriprohub.com>';
@@ -72,8 +73,32 @@ const TEMPLATES = {
 export async function POST(request: NextRequest) {
     if (!resend) return NextResponse.json({ error: 'Email not configured' }, { status: 503 });
 
-    const { email, name, business, template } = await request.json();
+    const { email, name, business, template, subject: customSubject, body: customBody } = await request.json();
     if (!email || !name || !template) return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+
+    if (template === 'custom') {
+        if (!customSubject?.trim() || !customBody?.trim()) {
+            return NextResponse.json({ error: 'Subject and body required for custom emails' }, { status: 400 });
+        }
+        const html = buildBrandedEmail({
+            headerTitle: customSubject.trim(),
+            subtitle: 'AgriPro Catalyst W — Cohort 2026',
+            recipientName: name.split(' ')[0],
+            bodyHtml: plainTextToHtml(customBody),
+            signOff: '— The AgriPro Catalyst W Team',
+        });
+        try {
+            await resend.emails.send({
+                from: FROM,
+                to: email,
+                subject: customSubject.trim(),
+                html,
+            });
+            return NextResponse.json({ success: true });
+        } catch (err: any) {
+            return NextResponse.json({ error: err.message }, { status: 500 });
+        }
+    }
 
     const t = TEMPLATES[template as keyof typeof TEMPLATES];
     if (!t) return NextResponse.json({ error: 'Unknown template' }, { status: 400 });

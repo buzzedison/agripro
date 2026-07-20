@@ -424,6 +424,7 @@ export default function GetInvolved() {
                     First Name
                   </label>
                   <input
+                    name="firstName"
                     type="text"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                     placeholder="Enter first name"
@@ -435,6 +436,7 @@ export default function GetInvolved() {
                     Last Name
                   </label>
                   <input
+                    name="lastName"
                     type="text"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                     placeholder="Enter last name"
@@ -447,6 +449,7 @@ export default function GetInvolved() {
                   Email Address
                 </label>
                 <input
+                  name="email"
                   type="email"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   placeholder="Enter your email"
@@ -457,7 +460,8 @@ export default function GetInvolved() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Area of Interest
                 </label>
-                <select 
+                <select
+                  name="areaOfInterest"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   required
                 >
@@ -477,6 +481,7 @@ export default function GetInvolved() {
                   CV/Resume Link
                 </label>
                 <input
+                  name="cvLink"
                   type="url"
                   onBlur={onUrlBlur()}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
@@ -492,6 +497,7 @@ export default function GetInvolved() {
                   LinkedIn Profile
                 </label>
                 <input
+                  name="linkedin"
                   type="url"
                   onBlur={onUrlBlur()}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"

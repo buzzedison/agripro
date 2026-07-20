@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import CustomEmailComposer from '@/components/admin/CustomEmailComposer';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     X, Download, RefreshCw, ChevronDown, Calendar, Trash2,
@@ -244,6 +245,35 @@ export default function CatalystWAdminPage() {
             addToast('success', `Email sent to ${target.full_name}`);
         } catch (err: any) {
             addToast('error', err.message ?? 'Failed to send email');
+        } finally {
+            setEmailLoading(null);
+        }
+    };
+
+    const sendCustomEmail = async (subject: string, body: string) => {
+        if (!selected) return;
+        setEmailLoading('custom');
+        try {
+            const res = await fetch('/api/admin/catalyst-w/email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: selected.email,
+                    name: selected.full_name.split(' ')[0],
+                    business: selected.business_name || selected.organisation,
+                    template: 'custom',
+                    subject,
+                    body,
+                }),
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error ?? 'Send failed');
+            }
+            addToast('success', `Custom email sent to ${selected.full_name}`);
+        } catch (err: any) {
+            addToast('error', err.message ?? 'Failed to send email');
+            throw err;
         } finally {
             setEmailLoading(null);
         }
@@ -623,6 +653,15 @@ export default function CatalystWAdminPage() {
                                             {label}
                                         </button>
                                     ))}
+                                </div>
+
+                                <div className="mt-3">
+                                    <CustomEmailComposer
+                                        recipientName={selected.full_name}
+                                        recipientEmail={selected.email}
+                                        onSend={sendCustomEmail}
+                                        sending={emailLoading === 'custom'}
+                                    />
                                 </div>
                             </div>
 
