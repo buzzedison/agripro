@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { submitFellowshipApplication } from '../actions'
 import { FaUser, FaEnvelope, FaPhone, FaGraduationCap, FaUpload, FaSpinner } from 'react-icons/fa'
 import Link from 'next/link'
+import { onUrlBlur } from '@/lib/utils/url'
 
 interface FormData {
   // Personal Information
@@ -627,6 +628,7 @@ export default function FellowshipApplication() {
           required
           value={formData.videoUrl}
           onChange={(e) => setFormData(prev => ({ ...prev, videoUrl: e.target.value }))}
+          onBlur={onUrlBlur((v) => setFormData(prev => ({ ...prev, videoUrl: v })))}
           placeholder="https://..."
           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
         />

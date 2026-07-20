@@ -17,6 +17,7 @@ import {
   ChevronRight,
   LogOut,
   ExternalLink,
+  Flag,
 } from 'lucide-react';
 
 interface NavItem {
@@ -71,6 +72,12 @@ const NAV: NavGroup[] = [
     ],
   },
   {
+    label: 'Moderation',
+    items: [
+      { href: '/admin/reports', label: 'Reports', icon: Flag, badge: 'reports' },
+    ],
+  },
+  {
     label: 'System',
     items: [
       { href: '/admin/debug', label: 'Debug', icon: Bug },
@@ -81,9 +88,10 @@ const NAV: NavGroup[] = [
 
 interface Props {
   pendingSubmissions?: number;
+  pendingReports?: number;
 }
 
-export default function AdminSidebar({ pendingSubmissions = 0 }: Props) {
+export default function AdminSidebar({ pendingSubmissions = 0, pendingReports = 0 }: Props) {
   const pathname = usePathname();
 
   const isActive = (href: string, exact?: boolean) => {
@@ -117,17 +125,19 @@ export default function AdminSidebar({ pendingSubmissions = 0 }: Props) {
               {group.items.map((item) => {
                 const active = isActive(item.href, item.exact);
                 const Icon = item.icon;
-                const showBadge = item.badge === 'pending' && pendingSubmissions > 0;
+                const badgeCount = item.badge === 'pending' ? pendingSubmissions : item.badge === 'reports' ? pendingReports : 0;
+                const showBadge = badgeCount > 0;
 
                 if (item.disabled) {
                   return (
                     <div
                       key={item.href}
                       className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 cursor-not-allowed"
+                      title={item.label}
                     >
-                      <Icon className="w-4 h-4" />
-                      <span className="text-sm">{item.label}</span>
-                      <span className="ml-auto text-[10px] bg-gray-800 text-gray-500 px-1.5 py-0.5 rounded">Soon</span>
+                      <Icon className="w-4 h-4 shrink-0" />
+                      <span className="text-sm truncate min-w-0 flex-1">{item.label}</span>
+                      <span className="shrink-0 text-[10px] bg-gray-800 text-gray-500 px-1.5 py-0.5 rounded">Soon</span>
                     </div>
                   );
                 }
@@ -136,6 +146,7 @@ export default function AdminSidebar({ pendingSubmissions = 0 }: Props) {
                   <Link
                     key={item.href}
                     href={item.href}
+                    title={item.label}
                     className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-sm group ${
                       active
                         ? 'bg-green-600 text-white'
@@ -143,13 +154,13 @@ export default function AdminSidebar({ pendingSubmissions = 0 }: Props) {
                     }`}
                   >
                     <Icon className="w-4 h-4 shrink-0" />
-                    <span className="flex-1">{item.label}</span>
+                    <span className="flex-1 truncate min-w-0">{item.label}</span>
                     {showBadge && (
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
-                        {pendingSubmissions > 9 ? '9+' : pendingSubmissions}
+                      <span className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                        {badgeCount > 9 ? '9+' : badgeCount}
                       </span>
                     )}
-                    {active && <ChevronRight className="w-3 h-3 opacity-60" />}
+                    {active && <ChevronRight className="w-3 h-3 opacity-60 shrink-0" />}
                   </Link>
                 );
               })}

@@ -64,6 +64,49 @@ const TEMPLATES = {
 <p>— The AgriPro Fellowship Team</p>
 </div></div>`,
     }),
+    reviewing: (name: string, role: string) => ({
+        subject: 'Your application is under review — Women Catalyst Fellowship',
+        html: `<div style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;color:#111827;">
+<div style="background:#050A08;padding:28px 36px;border-radius:12px 12px 0 0;">
+<h1 style="color:#fff;font-size:20px;margin:0;">Application under review</h1>
+<p style="color:#9ca3af;margin:6px 0 0;font-size:14px;">Women Catalyst Fellowship — AgriPro Cohort 2</p>
+</div>
+<div style="padding:28px 36px;border:1px solid #e5e7eb;border-top:none;">
+<p>Hi ${name},</p>
+<p>Thank you for your patience. Your application for the <strong>${role}</strong> position is currently being reviewed by our fellowship committee.</p>
+<p>We expect to share an update within the next 7–10 days. No action is needed from you at this time.</p>
+<p>— The AgriPro Fellowship Team</p>
+</div></div>`,
+    }),
+    follow_up: (name: string, role: string) => ({
+        subject: 'Following up — Women Catalyst Fellowship',
+        html: `<div style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;color:#111827;">
+<div style="background:#050A08;padding:28px 36px;border-radius:12px 12px 0 0;">
+<h1 style="color:#fff;font-size:20px;margin:0;">Following up</h1>
+<p style="color:#9ca3af;margin:6px 0 0;font-size:14px;">Women Catalyst Fellowship — AgriPro Cohort 2</p>
+</div>
+<div style="padding:28px 36px;border:1px solid #e5e7eb;border-top:none;">
+<p>Hi ${name},</p>
+<p>We wanted to follow up regarding your application for the <strong>${role}</strong> position in the Women Catalyst Fellowship.</p>
+<p>If you have any outstanding items or questions, please reply to this email at your earliest convenience. We want to make sure we have everything we need to move your application forward.</p>
+<p>— The AgriPro Fellowship Team</p>
+</div></div>`,
+    }),
+    paid: (name: string, role: string) => ({
+        subject: 'Payment confirmed — Women Catalyst Fellowship',
+        html: `<div style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;color:#111827;">
+<div style="background:#050A08;padding:28px 36px;border-radius:12px 12px 0 0;">
+<h1 style="color:#fff;font-size:20px;margin:0;">Payment confirmed ✓</h1>
+<p style="color:#9ca3af;margin:6px 0 0;font-size:14px;">Women Catalyst Fellowship — AgriPro Cohort 2</p>
+</div>
+<div style="padding:28px 36px;border:1px solid #e5e7eb;border-top:none;">
+<p>Hi ${name},</p>
+<p>We have received your fellowship fee payment. You are now fully confirmed as a <strong>${role}</strong> in the AgriPro Women Catalyst Fellowship, Cohort 2.</p>
+<p>Your onboarding pack with programme schedule, access details, and fellowship agreement will be sent within 48 hours.</p>
+<p>Welcome aboard!</p>
+<p>— The AgriPro Fellowship Team</p>
+</div></div>`,
+    }),
 };
 
 export async function POST(request: NextRequest) {

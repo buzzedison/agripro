@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import KnowledgeHubNavbar from '../../components/KnowledgeHubNavbar';
 import KnowledgeHubFooter from '../../components/KnowledgeHubFooter';
 import Breadcrumb from '../../components/Breadcrumb';
+import { onUrlBlur } from '@/lib/utils/url';
 import { 
   User, 
   Mail, 
@@ -692,6 +693,7 @@ export default function ExpertApplicationPage() {
                   placeholder="LinkedIn Profile URL"
                   value={formData.socialProfiles.linkedin}
                   onChange={(e) => updateNestedFormData('socialProfiles', 'linkedin', e.target.value)}
+                  onBlur={onUrlBlur((v) => updateNestedFormData('socialProfiles', 'linkedin', v))}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 />
                 <input
@@ -699,6 +701,7 @@ export default function ExpertApplicationPage() {
                   placeholder="Personal/Company Website"
                   value={formData.socialProfiles.website}
                   onChange={(e) => updateNestedFormData('socialProfiles', 'website', e.target.value)}
+                  onBlur={onUrlBlur((v) => updateNestedFormData('socialProfiles', 'website', v))}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 />
                 <input
@@ -706,6 +709,7 @@ export default function ExpertApplicationPage() {
                   placeholder="ResearchGate Profile URL"
                   value={formData.socialProfiles.researchGate}
                   onChange={(e) => updateNestedFormData('socialProfiles', 'researchGate', e.target.value)}
+                  onBlur={onUrlBlur((v) => updateNestedFormData('socialProfiles', 'researchGate', v))}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 />
                 <input
@@ -713,6 +717,7 @@ export default function ExpertApplicationPage() {
                   placeholder="Google Scholar Profile URL"
                   value={formData.socialProfiles.googleScholar}
                   onChange={(e) => updateNestedFormData('socialProfiles', 'googleScholar', e.target.value)}
+                  onBlur={onUrlBlur((v) => updateNestedFormData('socialProfiles', 'googleScholar', v))}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 />
               </div>

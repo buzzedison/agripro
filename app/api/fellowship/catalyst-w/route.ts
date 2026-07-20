@@ -13,6 +13,7 @@ const ROLE_LABELS: Record<string, string> = {
     outreach_fellow: 'Outreach & Recruitment Fellow',
     operations_fellow: 'Operations Fellow',
     content_comms_fellow: 'Content & Comms Fellow',
+    ambassador: 'Country Ambassador',
 };
 
 const REGION_LABELS: Record<string, string> = {

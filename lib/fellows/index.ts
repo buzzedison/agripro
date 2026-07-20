@@ -4,7 +4,7 @@ import type { FellowDesignation } from './designation'
 import type { PerformanceRating } from './accountability'
 
 export type { FellowDesignation } from './designation'
-export { designationLabel, isLeadership, designationRank } from './designation'
+export { designationLabel, isLeadership, isAmbassador, designationRank } from './designation'
 export type { PerformanceRating } from './accountability'
 
 export type CatalystFellow = {

@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, ChevronDown, ArrowRight, MessageSquare, BookOpen, Users, ShoppingBag, Sprout, User, LogOut, LayoutDashboard, Home, Heart, Bell } from 'lucide-react';
 import NotificationBell from '@/components/NotificationBell';
+import { MessagesNavIcon, MessagesInlineBadge } from '@/components/MessagesBadge';
 import { createClient } from '@/lib/supabase/client';
 import { nameToUniqueSlug } from '@/lib/utils/mentions';
 
@@ -215,8 +216,13 @@ export default function Navbar() {
                 AI
               </Link>
 
-              {/* Notification Bell - only show when logged in */}
-              {!loading && user && <NotificationBell />}
+              {/* Messages + Notification Bell - only show when logged in */}
+              {!loading && user && (
+                <>
+                  <MessagesNavIcon />
+                  <NotificationBell />
+                </>
+              )}
 
               {loading ? (
                 <div className="w-20 h-10 bg-gray-100 rounded-full animate-pulse" />
@@ -265,6 +271,7 @@ export default function Navbar() {
                       >
                         <MessageSquare className="w-4 h-4" />
                         Messages
+                        <MessagesInlineBadge />
                       </Link>
                       <Link
                         href="/connect/dashboard"
@@ -316,6 +323,7 @@ export default function Navbar() {
             <div className="flex lg:hidden items-center gap-2">
               {!loading && user && (
                 <>
+                  <MessagesNavIcon />
                   <NotificationBell />
                   <Link
                     href="/connect/dashboard"
@@ -481,6 +489,7 @@ export default function Navbar() {
                   >
                     <MessageSquare className="w-5 h-5" />
                     Messages
+                    {user && <MessagesInlineBadge />}
                   </Link>
                   <Link
                     href="/chat"

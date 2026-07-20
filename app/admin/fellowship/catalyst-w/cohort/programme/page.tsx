@@ -9,6 +9,7 @@ import {
   Edit2, Video, FileText, ExternalLink, ChevronRight,
 } from 'lucide-react';
 import SubNav from '../SubNav';
+import { onUrlBlur } from '@/lib/utils/url';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -356,6 +357,7 @@ function SessionFormPanel({
             type="url"
             value={form.recording_url}
             onChange={e => set('recording_url', e.target.value)}
+            onBlur={onUrlBlur((v) => set('recording_url', v))}
             placeholder="https://…"
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
           />
@@ -367,6 +369,7 @@ function SessionFormPanel({
             type="url"
             value={form.materials_url}
             onChange={e => set('materials_url', e.target.value)}
+            onBlur={onUrlBlur((v) => set('materials_url', v))}
             placeholder="https://…"
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
           />

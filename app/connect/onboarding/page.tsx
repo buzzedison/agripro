@@ -10,6 +10,7 @@ import {
     Briefcase, Phone, Globe, Loader2
 } from 'lucide-react';
 import Link from 'next/link';
+import { onUrlBlur } from '@/lib/utils/url';
 
 const userTypes = [
     { id: 'farmer', title: 'Farmer / Producer', description: 'I grow or produce agricultural products', icon: Users, color: 'green' },
@@ -423,6 +424,7 @@ function OnboardingContent() {
                                             type="url"
                                             value={formData.website}
                                             onChange={(e) => updateFormData('website', e.target.value)}
+                                            onBlur={onUrlBlur((v) => updateFormData('website', v))}
                                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                                             placeholder="https://yourwebsite.com"
                                         />
@@ -436,6 +438,7 @@ function OnboardingContent() {
                                             type="url"
                                             value={formData.linkedin}
                                             onChange={(e) => updateFormData('linkedin', e.target.value)}
+                                            onBlur={onUrlBlur((v) => updateFormData('linkedin', v))}
                                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                                             placeholder="https://linkedin.com/in/yourprofile"
                                         />

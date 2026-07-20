@@ -3,6 +3,7 @@
 import { useActionState } from 'react'
 import Link from 'next/link'
 import { submitVendorForm } from './actions'
+import { onUrlBlur } from '@/lib/utils/url'
 import {
   FaStore,
   FaCheckCircle,
@@ -271,6 +272,7 @@ export default function VendorRegistration() {
                       id="website"
                       name="website"
                       type="url"
+                      onBlur={onUrlBlur()}
                       className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
                       placeholder="https://yourwebsite.com"
                     />

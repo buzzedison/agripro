@@ -6,8 +6,9 @@ import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowLeft, Save, Loader2, Check, Camera, Youtube, X, Play, Lock, Globe, Users, Plus, Award, Handshake, Zap, BadgeCheck, Star, Sparkles } from 'lucide-react';
-import { toast, Toaster } from 'sonner';
+import { toast } from 'sonner';
 import { PrivacySettings } from '../../actions';
+import { onUrlBlur } from '@/lib/utils/url';
 
 const valueChains = [
     'Poultry', 'Vegetables', 'Grains & Cereals', 'Fruits', 'Dairy',
@@ -360,7 +361,6 @@ export default function EditProfilePage() {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            <Toaster position="top-right" richColors closeButton />
             {/* Header */}
             <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
                 <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -576,6 +576,7 @@ export default function EditProfilePage() {
                             type="url"
                             value={formData.youtube_url}
                             onChange={(e) => updateField('youtube_url', e.target.value)}
+                            onBlur={onUrlBlur((v) => updateField('youtube_url', v))}
                             placeholder="https://youtube.com/watch?v=..."
                             className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                         />
@@ -790,6 +791,7 @@ export default function EditProfilePage() {
                                 type="url"
                                 value={formData.website}
                                 onChange={(e) => updateField('website', e.target.value)}
+                                onBlur={onUrlBlur((v) => updateField('website', v))}
                                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                                 placeholder="https://..."
                             />
@@ -801,6 +803,7 @@ export default function EditProfilePage() {
                                 type="url"
                                 value={formData.linkedin}
                                 onChange={(e) => updateField('linkedin', e.target.value)}
+                                onBlur={onUrlBlur((v) => updateField('linkedin', v))}
                                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                                 placeholder="https://linkedin.com/in/..."
                             />

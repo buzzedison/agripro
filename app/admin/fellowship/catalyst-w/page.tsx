@@ -8,7 +8,7 @@ import {
     X, ArrowLeft, Sparkles, Loader2, CheckCircle, Clock,
     XCircle, Star, MapPin, Phone, Globe, Linkedin,
     RefreshCw, Send, FileText, BarChart3, TrendingUp, Eye,
-    AlertCircle, ChevronUp, ExternalLink
+    AlertCircle, ChevronUp, ExternalLink, Trash2, Calendar, DollarSign
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -25,7 +25,7 @@ interface Application {
     motivation: string;
     experience?: string;
     availability?: string;
-    status: 'pending' | 'reviewing' | 'shortlisted' | 'interviewed' | 'accepted' | 'rejected';
+    status: 'pending' | 'reviewing' | 'shortlisted' | 'interviewed' | 'accepted' | 'paid' | 'rejected';
     admin_notes?: string;
     ai_score?: number;
     ai_summary?: string;
@@ -55,6 +55,7 @@ const ROLE_LABELS: Record<string, string> = {
     outreach_fellow: 'Outreach Fellow',
     operations_fellow: 'Operations Fellow',
     content_comms_fellow: 'Content & Comms Fellow',
+    ambassador: 'Country Ambassador',
 };
 
 const REGION_LABELS: Record<string, string> = {
@@ -72,10 +73,25 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }>
     shortlisted: { label: 'Shortlisted', color: 'bg-amber-100 text-amber-700',   icon: Star },
     interviewed: { label: 'Interviewed', color: 'bg-purple-100 text-purple-700', icon: Users },
     accepted:    { label: 'Accepted',    color: 'bg-green-100 text-green-700',   icon: CheckCircle },
+    paid:        { label: 'Paid',        color: 'bg-emerald-100 text-emerald-700', icon: DollarSign },
     rejected:    { label: 'Rejected',    color: 'bg-red-100 text-red-600',       icon: XCircle },
 };
 
-const STAT_KEYS = ['total', 'pending', 'shortlisted', 'interviewed', 'accepted', 'rejected'] as const;
+type AppStatus = Application['status'];
+type EmailTemplate = 'shortlist' | 'interview' | 'accept' | 'reject' | 'reviewing' | 'follow_up' | 'paid';
+
+const STAGE_PIPELINE: AppStatus[] = ['pending', 'reviewing', 'shortlisted', 'interviewed', 'accepted', 'paid'];
+
+const STAGE_EMAIL_MAP: Partial<Record<AppStatus, EmailTemplate>> = {
+    reviewing: 'reviewing',
+    shortlisted: 'shortlist',
+    interviewed: 'interview',
+    accepted: 'accept',
+    paid: 'paid',
+    rejected: 'reject',
+};
+
+const STAT_KEYS = ['total', 'pending', 'shortlisted', 'interviewed', 'accepted', 'paid', 'rejected'] as const;
 
 const STAT_CONFIG = {
     total:       { label: 'Total Applications', border: 'border-l-gray-400',   text: 'text-gray-800' },
@@ -83,6 +99,7 @@ const STAT_CONFIG = {
     shortlisted: { label: 'Shortlisted',         border: 'border-l-amber-500',  text: 'text-amber-700' },
     interviewed: { label: 'Interviewed',         border: 'border-l-purple-500', text: 'text-purple-700' },
     accepted:    { label: 'Accepted',            border: 'border-l-green-500',  text: 'text-green-700' },
+    paid:        { label: 'Paid',                border: 'border-l-emerald-500', text: 'text-emerald-700' },
     rejected:    { label: 'Rejected',            border: 'border-l-red-400',    text: 'text-red-600' },
 } as const;
 
@@ -90,6 +107,16 @@ const STAT_CONFIG = {
 
 function fmtDate(d: string) {
     return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function monthKey(d: string) {
+    const date = new Date(d);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function fmtMonth(key: string) {
+    const [y, m] = key.split('-');
+    return new Date(Number(y), Number(m) - 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 }
 
 function scoreColor(score: number) {
@@ -196,6 +223,8 @@ export default function CatalystWAdmin() {
     const [filterRole, setFilterRole] = useState('all');
     const [filterRegion, setFilterRegion] = useState('all');
     const [filterStatus, setFilterStatus] = useState('all');
+    const [filterMonth, setFilterMonth] = useState('all');
+    const [deleting, setDeleting] = useState(false);
     const [sort, setSort] = useState<{ field: string; dir: 'asc' | 'desc' }>({ field: 'created_at', dir: 'desc' });
     const [aiLoading, setAiLoading] = useState(false);
     const [emailLoading, setEmailLoading] = useState<string | null>(null);
@@ -239,6 +268,8 @@ export default function CatalystWAdmin() {
 
     // ── Filter + Sort ──────────────────────────────────────────────────────────
 
+    const availableMonths = [...new Set(applications.map(a => monthKey(a.created_at)))].sort().reverse();
+
     const filtered = applications
         .filter(a => {
             const q = search.toLowerCase();
@@ -249,7 +280,8 @@ export default function CatalystWAdmin() {
             const matchRole = filterRole === 'all' || a.role === filterRole;
             const matchRegion = filterRegion === 'all' || a.region === filterRegion;
             const matchStatus = filterStatus === 'all' || a.status === filterStatus;
-            return matchSearch && matchRole && matchRegion && matchStatus;
+            const matchMonth = filterMonth === 'all' || monthKey(a.created_at) === filterMonth;
+            return matchSearch && matchRole && matchRegion && matchStatus && matchMonth;
         })
         .sort((a, b) => {
             let av: any, bv: any;
@@ -268,6 +300,7 @@ export default function CatalystWAdmin() {
         shortlisted: applications.filter(a => a.status === 'shortlisted').length,
         interviewed: applications.filter(a => a.status === 'interviewed').length,
         accepted:    applications.filter(a => a.status === 'accepted').length,
+        paid:        applications.filter(a => a.status === 'paid').length,
         rejected:    applications.filter(a => a.status === 'rejected').length,
     };
 
@@ -303,16 +336,60 @@ export default function CatalystWAdmin() {
         setSelected(prev => prev?.id === id ? { ...prev, ...updates } : prev);
     };
 
-    const handleStatusChange = async (newStatus: Application['status']) => {
-        if (!selected) return;
+    const handleStatusChange = async (newStatus: AppStatus, app?: Application) => {
+        const target = app ?? selected;
+        if (!target) return;
         setSaving(true);
         try {
-            await patchApplication(selected.id, { status: newStatus });
-            addToast('success', 'Status updated');
+            await patchApplication(target.id, { status: newStatus });
+            addToast('success', `Moved to ${STATUS_CONFIG[newStatus]?.label ?? newStatus}`);
         } catch {
             addToast('error', 'Failed to update status');
         } finally {
             setSaving(false);
+        }
+    };
+
+    const moveToStage = async (newStatus: AppStatus) => {
+        if (!selected) return;
+        await handleStatusChange(newStatus);
+        const emailTemplate = STAGE_EMAIL_MAP[newStatus];
+        if (emailTemplate) {
+            const send = window.confirm(`Status updated. Send ${STATUS_CONFIG[newStatus]?.label ?? newStatus} notification email to ${selected.full_name}?`);
+            if (send) await sendEmail(emailTemplate, selected);
+        }
+    };
+
+    const handleInlineStatusChange = async (app: Application, newStatus: AppStatus) => {
+        if (app.status === newStatus) return;
+        setSaving(true);
+        try {
+            await patchApplication(app.id, { status: newStatus });
+            addToast('success', `${app.full_name} → ${STATUS_CONFIG[newStatus]?.label ?? newStatus}`);
+        } catch {
+            addToast('error', 'Failed to update status');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!selected) return;
+        const confirmed = window.confirm(
+            `Permanently delete ${selected.full_name}'s application? This cannot be undone.`
+        );
+        if (!confirmed) return;
+        setDeleting(true);
+        try {
+            const res = await fetch(`/api/admin/fellowship/catalyst-w?id=${selected.id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Delete failed');
+            setApplications(prev => prev.filter(a => a.id !== selected.id));
+            setSelected(null);
+            addToast('success', 'Application deleted');
+        } catch {
+            addToast('error', 'Failed to delete application');
+        } finally {
+            setDeleting(false);
         }
     };
 
@@ -378,11 +455,22 @@ export default function CatalystWAdmin() {
 
     // ── Email ──────────────────────────────────────────────────────────────────
 
-    const sendEmail = async (template: 'shortlist' | 'interview' | 'accept' | 'reject') => {
-        if (!selected) return;
-        const labels = { shortlist: 'shortlist', interview: 'interview invitation', accept: 'offer', reject: 'rejection' };
-        const confirmed = window.confirm(`Send ${labels[template]} email to ${selected.full_name}?`);
-        if (!confirmed) return;
+    const sendEmail = async (template: EmailTemplate, app?: Application) => {
+        const target = app ?? selected;
+        if (!target) return;
+        const labels: Record<EmailTemplate, string> = {
+            shortlist: 'shortlist',
+            interview: 'interview invitation',
+            accept: 'offer',
+            reject: 'rejection',
+            reviewing: 'under review',
+            follow_up: 'follow-up',
+            paid: 'payment confirmation',
+        };
+        if (!app) {
+            const confirmed = window.confirm(`Send ${labels[template]} email to ${target.full_name}?`);
+            if (!confirmed) return;
+        }
 
         setEmailLoading(template);
         try {
@@ -390,9 +478,9 @@ export default function CatalystWAdmin() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    email: selected.email,
-                    name: selected.full_name.split(' ')[0],
-                    role: ROLE_LABELS[selected.role] ?? selected.role,
+                    email: target.email,
+                    name: target.full_name.split(' ')[0],
+                    role: ROLE_LABELS[target.role] ?? target.role,
                     template,
                 }),
             });
@@ -400,7 +488,7 @@ export default function CatalystWAdmin() {
                 const err = await res.json();
                 throw new Error(err.error ?? 'Send failed');
             }
-            addToast('success', `Email sent to ${selected.full_name}`);
+            addToast('success', `Email sent to ${target.full_name}`);
         } catch (err: any) {
             addToast('error', err.message ?? 'Failed to send email');
         } finally {
@@ -461,7 +549,7 @@ export default function CatalystWAdmin() {
             <div className="max-w-screen-xl mx-auto px-6 py-6">
 
                 {/* ── Stats bar ── */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
                     {STAT_KEYS.map(key => {
                         const cfg = STAT_CONFIG[key];
                         return (
@@ -532,6 +620,22 @@ export default function CatalystWAdmin() {
                             <option value="all">All Statuses</option>
                             {Object.entries(STATUS_CONFIG).map(([v, c]) => (
                                 <option key={v} value={v}>{c.label}</option>
+                            ))}
+                        </select>
+                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                    </div>
+
+                    {/* Month filter */}
+                    <div className="relative">
+                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                        <select
+                            value={filterMonth}
+                            onChange={e => setFilterMonth(e.target.value)}
+                            className="pl-8 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500/30 focus:border-green-500 appearance-none bg-white"
+                        >
+                            <option value="all">All Months</option>
+                            {availableMonths.map(m => (
+                                <option key={m} value={m}>{fmtMonth(m)}</option>
                             ))}
                         </select>
                         <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
@@ -629,8 +733,17 @@ export default function CatalystWAdmin() {
                                                 )}
 
                                                 {/* Status */}
-                                                <td className="px-4 py-3 whitespace-nowrap">
-                                                    <StatusBadge status={app.status} />
+                                                <td className="px-4 py-3 whitespace-nowrap" onClick={e => e.stopPropagation()}>
+                                                    <select
+                                                        value={app.status}
+                                                        onClick={e => e.stopPropagation()}
+                                                        onChange={e => handleInlineStatusChange(app, e.target.value as AppStatus)}
+                                                        className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-green-500/30 max-w-[120px]"
+                                                    >
+                                                        {Object.entries(STATUS_CONFIG).map(([v, c]) => (
+                                                            <option key={v} value={v}>{c.label}</option>
+                                                        ))}
+                                                    </select>
                                                 </td>
 
                                                 {/* AI Score */}
@@ -699,13 +812,50 @@ export default function CatalystWAdmin() {
 
                                 <div className="p-5 space-y-5">
 
+                                    {/* Stage pipeline */}
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Move Stage</label>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {STAGE_PIPELINE.map(stage => {
+                                                const cfg = STATUS_CONFIG[stage];
+                                                const isActive = selected.status === stage;
+                                                return (
+                                                    <button
+                                                        key={stage}
+                                                        onClick={() => !isActive && moveToStage(stage)}
+                                                        disabled={isActive || saving}
+                                                        className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:cursor-default ${
+                                                            isActive
+                                                                ? `${cfg.color} ring-2 ring-offset-1 ring-current`
+                                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50'
+                                                        }`}
+                                                    >
+                                                        {cfg.label}
+                                                    </button>
+                                                );
+                                            })}
+                                            <button
+                                                onClick={() => selected.status !== 'rejected' && moveToStage('rejected')}
+                                                disabled={selected.status === 'rejected' || saving}
+                                                className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                                                    selected.status === 'rejected'
+                                                        ? 'bg-red-100 text-red-600 ring-2 ring-offset-1 ring-red-400'
+                                                        : 'bg-red-50 text-red-500 hover:bg-red-100 disabled:opacity-50'
+                                                }`}
+                                            >
+                                                Rejected
+                                            </button>
+                                        </div>
+                                        <p className="text-xs text-gray-400 mt-1.5">Click a stage to update status and optionally send the matching email</p>
+                                    </div>
+
                                     {/* Status selector */}
                                     <div>
                                         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Status</label>
                                         <div className="flex items-center gap-2">
                                             <select
                                                 value={selected.status}
-                                                onChange={e => handleStatusChange(e.target.value as Application['status'])}
+                                                onChange={e => handleStatusChange(e.target.value as AppStatus)}
                                                 className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500/30 focus:border-green-500"
                                             >
                                                 {Object.entries(STATUS_CONFIG).map(([v, c]) => (
@@ -879,9 +1029,12 @@ export default function CatalystWAdmin() {
                                         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Email Actions</label>
                                         <div className="grid grid-cols-2 gap-2">
                                             {[
-                                                { key: 'shortlist' as const, label: 'Send Shortlist Email', icon: Star, color: 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100' },
-                                                { key: 'interview' as const, label: 'Invite to Interview', icon: Users, color: 'bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100' },
+                                                { key: 'reviewing' as const, label: 'Under Review', icon: Eye, color: 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100' },
+                                                { key: 'shortlist' as const, label: 'Send Shortlist', icon: Star, color: 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100' },
+                                                { key: 'interview' as const, label: 'Interview Invite', icon: Users, color: 'bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100' },
                                                 { key: 'accept' as const, label: 'Send Offer', icon: CheckCircle, color: 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100' },
+                                                { key: 'paid' as const, label: 'Payment Confirmed', icon: DollarSign, color: 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100' },
+                                                { key: 'follow_up' as const, label: 'Follow Up', icon: Send, color: 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100' },
                                                 { key: 'reject' as const, label: 'Send Rejection', icon: XCircle, color: 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100' },
                                             ].map(({ key, label, icon: Icon, color }) => (
                                                 <button
@@ -901,8 +1054,20 @@ export default function CatalystWAdmin() {
                                         </div>
                                     </div>
 
-                                    {/* Applied date */}
+                                    {/* Delete */}
                                     <div className="pt-1 border-t border-gray-100">
+                                        <button
+                                            onClick={handleDelete}
+                                            disabled={deleting}
+                                            className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                                        >
+                                            {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                                            Delete Application
+                                        </button>
+                                    </div>
+
+                                    {/* Applied date */}
+                                    <div>
                                         <p className="text-xs text-gray-400">
                                             Applied {fmtDate(selected.created_at)} · ID: <span className="font-mono">{selected.id.slice(0, 8)}</span>
                                         </p>

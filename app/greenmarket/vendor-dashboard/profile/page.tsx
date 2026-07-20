@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import AIDescriptionBoost from '@/app/greenmarket/components/AIDescriptionBoost';
+import { onUrlBlur } from '@/lib/utils/url';
 
 interface Vendor {
     id: string;
@@ -385,6 +386,7 @@ export default function VendorProfilePage() {
                                             type="url"
                                             value={formData.website}
                                             onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                                            onBlur={onUrlBlur((v) => setFormData((prev: typeof formData) => ({ ...prev, website: v })))}
                                             className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
                                             placeholder="https://yourwebsite.com"
                                         />

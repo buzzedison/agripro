@@ -7,6 +7,7 @@ import type { CatalystFellow, FellowContribution } from '@/lib/fellows';
 import { designationLabel } from '@/lib/fellows/designation';
 import { graceInfo, RATING_LABEL, RATING_BADGE, GRACE_PERIOD_DAYS, type WeeklyScore } from '@/lib/fellows/accountability';
 import { updateFellowProfile } from './actions';
+import { onUrlBlur } from '@/lib/utils/url';
 import {
     User, Briefcase, Link2, BookOpen, Eye, EyeOff, Camera,
     CheckCircle, AlertCircle, ExternalLink, Loader2, Sparkles, ShieldCheck, Clock,
@@ -311,31 +312,31 @@ export default function PortalClient({
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label className={labelClass}>LinkedIn</label>
-                                <input name="linkedin_url" type="url" defaultValue={fellow.linkedin_url || ''} placeholder="https://linkedin.com/in/…" className={inputClass} />
+                                <input name="linkedin_url" type="url" defaultValue={fellow.linkedin_url || ''} onBlur={onUrlBlur()} placeholder="https://linkedin.com/in/…" className={inputClass} />
                             </div>
                             <div>
                                 <label className={labelClass}>X / Twitter</label>
-                                <input name="twitter_url" type="url" defaultValue={fellow.twitter_url || ''} placeholder="https://x.com/…" className={inputClass} />
+                                <input name="twitter_url" type="url" defaultValue={fellow.twitter_url || ''} onBlur={onUrlBlur()} placeholder="https://x.com/…" className={inputClass} />
                             </div>
                             <div>
                                 <label className={labelClass}>Instagram</label>
-                                <input name="instagram_url" type="url" defaultValue={fellow.instagram_url || ''} placeholder="https://instagram.com/…" className={inputClass} />
+                                <input name="instagram_url" type="url" defaultValue={fellow.instagram_url || ''} onBlur={onUrlBlur()} placeholder="https://instagram.com/…" className={inputClass} />
                             </div>
                             <div>
                                 <label className={labelClass}>Facebook</label>
-                                <input name="facebook_url" type="url" defaultValue={fellow.facebook_url || ''} placeholder="https://facebook.com/…" className={inputClass} />
+                                <input name="facebook_url" type="url" defaultValue={fellow.facebook_url || ''} onBlur={onUrlBlur()} placeholder="https://facebook.com/…" className={inputClass} />
                             </div>
                             <div>
                                 <label className={labelClass}>YouTube</label>
-                                <input name="youtube_url" type="url" defaultValue={fellow.youtube_url || ''} placeholder="https://youtube.com/@…" className={inputClass} />
+                                <input name="youtube_url" type="url" defaultValue={fellow.youtube_url || ''} onBlur={onUrlBlur()} placeholder="https://youtube.com/@…" className={inputClass} />
                             </div>
                             <div>
                                 <label className={labelClass}>TikTok</label>
-                                <input name="tiktok_url" type="url" defaultValue={fellow.tiktok_url || ''} placeholder="https://tiktok.com/@…" className={inputClass} />
+                                <input name="tiktok_url" type="url" defaultValue={fellow.tiktok_url || ''} onBlur={onUrlBlur()} placeholder="https://tiktok.com/@…" className={inputClass} />
                             </div>
                             <div className="sm:col-span-2">
                                 <label className={labelClass}>Personal website</label>
-                                <input name="website_url" type="url" defaultValue={fellow.website_url || ''} placeholder="https://…" className={inputClass} />
+                                <input name="website_url" type="url" defaultValue={fellow.website_url || ''} onBlur={onUrlBlur()} placeholder="https://…" className={inputClass} />
                             </div>
                         </div>
                     </section>
@@ -383,7 +384,7 @@ export default function PortalClient({
                                 </div>
                                 <div>
                                     <label className={labelClass}>Business website</label>
-                                    <input name="business_website" type="url" defaultValue={fellow.business_website || ''} placeholder="https://…" className={inputClass} />
+                                    <input name="business_website" type="url" defaultValue={fellow.business_website || ''} onBlur={onUrlBlur()} placeholder="https://…" className={inputClass} />
                                 </div>
                             </div>
                         )}

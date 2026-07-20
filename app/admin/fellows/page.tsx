@@ -11,6 +11,7 @@ import {
     type PerformanceRating, type WeeklyScore, RATING_LABEL, RATING_BADGE,
     graceInfo, GRACE_PERIOD_DAYS, weekStartISO,
 } from '@/lib/fellows/accountability';
+import { type FellowDesignation, designationLabel, isAmbassador } from '@/lib/fellows/designation';
 
 type Fellow = {
     id: string;
@@ -18,7 +19,7 @@ type Fellow = {
     slug: string;
     email: string;
     full_name: string;
-    designation: 'fellow' | 'director' | 'deputy_director';
+    designation: FellowDesignation;
     role_in_agripro: string | null;
     bio: string | null;
     expertise: string[];
@@ -134,7 +135,7 @@ export default function AdminFellowsPage() {
             .catch(() => {});
     }, [fetchFellows]);
 
-    const addFellow = async (form: { full_name: string; email: string; designation: string; role_in_agripro: string }) => {
+    const addFellow = async (form: { full_name: string; email: string; designation: string; role_in_agripro: string; country: string }) => {
         setSaving(true);
         setError(null);
         const base = slugify(form.full_name);
@@ -148,6 +149,7 @@ export default function AdminFellowsPage() {
             email: form.email.trim().toLowerCase(),
             designation: form.designation,
             role_in_agripro: form.role_in_agripro.trim() || null,
+            country: form.country.trim() || null,
             slug,
         });
         if (insertError) {
@@ -333,14 +335,10 @@ export default function AdminFellowsPage() {
                                         <td className="px-4 py-3">
                                             <div className="font-medium text-gray-900">
                                                 {fellow.full_name}
-                                                {fellow.designation === 'director' && (
-                                                    <span className="ml-2 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[11px] font-medium">
-                                                        Director
-                                                    </span>
-                                                )}
-                                                {fellow.designation === 'deputy_director' && (
-                                                    <span className="ml-2 px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 text-[11px] font-medium">
-                                                        Deputy Director
+                                                {fellow.designation !== 'fellow' && (
+                                                    <span className="ml-2 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[11px] font-medium">
+                                                        {designationLabel(fellow.designation)}
+                                                        {isAmbassador(fellow.designation) && fellow.country ? ` · ${fellow.country}` : ''}
                                                     </span>
                                                 )}
                                                 {(fellow.performance_rating === 'at_risk' || fellow.performance_rating === 'underperforming') && (
@@ -498,8 +496,35 @@ export default function AdminFellowsPage() {
                                     <option value="fellow">Fellow</option>
                                     <option value="deputy_director">Deputy Fellowship Director</option>
                                     <option value="director">Fellowship Director</option>
+                                    <option value="programme_delivery_lead">Programme Delivery Lead</option>
+                                    <option value="growth_engagement_lead">Growth & Engagement Lead</option>
+                                    <option value="partnerships_lead">Partnerships Lead</option>
+                                    <option value="ambassador">Country Ambassador</option>
                                 </select>
                             </div>
+                            {isAmbassador(selected.designation) && (
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                                        Country <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        defaultValue={selected.country || ''}
+                                        key={`${selected.id}-country`}
+                                        onBlur={(e) => {
+                                            const val = e.target.value.trim();
+                                            if (val === (selected.country || '')) return;
+                                            updateFellow(selected.id, { country: val || null });
+                                        }}
+                                        placeholder="e.g. Nigeria"
+                                        className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
+                                        disabled={saving}
+                                    />
+                                    <p className="mt-1.5 text-xs text-gray-400">
+                                        Capped at 10 ambassadors per country — saving past the cap will show an error.
+                                    </p>
+                                </div>
+                            )}
                             <div>
                                 <label className="block text-xs font-medium text-gray-500 mb-1.5">Status</label>
                                 <select
@@ -746,10 +771,10 @@ function AddFellowModal({
     saving,
 }: {
     onClose: () => void;
-    onSave: (form: { full_name: string; email: string; designation: string; role_in_agripro: string }) => void;
+    onSave: (form: { full_name: string; email: string; designation: string; role_in_agripro: string; country: string }) => void;
     saving: boolean;
 }) {
-    const [form, setForm] = useState({ full_name: '', email: '', designation: 'fellow', role_in_agripro: '' });
+    const [form, setForm] = useState({ full_name: '', email: '', designation: 'fellow', role_in_agripro: '', country: '' });
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4" onClick={onClose}>
@@ -792,10 +817,27 @@ function AddFellowModal({
                         <option value="fellow">Fellow</option>
                         <option value="deputy_director">Deputy Fellowship Director</option>
                         <option value="director">Fellowship Director</option>
+                        <option value="programme_delivery_lead">Programme Delivery Lead</option>
+                        <option value="growth_engagement_lead">Growth & Engagement Lead</option>
+                        <option value="partnerships_lead">Partnerships Lead</option>
+                        <option value="ambassador">Country Ambassador</option>
                     </select>
+                    {form.designation === 'ambassador' && (
+                        <div>
+                            <input
+                                placeholder="Country (required, e.g. Nigeria)"
+                                value={form.country}
+                                onChange={(e) => setForm({ ...form, country: e.target.value })}
+                                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm"
+                            />
+                            <p className="mt-1.5 text-xs text-gray-400">
+                                Capped at 10 ambassadors per country.
+                            </p>
+                        </div>
+                    )}
                     <button
                         onClick={() => onSave(form)}
-                        disabled={saving || !form.full_name.trim() || !form.email.trim()}
+                        disabled={saving || !form.full_name.trim() || !form.email.trim() || (form.designation === 'ambassador' && !form.country.trim())}
                         className="w-full py-2.5 rounded-lg bg-[#0B2C24] text-white text-sm font-semibold hover:bg-[#10392f] disabled:opacity-50"
                     >
                         {saving ? 'Adding…' : 'Add fellow'}

@@ -7,12 +7,13 @@ import {
     ArrowRight, CheckCircle, Users, Globe, TrendingUp,
     Award, Briefcase, Megaphone, BarChart2, PenLine,
     MapPin, Clock, ChevronDown, Heart, Star, Zap,
-    DollarSign, BadgeCheck, Plane, Network,
+    DollarSign, BadgeCheck, Plane, Network, Flag,
 } from 'lucide-react';
 import EssayFeedback from '../components/EssayFeedback';
 import FellowsTeamStrip from '../components/FellowsTeamStrip';
 import { client } from '@/sanity/lib/client';
 import { groq } from 'next-sanity';
+import { onUrlBlur } from '@/lib/utils/url';
 
 interface CWContent {
     heroBadge1?: string;
@@ -158,6 +159,22 @@ const roles = [
             'Build program visibility across Africa',
         ],
     },
+    {
+        icon: Flag,
+        title: 'Country Ambassador',
+        count: 'Up to 10/country',
+        hours: '3–5 hrs/week',
+        region: 'Your home country',
+        tag: 'Ambassador',
+        tagColor: 'bg-teal-50 text-teal-700',
+        description: 'Represent Catalyst W and the Africa Food Futures Summit in your own country — light-touch, local, and reports directly to the Fellowship Director.',
+        responsibilities: [
+            'Be the local face of Catalyst W in your country',
+            'Refer and champion strong applicants near you',
+            'Help turn out attendance for local events tied to the Summit',
+            'Report directly to the Fellowship Director or Deputy',
+        ],
+    },
 ];
 
 const regions = [
@@ -183,6 +200,7 @@ const ROLE_OPTIONS = [
     { value: 'outreach_fellow', label: 'Outreach & Recruitment Fellow' },
     { value: 'operations_fellow', label: 'Operations Fellow' },
     { value: 'content_comms_fellow', label: 'Content & Comms Fellow' },
+    { value: 'ambassador', label: 'Country Ambassador' },
 ];
 
 const REGION_OPTIONS = [
@@ -364,10 +382,10 @@ export default function CatalystWFellowshipPage() {
                         </span>
                         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
                             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-gray-900 leading-tight">
-                                6 roles.<br />25–30 spots total.
+                                7 roles.<br />25–30 core spots + ambassadors.
                             </h2>
                             <p className="text-gray-500 max-w-sm leading-relaxed text-sm">
-                                A hub-and-spoke model with a central director, 5 regional leads, and specialist fellows distributed across Africa.
+                                A hub-and-spoke model with a central director, regional leads, specialist fellows, and Country Ambassadors distributed across Africa.
                             </p>
                         </div>
                     </motion.div>
@@ -758,6 +776,7 @@ export default function CatalystWFellowshipPage() {
                                                         type="url"
                                                         value={form.linkedin_url}
                                                         onChange={(e) => update('linkedin_url', e.target.value)}
+                                                        onBlur={onUrlBlur((v) => update('linkedin_url', v))}
                                                         placeholder="linkedin.com/in/..."
                                                         className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-600 text-sm focus:outline-none focus:border-green-500/50 transition-all"
                                                     />

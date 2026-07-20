@@ -62,6 +62,7 @@ const ROLE_LABELS: Record<string, string> = {
   outreach_fellow: 'Outreach Fellow',
   operations_fellow: 'Operations Fellow',
   content_comms_fellow: 'Content & Comms Fellow',
+  ambassador: 'Country Ambassador',
 };
 
 const ATTENDANCE_STATUSES: Array<{ value: AttendanceRecord['status']; label: string; color: string }> = [

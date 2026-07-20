@@ -42,8 +42,6 @@ const LEGACY_FIELDS = new Set([
     'organisation',
     'role',
     'interest',
-    'referral_source',
-    'referral_detail',
 ])
 
 function normalizeSubmissionFields(fields: Record<string, any>) {
@@ -110,6 +108,10 @@ export async function POST(req: NextRequest) {
 
         const label = typeLabels[type] || type
 
+        // Notifications are best-effort: the submission is already saved, so an
+        // email failure (bad key, unverified domain, rate limit) must NOT surface
+        // as a failed submission to the applicant.
+        try {
         // 2. Admin notification
         const fieldRows = Object.entries(fields)
             .filter(([, v]) => v)
@@ -166,6 +168,9 @@ export async function POST(req: NextRequest) {
         </div>
       `,
         })
+        } catch (emailError) {
+            console.error('Catalyst notification email failed (submission was saved):', emailError)
+        }
 
         return NextResponse.json({ success: true, id: data.id })
     } catch (err) {

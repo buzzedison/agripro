@@ -8,18 +8,23 @@ import Image from 'next/image';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 import {
-    Heart, MessageCircle, Repeat2, Share, MoreHorizontal,
+    Heart, MessageCircle, Repeat2, MoreHorizontal,
     Image as ImageIcon, Send, Loader2, Users, TrendingUp,
-    Search, MapPin, CheckCircle, X, Bookmark, Smile, Camera,
+    MapPin, CheckCircle, X, Bookmark, Smile, Camera,
     ChevronDown, ChevronUp, Trash2, Edit3, AlertTriangle,
-    Play, ExternalLink, Volume2, VolumeX, Maximize2, Quote, BarChart2
+    Play, ExternalLink, Volume2, VolumeX, Maximize2, Quote, BarChart2, Copy, Share2,
+    Flag, UserX, BellOff
 } from 'lucide-react';
 import PollCard from './components/PollCard';
 import GifPicker from './components/GifPicker';
+import FeedSearch from './components/FeedSearch';
+import FeedRightRailExtras from './components/FeedRightRailExtras';
 import LinkPreview, { extractUrls, parseContentWithLinks } from '../components/LinkPreview';
 import { parseContentWithLinksAndHashtags, extractHashtags } from '@/lib/utils/hashtags';
 import { parseContentWithAll, extractMentions, nameToUniqueSlug } from '@/lib/utils/mentions';
 import { toast } from 'sonner';
+import ReportModal from '@/components/ReportModal';
+import { blockUser, muteUser, getBlockedUserIds, getMutedUserIds } from '@/lib/moderation';
 
 // Video URL detection helpers
 function isVideoUrl(url: string): boolean {
@@ -329,6 +334,7 @@ interface Post {
     likes_count: number;
     comments_count: number;
     reposts_count: number;
+    views_count?: number;
     quoted_post_id?: string | null;
     quoted_post?: {
         id: string;
@@ -428,6 +434,7 @@ export default function FeedPage() {
 
     // Connection/Social Features State (Restored)
     const [selectedHashtag, setSelectedHashtag] = useState<string | null>(null);
+    const [feedTab, setFeedTab] = useState<'forYou' | 'following'>('forYou');
     const [trendingHashtags, setTrendingHashtags] = useState<{ id: string; name: string; use_count: number }[]>([]);
     const [loadingTrending, setLoadingTrending] = useState(true);
     const [bookmarkedPostIds, setBookmarkedPostIds] = useState<Set<string>>(new Set());
@@ -461,6 +468,13 @@ export default function FeedPage() {
     // Reposts View
     const [repostsModal, setRepostsModal] = useState<{ open: boolean; postId: string | null }>({ open: false, postId: null });
     const [repostMenuOpen, setRepostMenuOpen] = useState<string | null>(null);
+    const [shareMenuOpen, setShareMenuOpen] = useState<string | null>(null);
+
+    // Moderation: report / block / mute
+    const [moderationMenuOpen, setModerationMenuOpen] = useState<string | null>(null);
+    const [reportTarget, setReportTarget] = useState<{ type: 'post' | 'user'; id: string; label?: string } | null>(null);
+    const [blockedUserIds, setBlockedUserIds] = useState<Set<string>>(new Set());
+    const [mutedUserIds, setMutedUserIds] = useState<Set<string>>(new Set());
     const [reposters, setReposters] = useState<any[]>([]);
     const [loadingReposters, setLoadingReposters] = useState(false);
 
@@ -527,9 +541,16 @@ export default function FeedPage() {
             fetchProfile(user.id),
             fetchPosts(user.id, { offset: 0 }),
             fetchSuggestedUsers(user.id),
-            fetchFollowing(user.id)
+            fetchFollowing(user.id),
+            fetchModerationLists(user.id),
         ]);
         setLoading(false);
+    };
+
+    const fetchModerationLists = async (userId: string) => {
+        const [blocked, muted] = await Promise.all([getBlockedUserIds(userId), getMutedUserIds(userId)]);
+        setBlockedUserIds(blocked);
+        setMutedUserIds(muted);
     };
 
     const fetchProfile = async (userId: string) => {
@@ -541,8 +562,8 @@ export default function FeedPage() {
         setProfile(data);
     };
 
-    const fetchPosts = async (userId: string, options: { offset?: number; append?: boolean } = {}) => {
-        const { offset = 0, append = false } = options;
+    const fetchPosts = async (userId: string, options: { offset?: number; append?: boolean; tab?: 'forYou' | 'following' } = {}) => {
+        const { offset = 0, append = false, tab = feedTab } = options;
         const limit = FEED_PAGE_SIZE;
 
         if (append) {
@@ -550,37 +571,50 @@ export default function FeedPage() {
         }
 
         try {
-            // Fetch posts using the new network feed RPC function
-            // This prioritizes connections but also returns other posts
             let postsData: any[] = [];
 
-            try {
-                const { data, error } = await supabase.rpc('get_network_feed', {
-                    p_limit: limit,
-                    p_offset: offset
-                });
+            if (tab === 'following') {
+                // Following tab: only posts from people you're connected to, plus your own.
+                const ids = [...new Set([...Array.from(followingIds), userId])];
+                const { data: followingData, error: followingError } = await supabase
+                    .from('posts')
+                    .select('*')
+                    .in('user_id', ids)
+                    .order('created_at', { ascending: false })
+                    .range(offset, offset + limit - 1);
+                if (followingError) console.error('Error fetching following feed:', followingError);
+                postsData = followingData || [];
+            } else {
+                // Fetch posts using the new network feed RPC function
+                // This prioritizes connections but also returns other posts
+                try {
+                    const { data, error } = await supabase.rpc('get_network_feed', {
+                        p_limit: limit,
+                        p_offset: offset
+                    });
 
-                if (error) {
-                    console.error('Error fetching feed via RPC, falling back to basic query:', error);
-                    // Fallback to basic query if RPC fails (e.g. migration not run yet)
+                    if (error) {
+                        console.error('Error fetching feed via RPC, falling back to basic query:', error);
+                        // Fallback to basic query if RPC fails (e.g. migration not run yet)
+                        const { data: fallbackData } = await supabase
+                            .from('posts')
+                            .select('*')
+                            .order('created_at', { ascending: false })
+                            .range(offset, offset + limit - 1);
+                        postsData = fallbackData || [];
+                    } else {
+                        postsData = data || [];
+                    }
+                } catch (err) {
+                    console.error('Unexpected error fetching feed:', err);
+                    // Fallback
                     const { data: fallbackData } = await supabase
                         .from('posts')
                         .select('*')
                         .order('created_at', { ascending: false })
                         .range(offset, offset + limit - 1);
                     postsData = fallbackData || [];
-                } else {
-                    postsData = data || [];
                 }
-            } catch (err) {
-                console.error('Unexpected error fetching feed:', err);
-                // Fallback
-                const { data: fallbackData } = await supabase
-                    .from('posts')
-                    .select('*')
-                    .order('created_at', { ascending: false })
-                    .range(offset, offset + limit - 1);
-                postsData = fallbackData || [];
             }
 
             if (postsData && postsData.length > 0) {
@@ -739,7 +773,14 @@ export default function FeedPage() {
 
     const loadMorePosts = () => {
         if (!user || loadingMorePosts || !hasMorePosts || selectedHashtag) return;
-        fetchPosts(user.id, { offset: feedOffset, append: true });
+        fetchPosts(user.id, { offset: feedOffset, append: true, tab: feedTab });
+    };
+
+    const switchFeedTab = (tab: 'forYou' | 'following') => {
+        if (!user || tab === feedTab) return;
+        setFeedTab(tab);
+        setSelectedHashtag(null);
+        fetchPosts(user.id, { offset: 0, tab });
     };
 
     const fetchPostsByHashtag = async (hashtag: string) => {
@@ -866,6 +907,54 @@ export default function FeedPage() {
                 newSet.delete(postId);
                 return newSet;
             });
+        }
+    };
+
+    const getPostShareUrl = (postId: string) =>
+        typeof window !== 'undefined' ? `${window.location.origin}/feed/post/${postId}` : `/feed/post/${postId}`;
+
+    const copyPostLink = async (postId: string) => {
+        try {
+            await navigator.clipboard.writeText(getPostShareUrl(postId));
+            toast.success('Link copied');
+        } catch {
+            toast.error('Could not copy link');
+        }
+        setShareMenuOpen(null);
+    };
+
+    const sharePostToWhatsApp = (postId: string, content: string) => {
+        const preview = content ? `${content.slice(0, 120)}${content.length > 120 ? '…' : ''}\n\n` : '';
+        window.open(
+            `https://wa.me/?text=${encodeURIComponent(preview + getPostShareUrl(postId))}`,
+            '_blank',
+            'noopener,noreferrer'
+        );
+        setShareMenuOpen(null);
+    };
+
+    const handleBlockUser = async (targetUserId: string, targetName: string) => {
+        if (!user) return;
+        if (!confirm(`Block ${targetName}? They won't be able to see your posts or message you, and you won't see theirs.`)) return;
+        setModerationMenuOpen(null);
+        try {
+            await blockUser(user.id, targetUserId);
+            setBlockedUserIds((prev) => new Set(prev).add(targetUserId));
+            toast.success(`Blocked ${targetName}`);
+        } catch {
+            toast.error('Could not block this user');
+        }
+    };
+
+    const handleMuteUser = async (targetUserId: string, targetName: string) => {
+        if (!user) return;
+        setModerationMenuOpen(null);
+        try {
+            await muteUser(user.id, targetUserId);
+            setMutedUserIds((prev) => new Set(prev).add(targetUserId));
+            toast.success(`Muted ${targetName}. Their posts won't show in your feed.`);
+        } catch {
+            toast.error('Could not mute this user');
         }
     };
 
@@ -1781,7 +1870,7 @@ export default function FeedPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     {/* Left Sidebar - Profile */}
                     <div className="hidden lg:block lg:col-span-3">
-                        <div className="sticky top-24 space-y-4">
+                        <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto space-y-4 pb-4">
                             {/* Mini Profile Card */}
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                                 {/* Header Photo or Gradient */}
@@ -1840,6 +1929,10 @@ export default function FeedPage() {
                                         <TrendingUp className="w-4 h-4" />
                                         <span className="text-sm">Knowledge Hub</span>
                                     </Link>
+                                    <Link href="/connect/blocked" className="flex items-center gap-3 px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-lg">
+                                        <UserX className="w-4 h-4" />
+                                        <span className="text-sm">Blocked & Muted</span>
+                                    </Link>
                                 </nav>
                             </div>
                         </div>
@@ -1847,6 +1940,24 @@ export default function FeedPage() {
 
                     {/* Main Feed */}
                     <div className="lg:col-span-6 space-y-4">
+                        {/* Feed tabs */}
+                        {!selectedHashtag && (
+                            <div className="inline-flex items-center gap-1 p-1 rounded-full bg-white border border-gray-100 shadow-sm">
+                                <button
+                                    onClick={() => switchFeedTab('forYou')}
+                                    className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${feedTab === 'forYou' ? 'bg-green-600 text-white' : 'text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    For You
+                                </button>
+                                <button
+                                    onClick={() => switchFeedTab('following')}
+                                    className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${feedTab === 'following' ? 'bg-green-600 text-white' : 'text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    Following
+                                </button>
+                            </div>
+                        )}
+
                         {/* Hashtag Filter Indicator */}
                         {selectedHashtag && (
                             <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-2xl p-4">
@@ -2124,7 +2235,7 @@ export default function FeedPage() {
                         {/* Posts Feed */}
                         <div className="space-y-4">
                             {posts.length > 0 ? (
-                                posts.map((post) => {
+                                posts.filter((post) => !blockedUserIds.has(post.user_id) && !mutedUserIds.has(post.user_id)).map((post) => {
                                     const commentsForPost = postComments[post.id] || [];
                                     const commentCount = commentsForPost.length;
                                     const shouldAnimateComments = !prefersReducedMotion && commentCount <= 15;
@@ -2161,7 +2272,13 @@ export default function FeedPage() {
                                                         )}
                                                     </div>
                                                     <p className="text-sm text-gray-500">
-                                                        {post.profile?.organization_name || userTypeLabels[post.profile?.user_type]} · {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
+                                                        {post.profile?.organization_name || userTypeLabels[post.profile?.user_type]} ·{' '}
+                                                        <Link href={`/feed/post/${post.id}`} className="hover:underline hover:text-gray-700">
+                                                            {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
+                                                        </Link>
+                                                        {typeof post.views_count === 'number' && post.views_count > 0 && (
+                                                            <span className="text-gray-400"> · {post.views_count} view{post.views_count === 1 ? '' : 's'}</span>
+                                                        )}
                                                     </p>
                                                 </div>
                                                 {post.user_id === user?.id && (
@@ -2194,6 +2311,53 @@ export default function FeedPage() {
                                                                     >
                                                                         <Trash2 className="w-4 h-4" />
                                                                         Delete post
+                                                                    </button>
+                                                                </motion.div>
+                                                            )}
+                                                        </AnimatePresence>
+                                                    </div>
+                                                )}
+                                                {post.user_id !== user?.id && (
+                                                    <div className="relative">
+                                                        <button
+                                                            onClick={() => setModerationMenuOpen(moderationMenuOpen === post.id ? null : post.id)}
+                                                            className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+                                                            aria-label="Post options"
+                                                        >
+                                                            <MoreHorizontal className="w-5 h-5" />
+                                                        </button>
+
+                                                        <AnimatePresence>
+                                                            {moderationMenuOpen === post.id && (
+                                                                <motion.div
+                                                                    initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                                    exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                                                                    className="absolute right-0 top-full mt-1 w-52 bg-white rounded-xl shadow-lg border border-gray-200 py-1 z-50"
+                                                                >
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setReportTarget({ type: 'post', id: post.id, label: 'this post' });
+                                                                            setModerationMenuOpen(null);
+                                                                        }}
+                                                                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                                                                    >
+                                                                        <Flag className="w-4 h-4" />
+                                                                        Report post
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleMuteUser(post.user_id, post.profile?.full_name || 'this user')}
+                                                                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                                                                    >
+                                                                        <BellOff className="w-4 h-4" />
+                                                                        Mute {post.profile?.full_name?.split(' ')[0] || 'user'}
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleBlockUser(post.user_id, post.profile?.full_name || 'this user')}
+                                                                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50"
+                                                                    >
+                                                                        <UserX className="w-4 h-4" />
+                                                                        Block {post.profile?.full_name?.split(' ')[0] || 'user'}
                                                                     </button>
                                                                 </motion.div>
                                                             )}
@@ -2396,6 +2560,39 @@ export default function FeedPage() {
                                                     ) : (
                                                         <Bookmark className={`w-5 h-5 ${bookmarkedPostIds.has(post.id) ? "fill-current" : ""}`} />
                                                     )}</button>
+                                                <div className="relative">
+                                                    <button
+                                                        onClick={() => setShareMenuOpen(shareMenuOpen === post.id ? null : post.id)}
+                                                        aria-label="Share post"
+                                                        className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-green-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-green-50"
+                                                    >
+                                                        <Share2 className="w-5 h-5" />
+                                                    </button>
+                                                    <AnimatePresence>
+                                                        {shareMenuOpen === post.id && (
+                                                            <motion.div
+                                                                initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                                exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                                                                className="absolute right-0 bottom-full mb-2 w-48 bg-white rounded-xl shadow-lg border border-gray-200 py-1 z-50"
+                                                            >
+                                                                <button
+                                                                    onClick={() => copyPostLink(post.id)}
+                                                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                                                                >
+                                                                    <Copy className="w-4 h-4" /> Copy link
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => sharePostToWhatsApp(post.id, post.content)}
+                                                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                                                                >
+                                                                    <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.148.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" /><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.934-1.395A9.94 9.94 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18a7.94 7.94 0 01-4.052-1.107l-.29-.172-3.011.85.815-2.928-.19-.303A7.94 7.94 0 014 12c0-4.41 3.59-8 8-8s8 3.59 8 8-3.59 8-8 8z" /></svg>
+                                                                    WhatsApp
+                                                                </button>
+                                                            </motion.div>
+                                                        )}
+                                                    </AnimatePresence>
+                                                </div>
                                             </div>
                                         </div>
 
@@ -3103,8 +3300,22 @@ export default function FeedPage() {
                                     <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                                         <MessageCircle className="w-8 h-8 text-gray-400" />
                                     </div>
-                                    <h3 className="text-lg font-bold text-gray-900 mb-2">No posts yet</h3>
-                                    <p className="text-gray-500 mb-4">Be the first to share something with the community!</p>
+                                    <h3 className="text-lg font-bold text-gray-900 mb-2">
+                                        {feedTab === 'following' && !selectedHashtag ? 'No posts from your network yet' : 'No posts yet'}
+                                    </h3>
+                                    <p className="text-gray-500 mb-4">
+                                        {feedTab === 'following' && !selectedHashtag
+                                            ? 'Connect with more people to see their posts here.'
+                                            : 'Be the first to share something with the community!'}
+                                    </p>
+                                    {feedTab === 'following' && !selectedHashtag && (
+                                        <Link
+                                            href="/connect/directory"
+                                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-full hover:bg-green-700"
+                                        >
+                                            Browse directory
+                                        </Link>
+                                    )}
                                 </div>
                             )}
 
@@ -3134,16 +3345,9 @@ export default function FeedPage() {
 
                     {/* Right Sidebar */}
                     <div className="hidden lg:block lg:col-span-3">
-                        <div className="sticky top-24 space-y-4">
+                        <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto space-y-4 pb-4">
                             {/* Search */}
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                <input
-                                    type="text"
-                                    placeholder="Search..."
-                                    className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                />
-                            </div>
+                            <FeedSearch />
 
                             {/* People to Follow */}
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -3195,6 +3399,9 @@ export default function FeedPage() {
                                     View More
                                 </Link>
                             </div>
+
+                            {/* Events + Knowledge Hub cross-links */}
+                            <FeedRightRailExtras />
 
                             {/* Trending Topics */}
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
@@ -3252,6 +3459,17 @@ export default function FeedPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Report Modal */}
+            {reportTarget && user && (
+                <ReportModal
+                    reporterId={user.id}
+                    targetType={reportTarget.type}
+                    targetId={reportTarget.id}
+                    targetLabel={reportTarget.label}
+                    onClose={() => setReportTarget(null)}
+                />
+            )}
 
             {/* Delete Confirmation Modal */}
             <AnimatePresence>

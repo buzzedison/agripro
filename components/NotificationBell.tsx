@@ -134,7 +134,7 @@ export default function NotificationBell() {
         : notification.actor_id;
       router.push(`/connect/${profileSlug}`);
     } else if (notification.post_id) {
-      router.push(`/feed?post=${notification.post_id}`);
+      router.push(`/feed/post/${notification.post_id}`);
     }
 
     setIsOpen(false);

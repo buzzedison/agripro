@@ -3,6 +3,7 @@
 import React from 'react'
 import { useFormState } from 'react-dom'
 import { submitForm, FormType } from './actions'
+import { onUrlBlur } from '@/lib/utils/url'
 
 export default function GetInvolved() {
   // Work form state handler
@@ -200,6 +201,7 @@ export default function GetInvolved() {
                 <input
                   name="linkedin"
                   type="url"
+                  onBlur={onUrlBlur()}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   placeholder="https://linkedin.com/in/..."
                 />
@@ -476,6 +478,7 @@ export default function GetInvolved() {
                 </label>
                 <input
                   type="url"
+                  onBlur={onUrlBlur()}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   placeholder="https://drive.google.com/... or similar"
                   required
@@ -490,6 +493,7 @@ export default function GetInvolved() {
                 </label>
                 <input
                   type="url"
+                  onBlur={onUrlBlur()}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   placeholder="https://linkedin.com/in/..."
                 />
@@ -571,6 +575,7 @@ export default function GetInvolved() {
                   id="linkedin"
                   name="linkedin"
                   type="url"
+                  onBlur={onUrlBlur()}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   placeholder="https://linkedin.com/in/..."
                 />
