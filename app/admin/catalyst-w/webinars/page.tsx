@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
     Plus, RefreshCw, Loader2, CheckCircle, AlertCircle, X,
-    Calendar, Trash2, Edit2, ExternalLink, Eye, EyeOff, Star, Upload,
+    Calendar, Trash2, Edit2, ExternalLink, Eye, EyeOff, Star, Upload, Users,
 } from 'lucide-react';
 import { DEFAULT_WEBINAR, slugifyTitle, formatWebinarDate, formatWebinarTime, type CatalystWebinar } from '@/lib/catalyst-w/webinars';
 
@@ -12,6 +12,17 @@ interface Toast {
     id: string;
     type: 'success' | 'error';
     message: string;
+}
+
+interface WebinarRsvp {
+    id: string;
+    full_name: string;
+    email: string;
+    phone?: string | null;
+    country?: string | null;
+    organisation?: string | null;
+    role_title?: string | null;
+    created_at: string;
 }
 
 type FormData = {
@@ -88,6 +99,9 @@ export default function CatalystWWebinarsAdminPage() {
     const [form, setForm] = useState<FormData>(EMPTY_FORM);
     const [toasts, setToasts] = useState<Toast[]>([]);
     const [uploadingImage, setUploadingImage] = useState(false);
+    const [rsvpWebinar, setRsvpWebinar] = useState<CatalystWebinar | null>(null);
+    const [rsvps, setRsvps] = useState<WebinarRsvp[]>([]);
+    const [loadingRsvps, setLoadingRsvps] = useState(false);
 
     const addToast = (type: 'success' | 'error', message: string) => {
         const id = Math.random().toString(36).slice(2);
@@ -182,6 +196,39 @@ export default function CatalystWWebinarsAdminPage() {
         }
     };
 
+    const openRsvps = async (webinar: CatalystWebinar) => {
+        setRsvpWebinar(webinar);
+        setLoadingRsvps(true);
+        setRsvps([]);
+        try {
+            const res = await fetch(`/api/admin/catalyst-w/webinars/rsvps?webinar_id=${webinar.id}`);
+            if (!res.ok) throw new Error('Failed to load RSVPs');
+            setRsvps(await res.json());
+        } catch {
+            addToast('error', 'Could not load RSVPs');
+            setRsvpWebinar(null);
+        } finally {
+            setLoadingRsvps(false);
+        }
+    };
+
+    const exportRsvpsCsv = () => {
+        if (!rsvpWebinar || rsvps.length === 0) return;
+        const headers = ['Name', 'Email', 'Phone', 'Country', 'Organisation', 'Role', 'Registered'];
+        const rows = rsvps.map(r => [
+            r.full_name, r.email, r.phone ?? '', r.country ?? '', r.organisation ?? '', r.role_title ?? '',
+            new Date(r.created_at).toLocaleString(),
+        ]);
+        const csv = [headers, ...rows].map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `rsvps-${rsvpWebinar.slug}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
     const handleSave = async () => {
         if (!form.title || !form.slug || !form.starts_at) {
             addToast('error', 'Title, slug, and date/time are required');
@@ -264,6 +311,12 @@ export default function CatalystWWebinarsAdminPage() {
                             <p className="text-white/60 text-sm mt-1">Manage public events on the Woman Year page</p>
                         </div>
                         <div className="flex gap-2">
+                            <Link
+                                href="/admin/catalyst-w/webinars/registrations"
+                                className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm"
+                            >
+                                <Users size={14} /> Registrations
+                            </Link>
                             <button onClick={fetchWebinars} className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm">
                                 <RefreshCw size={14} /> Refresh
                             </button>
@@ -309,6 +362,14 @@ export default function CatalystWWebinarsAdminPage() {
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
+                                    <button
+                                        onClick={() => openRsvps(w)}
+                                        className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:text-[#0B2C24] hover:bg-gray-100 rounded-lg"
+                                        title="View RSVPs"
+                                    >
+                                        <Users size={14} />
+                                        RSVPs
+                                    </button>
                                     {w.status === 'published' && (
                                         <a
                                             href={`/webinars/${w.slug}`}
@@ -515,14 +576,17 @@ export default function CatalystWWebinarsAdminPage() {
                                     />
                                 </div>
                                 <div className="sm:col-span-2">
-                                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Registration URL</label>
+                                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Meeting link (internal only)</label>
                                     <input
                                         type="url"
                                         value={form.registration_url}
                                         onChange={e => setForm(f => ({ ...f, registration_url: e.target.value }))}
-                                        placeholder="https://zoom.us/... or Google Form link"
+                                        placeholder="Zoom / Google Meet link — not shown publicly"
                                         className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500/30"
                                     />
+                                    <p className="text-xs text-gray-400 mt-1">
+                                        Store the join link here for your records. Send it manually to RSVPs before the session — it is never shown on the public page.
+                                    </p>
                                 </div>
                                 <div className="sm:col-span-2">
                                     <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Full page content</label>
@@ -569,6 +633,66 @@ export default function CatalystWWebinarsAdminPage() {
                                 {saving && <Loader2 size={14} className="animate-spin" />}
                                 {editing ? 'Save changes' : 'Create webinar'}
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* RSVPs modal */}
+            {rsvpWebinar && (
+                <div className="fixed inset-0 z-50 flex items-start justify-center p-4 bg-black/40 overflow-y-auto">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl my-8">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                            <div>
+                                <h2 className="font-bold text-lg">RSVPs</h2>
+                                <p className="text-sm text-gray-500 truncate">{rsvpWebinar.title}</p>
+                            </div>
+                            <button onClick={() => setRsvpWebinar(null)} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg">
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            {loadingRsvps ? (
+                                <div className="flex justify-center py-12">
+                                    <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                                </div>
+                            ) : rsvps.length === 0 ? (
+                                <p className="text-center text-gray-400 py-12">No RSVPs yet.</p>
+                            ) : (
+                                <>
+                                    <div className="flex justify-between items-center mb-4">
+                                        <p className="text-sm text-gray-600">{rsvps.length} registration{rsvps.length !== 1 ? 's' : ''}</p>
+                                        <button
+                                            onClick={exportRsvpsCsv}
+                                            className="text-xs font-semibold text-[#0B2C24] hover:underline"
+                                        >
+                                            Export CSV
+                                        </button>
+                                    </div>
+                                    <div className="max-h-[50vh] overflow-y-auto divide-y divide-gray-100 border border-gray-100 rounded-xl">
+                                        {rsvps.map(r => (
+                                            <div key={r.id} className="px-4 py-3 text-sm">
+                                                <div className="font-semibold text-gray-900">{r.full_name}</div>
+                                                <a href={`mailto:${r.email}`} className="text-green-700 hover:underline">{r.email}</a>
+                                                <div className="text-gray-500 text-xs mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+                                                    {r.country && <span>{r.country}</span>}
+                                                    {r.organisation && <span>{r.organisation}</span>}
+                                                    {r.role_title && <span>{r.role_title}</span>}
+                                                    <span>{new Date(r.created_at).toLocaleString()}</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                            {rsvpWebinar.registration_url && (
+                                <div className="mt-4 p-3 bg-amber-50 border border-amber-100 rounded-lg text-xs text-amber-900">
+                                    <span className="font-semibold">Internal meeting link: </span>
+                                    <a href={rsvpWebinar.registration_url} target="_blank" rel="noopener noreferrer" className="underline break-all">
+                                        {rsvpWebinar.registration_url}
+                                    </a>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

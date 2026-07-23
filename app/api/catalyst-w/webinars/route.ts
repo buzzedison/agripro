@@ -9,7 +9,7 @@ const supabase = createClient(
 export async function GET() {
     const { data, error } = await supabase
         .from('catalyst_w_webinars')
-        .select('id, slug, title, subtitle, summary, image_url, starts_at, timezone, duration_minutes, format, venue, cost, registration_url, featured, meta_description')
+        .select('id, slug, title, subtitle, summary, image_url, starts_at, timezone, duration_minutes, format, venue, cost, featured, meta_description')
         .eq('status', 'published')
         .order('starts_at', { ascending: true });
 

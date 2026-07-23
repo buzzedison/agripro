@@ -6,7 +6,7 @@ import { formatWebinarDate, formatWebinarTime, type CatalystWebinar } from '@/li
 
 export type WebinarCardData = Pick<
     CatalystWebinar,
-    'id' | 'slug' | 'title' | 'subtitle' | 'summary' | 'image_url' | 'starts_at' | 'timezone' | 'duration_minutes' | 'format' | 'cost' | 'registration_url' | 'featured'
+    'id' | 'slug' | 'title' | 'subtitle' | 'summary' | 'image_url' | 'starts_at' | 'timezone' | 'duration_minutes' | 'format' | 'cost' | 'featured'
 >;
 
 const FORMAT_LABELS: Record<string, string> = {
@@ -89,16 +89,14 @@ export default function WebinarCard({ webinar, isPast = false }: { webinar: Webi
                     >
                         Learn more
                     </Link>
-                    {webinar.registration_url && !isPast && (
-                        <a
-                            href={webinar.registration_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                    {!isPast && (
+                        <Link
+                            href={`/webinars/${webinar.slug}#register`}
                             className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-[#F4C430] text-[#0B2C24] font-bold rounded-full text-sm hover:bg-[#0B2C24] hover:text-white transition-colors"
                         >
-                            Register now
+                            RSVP
                             <ArrowRight size={16} />
-                        </a>
+                        </Link>
                     )}
                 </div>
             </div>

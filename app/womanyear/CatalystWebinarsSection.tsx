@@ -6,14 +6,14 @@ import { formatWebinarDate, formatWebinarTime, type CatalystWebinar } from '@/li
 
 export type WebinarStripItem = Pick<
     CatalystWebinar,
-    'id' | 'slug' | 'title' | 'subtitle' | 'starts_at' | 'timezone' | 'duration_minutes' | 'format' | 'cost' | 'registration_url' | 'image_url' | 'featured'
+    'id' | 'slug' | 'title' | 'subtitle' | 'starts_at' | 'timezone' | 'duration_minutes' | 'format' | 'cost' | 'image_url' | 'featured'
 >;
 
 function StripCard({ webinar, isPast }: { webinar: WebinarStripItem; isPast?: boolean }) {
     return (
         <article className="flex-shrink-0 w-[min(100%,320px)] snap-start group">
             <Link
-                href={`/webinars/${webinar.slug}`}
+                href={`/webinars/${webinar.slug}${!isPast ? '#register' : ''}`}
                 className="flex h-full flex-col overflow-hidden rounded-xl border border-white/10 bg-white/[0.06] hover:bg-white/[0.1] transition-colors"
             >
                 {webinar.image_url ? (
@@ -63,18 +63,6 @@ function StripCard({ webinar, isPast }: { webinar: WebinarStripItem; isPast?: bo
                     </div>
                 </div>
             </Link>
-
-            {!isPast && webinar.registration_url && (
-                <a
-                    href={webinar.registration_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={e => e.stopPropagation()}
-                    className="mt-2 block text-center text-[11px] font-bold uppercase tracking-wider text-[#F4C430] hover:text-white transition-colors"
-                >
-                    Register →
-                </a>
-            )}
         </article>
     );
 }
