@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import CatalystFormModal, { CatalystFormType } from './CatalystFormModal';
 import CatalystFellowsStrip from './CatalystFellowsStrip';
+import CatalystWebinarsLoader from './CatalystWebinarsLoader';
 import {
     ArrowRight,
     Download,
@@ -147,6 +148,9 @@ const WomanYearPage = () => {
                         </div>
                     </div>
                 </section>
+
+                {/* Events & Webinars */}
+                <CatalystWebinarsLoader />
 
                 {/* Section 2: The Why Now */}
                 <section className="py-24 bg-white">
@@ -645,6 +649,13 @@ const WomanYearPage = () => {
                                 className="px-12 py-6 bg-[#F4C430] text-[#0B2C24] text-2xl font-black rounded-full hover:scale-105 transition-transform shadow-3xl">
                                 Join the Waitlist / Apply Now
                             </button>
+
+                            <p className="mt-8 text-white/60 text-sm">
+                                Not a founder?{' '}
+                                <Link href="/womanyear/donate" className="text-[#F4C430] font-bold underline underline-offset-4 hover:text-white transition-colors">
+                                    Fund one instead →
+                                </Link>
+                            </p>
                         </motion.div>
                     </div>
                 </section>

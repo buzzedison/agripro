@@ -52,6 +52,7 @@ const NAV: NavGroup[] = [
     label: 'Catalyst W',
     items: [
       { href: '/admin/catalyst-w', label: 'Accelerator', icon: Sparkles },
+      { href: '/admin/catalyst-w/webinars', label: 'Webinars & Events', icon: Globe2 },
       { href: '/admin/fellowship/catalyst-w', label: 'Fellowship Applications', icon: GraduationCap },
       { href: '/admin/fellowship/catalyst-w/cohort', label: 'Cohort Management', icon: Users },
     ],

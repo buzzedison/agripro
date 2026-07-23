@@ -6,6 +6,37 @@ const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY;
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://agriprohub.com';
 
+type CampaignCopy = {
+    fromName: string;
+    subjectCause: string;
+    heroLabel: string;
+    bodyLine: string;
+    ctaLabel: string;
+    ctaHref: string;
+    donateAgainHref: string;
+};
+
+const CAMPAIGNS: Record<string, CampaignCopy> = {
+    knowledge_hub: {
+        fromName: 'AgriPro Knowledge Hub',
+        subjectCause: 'AgriPro Knowledge Hub',
+        heroLabel: 'Your donation to AgriPro Knowledge Hub',
+        bodyLine: 'Your generosity helps keep the AgriPro Knowledge Hub free and open for agribusiness professionals across Africa. We\'re genuinely grateful.',
+        ctaLabel: 'Explore the Knowledge Hub →',
+        ctaHref: '/knowledgehub',
+        donateAgainHref: '/knowledgehub/donate',
+    },
+    catalyst_w: {
+        fromName: 'AgriPro Catalyst W',
+        subjectCause: 'Catalyst W & the Africa Food Futures Summit',
+        heroLabel: 'Your gift to Catalyst W & the Summit',
+        bodyLine: 'Your gift goes directly toward connecting 40 women agribusiness founders with the capital, markets and partners that turn a good business into a scalable one — and toward getting them on stage in Kigali this December in front of the people who can fund and buy from them.',
+        ctaLabel: 'See the accelerator →',
+        ctaHref: '/womanyear',
+        donateAgainHref: '/womanyear/donate',
+    },
+};
+
 export async function GET(request: NextRequest) {
     try {
         if (!PAYSTACK_SECRET) {
@@ -38,6 +69,8 @@ export async function GET(request: NextRequest) {
         const donorName = txn.metadata?.donor_name || null;
         const frequency = txn.metadata?.frequency || 'one-time';
         const message = txn.metadata?.message || null;
+        const campaign = txn.metadata?.campaign || 'knowledge_hub';
+        const copy = CAMPAIGNS[campaign] || CAMPAIGNS.knowledge_hub;
 
         // Update donation record to 'completed'
         try {
@@ -54,18 +87,18 @@ export async function GET(request: NextRequest) {
         if (resend && email) {
             const displayName = donorName || email.split('@')[0];
             resend.emails.send({
-                from: 'AgriPro Knowledge Hub <noreply@agriprohub.com>',
+                from: `${copy.fromName} <noreply@agriprohub.com>`,
                 to: email,
                 subject: `Thank you for your donation, ${displayName}!`,
                 html: `
                     <div style="font-family:system-ui,-apple-system,'Segoe UI',sans-serif;max-width:600px;margin:0 auto;color:#111827;line-height:1.6;">
                         <div style="background:#050A08;padding:32px 40px;border-radius:12px 12px 0 0;">
                             <h1 style="color:#ffffff;font-size:22px;font-weight:800;margin:0;">Thank you!</h1>
-                            <p style="color:#9ca3af;margin:8px 0 0;font-size:15px;">Your donation to AgriPro Knowledge Hub</p>
+                            <p style="color:#9ca3af;margin:8px 0 0;font-size:15px;">${copy.heroLabel}</p>
                         </div>
                         <div style="background:#ffffff;padding:32px 40px;border:1px solid #e5e7eb;border-top:none;">
                             <p>Hi ${displayName},</p>
-                            <p>Your generosity helps keep the AgriPro Knowledge Hub free and open for agribusiness professionals across Africa. We're genuinely grateful.</p>
+                            <p>${copy.bodyLine}</p>
 
                             <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:20px 24px;margin:24px 0;">
                                 <p style="margin:0 0 10px;font-weight:700;color:#15803d;font-size:14px;">DONATION SUMMARY</p>
@@ -87,11 +120,9 @@ export async function GET(request: NextRequest) {
 
                             ${message ? `<div style="background:#fafafa;border-left:3px solid #16a34a;padding:12px 16px;margin:16px 0;"><p style="margin:0;font-style:italic;color:#374151;font-size:14px;">"${message}"</p></div>` : ''}
 
-                            <p>Your donation supports free access to research, whitepapers, expert insights, and market intelligence for farmers and agripreneurs across Africa.</p>
-
                             <p style="margin-top:24px;">
-                                <a href="${SITE_URL}/knowledgehub" style="display:inline-block;background:#16a34a;color:white;padding:12px 28px;border-radius:50px;text-decoration:none;font-weight:700;font-size:14px;">
-                                    Explore the Knowledge Hub →
+                                <a href="${SITE_URL}${copy.ctaHref}" style="display:inline-block;background:#16a34a;color:white;padding:12px 28px;border-radius:50px;text-decoration:none;font-weight:700;font-size:14px;">
+                                    ${copy.ctaLabel}
                                 </a>
                             </p>
 
@@ -113,6 +144,7 @@ export async function GET(request: NextRequest) {
             donorName,
             frequency,
             email,
+            campaign,
         });
     } catch (err) {
         console.error('Donation verify error:', err);

@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
-        const { email, firstName, amount, frequency, message } = body;
+        const { email, firstName, amount, frequency, message, campaign, callbackPath } = body;
 
         if (!email || !amount) {
             return NextResponse.json({ error: 'Email and amount are required.' }, { status: 400 });
@@ -29,16 +29,19 @@ export async function POST(request: NextRequest) {
 
         // Paystack amount is in lowest currency unit (cents for USD)
         const amountInCents = Math.round(numAmount * 100);
+        const donationCampaign = campaign || 'knowledge_hub';
+        const successPath = callbackPath || '/knowledgehub/donate/success';
 
         const paystackPayload = {
             email,
             amount: amountInCents,
             currency: 'USD',
-            callback_url: `${SITE_URL}/knowledgehub/donate/success`,
+            callback_url: `${SITE_URL}${successPath}`,
             metadata: {
                 donor_name: firstName || null,
                 message: message || null,
                 frequency: frequency || 'one-time',
+                campaign: donationCampaign,
                 custom_fields: [
                     {
                         display_name: 'Donor Name',
@@ -49,6 +52,11 @@ export async function POST(request: NextRequest) {
                         display_name: 'Donation Type',
                         variable_name: 'frequency',
                         value: frequency === 'monthly' ? 'Monthly' : 'One-time',
+                    },
+                    {
+                        display_name: 'Campaign',
+                        variable_name: 'campaign',
+                        value: donationCampaign,
                     },
                 ],
             },
@@ -80,6 +88,7 @@ export async function POST(request: NextRequest) {
                 currency: 'USD',
                 frequency: frequency || 'one-time',
                 message: message || null,
+                campaign: donationCampaign,
                 paystack_reference: paystackData.data.reference,
                 status: 'pending',
             });
