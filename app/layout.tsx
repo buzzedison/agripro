@@ -4,6 +4,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import ClientNavbar from "./components/ClientNavbar";
 import ClientFooter from "./components/ClientFooter";
+import MetaPixel from "./components/MetaPixel";
 import { Toaster } from "sonner";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -98,6 +99,7 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body className={inter.className}>
+        <MetaPixel />
         <ClientNavbar />
         {children}
         <ClientFooter />
