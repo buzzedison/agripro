@@ -75,8 +75,8 @@ const WomanYearPage = () => {
                                 variants={{ hidden: { opacity: 0, y: 18 }, show: { opacity: 1, y: 0 } }}
                                 className="text-[2.5rem] leading-[1.08] md:text-5xl lg:text-[3.75rem] lg:leading-[1.06] font-semibold tracking-tight mb-8"
                             >
-                                The Pan-African launchpad<br className="hidden sm:block" /> for{' '}
-                                <span className="text-[#F4C430]">women agripreneurs</span>.
+                                Catalyst W helps women agribusiness owners secure{' '}
+                                <span className="text-[#F4C430]">the partner commitment they need next</span>.
                             </motion.h1>
 
                             {/* Standfirst */}
@@ -84,7 +84,7 @@ const WomanYearPage = () => {
                                 variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0 } }}
                                 className="text-lg md:text-xl text-white/65 max-w-xl leading-relaxed font-light mb-11"
                             >
-                                A 12-week, action-oriented accelerator connecting 40 women agribusiness owners directly to the partners, markets and capital they need. Not a course — a catalyst.
+                                A 12-week, action-oriented accelerator for 40 women-led agribusinesses. We diagnose the one constraint holding your business back, assign a venture lead, activate the right partner and drive one measurable outcome.
                             </motion.p>
 
                             {/* CTAs */}
@@ -96,7 +96,7 @@ const WomanYearPage = () => {
                                     onClick={() => openForm('apply')}
                                     className="group px-7 py-3.5 bg-[#F4C430] hover:bg-white text-[#0B2C24] font-semibold rounded-sm transition-colors flex items-center justify-center gap-2.5"
                                 >
-                                    Apply for Cohort 2026
+                                    Apply for the 2026 Cohort
                                     <ArrowRight size={17} className="group-hover:translate-x-0.5 transition-transform" />
                                 </button>
                                 <button
@@ -116,7 +116,7 @@ const WomanYearPage = () => {
                                 {[
                                     { value: "40", label: "Founders" },
                                     { value: "12 weeks", label: "Nov 2 – Feb 7" },
-                                    { value: "4", label: "Impact tracks" },
+                                    { value: "4 + 4", label: "Tracks + lanes" },
                                     { value: "Rwanda", label: "Summit · March 2027" },
                                 ].map((s) => (
                                     <div key={s.label} className="flex flex-col">
@@ -162,9 +162,9 @@ const WomanYearPage = () => {
                                 viewport={{ once: true }}
                                 transition={{ duration: 0.8 }}
                             >
-                                <h2 className="text-5xl font-bold mb-8 text-[#0B2C24]">History is Calling.</h2>
+                                <h2 className="text-5xl font-bold mb-8 text-[#0B2C24]">This is not another women-in-ag course.</h2>
                                 <p className="text-xl mb-8 text-gray-700 leading-relaxed">
-                                    We are at a once-in-a-generation inflection point. While women make up 80% of Africa’s agricultural labor, a $100B financing gap holds them back.
+                                    Catalyst W is a managed intervention for founders who already have real activity in the market. We do not gather 40 businesses into the same classroom and hope the content fits. We identify the specific constraint, then move the business toward the partner, evidence and commitment it needs.
                                 </p>
 
                                 <div className="space-y-8">
@@ -173,26 +173,26 @@ const WomanYearPage = () => {
                                             <TrendingUp className="text-red-600" />
                                         </div>
                                         <div>
-                                            <h4 className="font-bold text-lg mb-1">The Cost of Inaction:</h4>
-                                            <p className="text-gray-600">Stalled progress and millions hungry.</p>
+                                            <h4 className="font-bold text-lg mb-1">The problem we solve:</h4>
+                                            <p className="text-gray-600">Women agribusiness owners are building real companies, but many are blocked by one practical gap: a buyer, a facility, a license, working capital, data, logistics or the right decision-maker.</p>
                                         </div>
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-8 pt-4">
                                         <div>
                                             <span className="block text-4xl font-bold text-[#0B2C24]">$1 Trillion</span>
-                                            <span className="text-sm text-gray-500 uppercase tracking-wider">Potential GDP Increase</span>
+                                            <span className="text-sm text-gray-500 uppercase tracking-wider">Potential GDP Upside</span>
                                         </div>
                                         <div>
-                                            <span className="block text-4xl font-bold text-[#0B2C24]">45 Million</span>
-                                            <span className="text-sm text-gray-500 uppercase tracking-wider">People Lifted from Insecurity</span>
+                                            <span className="block text-4xl font-bold text-[#0B2C24]">40</span>
+                                            <span className="text-sm text-gray-500 uppercase tracking-wider">Founders Selected for Action</span>
                                         </div>
                                     </div>
 
                                     <div className="p-6 bg-[#0B2C24] text-white rounded-2xl shadow-xl">
-                                        <h4 className="font-bold text-xl mb-2">The AgriPro Opportunity:</h4>
+                                        <h4 className="font-bold text-xl mb-2">The AgriPro Difference:</h4>
                                         <p className="text-green-200">
-                                            AgriPro Catalyst W is the only accelerator that combines <span className="text-[#F4C430] font-bold italic">Venture Building + Direct Market Infrastructure + Policy Influence.</span>
+                                            Catalyst W combines <span className="text-[#F4C430] font-bold italic">venture building, market infrastructure, policy access and partner matchmaking</span> into one operating system built around your actual business.
                                         </p>
                                     </div>
                                 </div>
@@ -230,11 +230,11 @@ const WomanYearPage = () => {
                                 viewport={{ once: true }}
                                 className="text-4xl md:text-5xl font-bold mb-6 leading-tight"
                             >
-                                Most accelerators give you a contact.<br />
-                                <span className="text-[#F4C430]">We give you a connection that&apos;s real.</span>
+                                Most accelerators end with a pitch day.<br />
+                                <span className="text-[#F4C430]">We start with the deal in mind.</span>
                             </motion.h2>
                             <p className="text-xl text-gray-600 leading-relaxed">
-                                A warm intro you chase for months isn&apos;t access. Because AgriPro <span className="font-bold text-[#0B2C24]">operates the market rails</span> — data, logistics, offtake and policy access — the partners we connect you to can actually transact. When we open a door, it&apos;s already open.
+                                Every founder leaves diagnosis with a Founder Deal Mandate: the constraint to solve, the intervention lane, the target opportunity, the evidence required and the next partner move. Then AgriPro uses its market rails — data, logistics, offtake and policy access — to make introductions with intent.
                             </p>
                         </div>
 
@@ -284,7 +284,7 @@ const WomanYearPage = () => {
                         </div>
 
                         <p className="text-center text-gray-500 max-w-2xl mx-auto mt-14 text-sm">
-                            We own the rails. That&apos;s why the connections we make in the next 12 weeks hold up after the program ends.
+                            The goal is not attendance. The goal is business movement: a revenue opportunity, capacity improvement, compliance progress, investment readiness or a documented next step with a qualified partner.
                         </p>
                     </div>
                 </section>
@@ -293,8 +293,11 @@ const WomanYearPage = () => {
                 <section className="py-24 bg-white">
                     <div className="container mx-auto px-6">
                         <div className="text-center mb-16">
-                            <h2 className="text-4xl md:text-5xl font-bold mb-4">40 Ventures. 4 High-Impact Tracks.</h2>
-                            <div className="flex items-center justify-center gap-4 mt-6">
+                            <h2 className="text-4xl md:text-5xl font-bold mb-4">40 Ventures. 4 Impact Tracks.</h2>
+                            <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+                                You apply through the track that best describes your business. Inside the accelerator, your work is routed into the intervention lane that can move your specific constraint fastest.
+                            </p>
+                            <div className="flex flex-wrap items-center justify-center gap-4 mt-6">
                                 <span className="flex items-center gap-1 bg-green-50 text-green-700 px-3 py-1 rounded-full text-sm font-medium">
                                     <CheckCircle2 size={16} /> Woman Founder/Co-Founder
                                 </span>
@@ -305,6 +308,23 @@ const WomanYearPage = () => {
                                     <CheckCircle2 size={16} /> Scalable Model
                                 </span>
                             </div>
+                        </div>
+
+                        <div className="grid md:grid-cols-4 gap-4 mb-12">
+                            {[
+                                { icon: <Handshake size={20} />, lane: "Market & Offtake", desc: "Buyers, distribution, demand validation and commercial next steps." },
+                                { icon: <Truck size={20} />, lane: "Operations & Supply", desc: "Capacity, logistics, cold chain, inputs and fulfillment readiness." },
+                                { icon: <CreditCard size={20} />, lane: "Capital Readiness", desc: "Investment process, lender readiness, data room and financial evidence." },
+                                { icon: <Globe size={20} />, lane: "Policy & Partnerships", desc: "Compliance, licensing, institutional access and strategic alliances." }
+                            ].map((lane) => (
+                                <div key={lane.lane} className="rounded-2xl border border-gray-100 bg-[#F9FAF9] p-5">
+                                    <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#0B2C24] text-[#F4C430]">
+                                        {lane.icon}
+                                    </div>
+                                    <h4 className="font-bold text-[#0B2C24] mb-2">{lane.lane}</h4>
+                                    <p className="text-sm leading-relaxed text-gray-600">{lane.desc}</p>
+                                </div>
+                            ))}
                         </div>
 
                         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -375,26 +395,32 @@ const WomanYearPage = () => {
                             </p>
                         </div>
 
-                        {/* The 3-step engine */}
-                        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+                        {/* The 4-phase engine */}
+                        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
                             {[
                                 {
                                     step: "01",
-                                    title: "Assess",
-                                    desc: "We diagnose your single biggest constraint right now — capital, market access, supply, or compliance. No generic syllabus.",
+                                    title: "Diagnose",
+                                    desc: "Weeks 1-3 produce a verified baseline and Founder Deal Mandate: one constraint, one lane, one measurable outcome.",
                                     icon: <Target className="text-[#F4C430]" size={28} />
                                 },
                                 {
                                     step: "02",
-                                    title: "Connect",
-                                    desc: "We introduce you directly to the one partner who can move the needle — an investor, an offtake buyer, a logistics provider, or a policymaker.",
+                                    title: "Matchmake",
+                                    desc: "Weeks 4-7 activate the right partner conversation, with a named decision-maker and a dated next action.",
                                     icon: <Handshake className="text-[#F4C430]" size={28} />
                                 },
                                 {
                                     step: "03",
-                                    title: "Equip",
-                                    desc: "Targeted prep — pitch coaching, data room, term-sheet readiness — so you walk into that connection ready to close, not just talk.",
+                                    title: "Prepare",
+                                    desc: "Weeks 8-10 build the evidence pack: buyer brief, compliance file, data room, operating numbers or investment memo.",
                                     icon: <Zap className="text-[#F4C430]" size={28} />
+                                },
+                                {
+                                    step: "04",
+                                    title: "Close",
+                                    desc: "Weeks 11-12 turn momentum into a commitment, due-diligence request, pilot, order, LOI or decision-grade pathway.",
+                                    icon: <CheckCircle2 className="text-[#F4C430]" size={28} />
                                 }
                             ].map((s, i) => (
                                 <motion.div
@@ -414,6 +440,22 @@ const WomanYearPage = () => {
                                 </motion.div>
                             ))}
                         </div>
+
+                        <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl mx-auto">
+                            {[
+                                "Constraint before content",
+                                "One primary mandate per founder",
+                                "Evidence over attendance",
+                                "Mentors as operators",
+                                "Introductions with intent",
+                                "Summit as a deal room"
+                            ].map((principle) => (
+                                <div key={principle} className="flex items-center gap-3 rounded-2xl bg-white border border-gray-100 px-5 py-4">
+                                    <CheckCircle2 size={18} className="text-[#F4C430] shrink-0" />
+                                    <span className="font-semibold text-[#0B2C24]">{principle}</span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </section>
 
@@ -431,10 +473,10 @@ const WomanYearPage = () => {
 
                             <div className="grid md:grid-cols-4 gap-8 relative z-10">
                                 {[
-                                    { week: "Weeks 1–3", title: "Diagnose", desc: "Deep-dive on your business. We pinpoint the constraint to break." },
-                                    { week: "Weeks 4–7", title: "Matchmake", desc: "Direct introductions to the partner who can unlock your next stage." },
-                                    { week: "Weeks 8–10", title: "Prepare", desc: "Pitch, data room and negotiation prep — built for the specific deal." },
-                                    { week: "Weeks 11–12", title: "Close", desc: "Convert the connection. Lock in capital, offtake, or partnership." }
+                                    { week: "Weeks 1–3", title: "Diagnose", desc: "Verify the baseline, approve the mandate and agree what success must look like." },
+                                    { week: "Weeks 4–7", title: "Matchmake", desc: "Move from need to partner conversation, with owners and next actions tracked." },
+                                    { week: "Weeks 8–10", title: "Prepare", desc: "Build the evidence pack needed for the buyer, investor, regulator or partner." },
+                                    { week: "Weeks 11–12", title: "Close", desc: "Classify the outcome and secure a commitment or decision-grade next step." }
                                 ].map((step, i) => (
                                     <motion.div
                                         key={i}
@@ -502,10 +544,10 @@ const WomanYearPage = () => {
 
                             {/* Theme */}
                             <p className="text-2xl md:text-3xl font-light italic text-white/80 mb-6 border-l-4 border-[#F4C430] pl-6">
-                                Where the 40 accelerator founders &amp; 25 fellows turn momentum into deals.
+                                Where the 40 accelerator founders &amp; 25 fellows turn partner momentum into commitments.
                             </p>
                             <p className="text-lg text-white/70 mb-14 max-w-2xl">
-                                Not another conference of abstract panels. The Summit mobilizes every attendee into focused work groups built to deliver tangible support — capital, contracts and commitments — to the founders on stage.
+                                Not another conference of abstract panels. The Summit is the deal room at the end of the accelerator: every founder arrives with a mandate, an evidence pack and live partner conversations already underway.
                             </p>
 
                             {/* Benefit cards */}
@@ -516,7 +558,7 @@ const WomanYearPage = () => {
                                 </li>
                                 <li className="flex flex-col gap-4 p-7 bg-white/8 backdrop-blur-sm rounded-2xl border border-white/15 hover:border-[#F4C430]/50 transition-colors">
                                     <Handshake size={24} className="text-[#F4C430]" />
-                                    <p className="font-semibold text-base leading-snug">Mobilize work groups, not just discussions.</p>
+                                    <p className="font-semibold text-base leading-snug">Advance work groups, not cold introductions.</p>
                                 </li>
                                 <li className="flex flex-col gap-4 p-7 bg-white/8 backdrop-blur-sm rounded-2xl border border-white/15 hover:border-[#F4C430]/50 transition-colors">
                                     <Target size={24} className="text-[#F4C430]" />
@@ -561,9 +603,9 @@ const WomanYearPage = () => {
                 <section className="py-24 bg-white">
                     <div className="container mx-auto px-6">
                         <div className="text-center mb-16">
-                            <h2 className="text-4xl md:text-5xl font-bold mb-4">An Investment in Your Growth.</h2>
+                            <h2 className="text-4xl md:text-5xl font-bold mb-4">Pay for the operating support, not a library of lessons.</h2>
                             <p className="text-gray-600 max-w-2xl mx-auto">
-                                Our fee structure is designed for accessibility, supported by corporate sponsors.
+                                Your fee helps cover diagnosis, venture lead support, focused clinics, partner preparation, platform access and outcome tracking. Corporate sponsors help keep the programme accessible.
                             </p>
                         </div>
 
@@ -572,19 +614,19 @@ const WomanYearPage = () => {
                                 {
                                     title: "Scholarship",
                                     price: "$199",
-                                    desc: "Subsidized fee for exceptional founders",
+                                    desc: "Subsidized access for selected founders",
                                     highlight: false
                                 },
                                 {
                                     title: "Programme",
                                     price: "$399",
-                                    desc: "Full 12-week programme access",
+                                    desc: "Full 12-week accelerator operating support",
                                     highlight: false
                                 },
                                 {
                                     title: "Programme + Summit",
                                     price: "$599",
-                                    desc: "Programme access plus Africa Food Futures Summit entry",
+                                    desc: "Accelerator support plus Africa Food Futures Summit entry",
                                     highlight: true
                                 }
                             ].map((plan, i) => (
@@ -617,7 +659,7 @@ const WomanYearPage = () => {
                             ))}
                         </div>
                         <p className="text-center mt-12 text-sm text-gray-500 italic">
-                            *Fees cover the programme, platform access, and — where selected — Summit entry. Travel is not included.
+                            *Fees cover programme delivery, platform access and — where selected — Summit entry. Travel is not included.
                         </p>
                     </div>
                 </section>
@@ -639,15 +681,15 @@ const WomanYearPage = () => {
                             whileInView={{ opacity: 1, scale: 1 }}
                             viewport={{ once: true }}
                         >
-                            <h2 className="text-5xl md:text-7xl font-bold mb-6">The Harvest is Waiting.</h2>
+                            <h2 className="text-5xl md:text-7xl font-bold mb-6">Bring the constraint we can move.</h2>
                             <p className="text-2xl mb-12 text-green-100 max-w-2xl mx-auto">
-                                <span className="font-bold text-[#F4C430]">Applications are open now.</span> Don&apos;t miss the chance to define the future of food.
+                                <span className="font-bold text-[#F4C430]">Applications are open now.</span> Apply with the business problem you need Catalyst W to help unlock.
                             </p>
 
                             <button
                                 onClick={() => openForm('apply')}
                                 className="px-12 py-6 bg-[#F4C430] text-[#0B2C24] text-2xl font-black rounded-full hover:scale-105 transition-transform shadow-3xl">
-                                Join the Waitlist / Apply Now
+                                Apply with your growth constraint
                             </button>
 
                             <p className="mt-8 text-white/60 text-sm">

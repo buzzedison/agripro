@@ -60,12 +60,12 @@ export default function CatalystFellowsStrip() {
                             </span>
                         </div>
                         <h2 className="text-3xl md:text-5xl font-bold text-white leading-tight">
-                            The people who make<br />your connections happen.
+                            The fellows running<br />the accelerator.
                         </h2>
                         <p className="text-white/60 mt-5 leading-relaxed">
-                            Catalyst W is planned and run by AgriPro Catalyst Fellows — operators,
-                            partnerships leads and organisers across Africa who open the doors and
-                            broker the introductions that move your business forward.
+                            Catalyst W is managed by AgriPro Catalyst Fellows — operators,
+                            partnership leads and organisers across Africa. They help diagnose founder
+                            needs, coordinate partners and track the commitments that move each business forward.
                         </p>
                     </div>
                     <Link
