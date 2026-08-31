@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import {
     Plus, X, RefreshCw, CheckCircle2, Circle, Eye, EyeOff,
-    Trash2, ExternalLink, BookOpen, Sparkles, Clock, ShieldAlert, Trophy,
+    Trash2, ExternalLink, BookOpen, Sparkles, Clock, ShieldAlert, Trophy, Download,
 } from 'lucide-react';
 import {
     type PerformanceRating, type WeeklyScore, RATING_LABEL, RATING_BADGE,
@@ -229,6 +229,46 @@ export default function AdminFellowsPage() {
         ? Math.round(fellows.reduce((sum, f) => sum + completenessPercent(f), 0) / fellows.length)
         : 0;
 
+    const exportFellowsCsv = () => {
+        const headers = [
+            'Full Name', 'Email', 'Designation', 'Role in AgriPro', 'Country', 'City',
+            'Status', 'Public', 'Profile Claimed', 'Weekly Hours Committed',
+            'Performance Rating', 'Total Points', 'LinkedIn', 'Knowledge Hub Published',
+            'Admin Notes', 'Joined',
+        ];
+        const rows = fellows.map((f) => {
+            const kh = counts[f.email.toLowerCase()];
+            return [
+                f.full_name,
+                f.email,
+                designationLabel(f.designation, f.role_in_agripro),
+                f.role_in_agripro || '',
+                f.country || '',
+                f.city || '',
+                f.status,
+                f.is_public ? 'Yes' : 'No',
+                f.claimed_at ? new Date(f.claimed_at).toLocaleDateString() : 'Not claimed',
+                f.weekly_hours_committed != null ? String(f.weekly_hours_committed) : '',
+                RATING_LABEL[f.performance_rating] || f.performance_rating,
+                String(f.total_points ?? 0),
+                f.linkedin_url || '',
+                kh ? `${kh.published}/${kh.total}` : '0/0',
+                f.admin_notes || '',
+                new Date(f.created_at).toLocaleDateString(),
+            ];
+        });
+        const csv = [headers, ...rows]
+            .map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','))
+            .join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `catalyst-fellows-${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
     return (
         <div className="p-6 lg:p-8 max-w-6xl">
             <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
@@ -255,6 +295,13 @@ export default function AdminFellowsPage() {
                     >
                         <ExternalLink className="w-4 h-4" /> Public directory
                     </Link>
+                    <button
+                        onClick={exportFellowsCsv}
+                        disabled={fellows.length === 0}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                    >
+                        <Download className="w-4 h-4" /> Export CSV
+                    </button>
                     <button
                         onClick={() => setShowAdd(true)}
                         className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#0B2C24] text-white text-sm font-medium hover:bg-[#10392f]"

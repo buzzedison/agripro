@@ -38,7 +38,7 @@ export default function SummitNavbar() {
                                 Africa Food Futures
                             </span>
                             <span className="text-[#F4C430] font-bold text-[9px] tracking-[0.35em] uppercase mt-0.5">
-                                Kigali · Oct 2026
+                                Rwanda · March 2027
                             </span>
                         </div>
 

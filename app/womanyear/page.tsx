@@ -115,9 +115,9 @@ const WomanYearPage = () => {
                             >
                                 {[
                                     { value: "40", label: "Founders" },
-                                    { value: "12 weeks", label: "Sep 1 – Nov 23" },
+                                    { value: "12 weeks", label: "Nov 2 – Feb 7" },
                                     { value: "4", label: "Impact tracks" },
-                                    { value: "Kigali", label: "Summit · December" },
+                                    { value: "Rwanda", label: "Summit · March 2027" },
                                 ].map((s) => (
                                     <div key={s.label} className="flex flex-col">
                                         <span className="text-xl md:text-2xl font-semibold text-white leading-none">{s.value}</span>
@@ -134,10 +134,10 @@ const WomanYearPage = () => {
                     <div className="container mx-auto px-6">
                         <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-white/10">
                             {[
-                                { icon: <Calendar className="text-[#F4C430]" size={20} />, label: "Applications open", value: "July 6, 2026" },
-                                { icon: <Calendar className="text-[#F4C430]" size={20} />, label: "Applications close", value: "End of Aug 2026" },
-                                { icon: <Zap className="text-[#F4C430]" size={20} />, label: "Accelerator (12 weeks)", value: "Sep 1 – Nov 23" },
-                                { icon: <Target className="text-[#F4C430]" size={20} />, label: "Africa Food Futures Summit", value: "First week of Dec" },
+                                { icon: <Calendar className="text-[#F4C430]" size={20} />, label: "Applications", value: "Open now" },
+                                { icon: <Calendar className="text-[#F4C430]" size={20} />, label: "Complete applications reviewed through", value: "Fri 16 Oct 2026" },
+                                { icon: <Zap className="text-[#F4C430]" size={20} />, label: "Programme", value: "2 Nov 2026 – 7 Feb 2027" },
+                                { icon: <Target className="text-[#F4C430]" size={20} />, label: "Africa Food Futures Summit", value: "Rwanda · March 2027" },
                             ].map((d, i) => (
                                 <div key={i} className="flex flex-col items-center text-center gap-2 py-8 px-3">
                                     <div className="hidden sm:block">{d.icon}</div>
@@ -256,7 +256,7 @@ const WomanYearPage = () => {
                                     icon: <Handshake className="text-[#F4C430]" />,
                                     rail: "Offtake",
                                     title: "A buyer intro that becomes an order",
-                                    desc: "Guaranteed offtake trials and premium pricing via Green Markets — turning a market connection into a real first contract."
+                                    desc: "Premium pricing and real buyer connections via Green Markets — turning a market intro into a real first contract."
                                 },
                                 {
                                     icon: <Building2 className="text-[#F4C430]" />,
@@ -422,7 +422,7 @@ const WomanYearPage = () => {
                     <div className="container mx-auto px-6">
                         <div className="text-center mb-16">
                             <h2 className="text-4xl md:text-5xl font-bold mb-4">12 Weeks of Action.</h2>
-                            <p className="text-xl text-green-200">September 1 – November 23, 2026. Then we take it to the Summit.</p>
+                            <p className="text-xl text-green-200">2 November 2026 – 7 February 2027, with a break from 21 December – 3 January. Then we take it to the Summit.</p>
                         </div>
 
                         <div className="relative">
@@ -454,7 +454,7 @@ const WomanYearPage = () => {
                         </div>
                         <div className="mt-12 text-center">
                             <span className="inline-block px-8 py-3 bg-[#F4C430] text-[#0B2C24] font-bold rounded-full text-xl shadow-[0_0_20px_rgba(244,196,48,0.4)]">
-                                First Week of December: THE SUMMIT
+                                Rwanda, March 2027: THE SUMMIT
                             </span>
                         </div>
                     </div>
@@ -465,7 +465,7 @@ const WomanYearPage = () => {
                     <div className="absolute inset-0">
                         <Image
                             src="/images/catalyst-cta.png"
-                            alt="Kigali Summit"
+                            alt="Africa Food Futures Summit"
                             fill
                             className="object-cover object-center"
                         />
@@ -493,10 +493,10 @@ const WomanYearPage = () => {
                             {/* Location & date pills */}
                             <div className="flex flex-wrap items-center gap-4 mb-8">
                                 <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/10 border border-white/20 text-sm font-bold uppercase tracking-widest">
-                                    <MapPin size={14} className="text-[#F4C430]" /> Kigali, Rwanda
+                                    <MapPin size={14} className="text-[#F4C430]" /> Rwanda
                                 </span>
                                 <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/10 border border-white/20 text-sm font-bold uppercase tracking-widest">
-                                    <Calendar size={14} className="text-[#F4C430]" /> First Week of December 2026
+                                    <Calendar size={14} className="text-[#F4C430]" /> March 2027
                                 </span>
                             </div>
 
@@ -570,22 +570,22 @@ const WomanYearPage = () => {
                         <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
                             {[
                                 {
-                                    title: "Standard Access",
-                                    price: "$1,000",
-                                    desc: "Full program + Summit",
-                                    highlight: false
-                                },
-                                {
-                                    title: "Subsidized",
-                                    price: "$399",
-                                    desc: "For LDCs & Climate-Vulnerable regions",
-                                    highlight: true
-                                },
-                                {
                                     title: "Scholarship",
-                                    price: "Fully Funded",
-                                    desc: "Limited slots for exceptional founders",
+                                    price: "$199",
+                                    desc: "Subsidized fee for exceptional founders",
                                     highlight: false
+                                },
+                                {
+                                    title: "Programme",
+                                    price: "$399",
+                                    desc: "Full 12-week programme access",
+                                    highlight: false
+                                },
+                                {
+                                    title: "Programme + Summit",
+                                    price: "$599",
+                                    desc: "Programme access plus Africa Food Futures Summit entry",
+                                    highlight: true
                                 }
                             ].map((plan, i) => (
                                 <motion.div
@@ -616,8 +616,8 @@ const WomanYearPage = () => {
                                 </motion.div>
                             ))}
                         </div>
-                        <p className="text-center mt-12 text-sm text-gray-500 italic italic">
-                            *Note: Fees cover curriculum, platform access, and Summit entry. Travel stipends available.
+                        <p className="text-center mt-12 text-sm text-gray-500 italic">
+                            *Fees cover the programme, platform access, and — where selected — Summit entry. Travel is not included.
                         </p>
                     </div>
                 </section>
@@ -641,7 +641,7 @@ const WomanYearPage = () => {
                         >
                             <h2 className="text-5xl md:text-7xl font-bold mb-6">The Harvest is Waiting.</h2>
                             <p className="text-2xl mb-12 text-green-100 max-w-2xl mx-auto">
-                                Applications open <span className="font-bold text-[#F4C430]">July 6, 2026</span> and close end of August. Don&apos;t miss the chance to define the future of food.
+                                <span className="font-bold text-[#F4C430]">Applications are open now.</span> Don&apos;t miss the chance to define the future of food.
                             </p>
 
                             <button

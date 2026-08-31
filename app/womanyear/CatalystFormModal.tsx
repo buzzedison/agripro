@@ -47,7 +47,7 @@ const STAGES = [
     'Scale Stage (> $100k revenue)',
 ]
 
-const PLAN_TIERS = ['Standard Access ($1,000)', 'Subsidized ($399 — LDCs & Climate-Vulnerable)', 'Scholarship (Fully Funded)']
+const PLAN_TIERS = ['Scholarship ($199)', 'Programme ($399)', 'Programme + Summit ($599)']
 
 const REFERRAL_SOURCES = [
     'Instagram',

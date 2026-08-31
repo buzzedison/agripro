@@ -57,8 +57,8 @@ const differentiators = [
     },
     {
         icon: Plane,
-        title: 'Kigali Summit attendance',
-        description: 'All active fellows attend the Africa Food Futures Summit in Kigali with travel support. Build relationships in person.',
+        title: 'Summit attendance',
+        description: 'All active fellows attend the Africa Food Futures Summit in Rwanda with travel support. Build relationships in person.',
     },
 ];
 

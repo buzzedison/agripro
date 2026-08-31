@@ -50,8 +50,8 @@ export async function POST(request: NextRequest) {
     if (!subject?.trim() || !message?.trim()) {
         return NextResponse.json({ error: 'Subject and message are required.' }, { status: 400 });
     }
-    if (rsvpIds.length > 500) {
-        return NextResponse.json({ error: 'Too many recipients in one send (max 500).' }, { status: 400 });
+    if (rsvpIds.length > 150) {
+        return NextResponse.json({ error: 'Too many recipients in one send (max 150) — split into batches to stay within the function timeout.' }, { status: 400 });
     }
 
     const { data: rsvps, error: fetchError } = await supabase
@@ -78,8 +78,15 @@ export async function POST(request: NextRequest) {
 
     let sent = 0;
     const failed: string[] = [];
+    let lastErrorMessage: string | null = null;
+    let isFirst = true;
 
     for (const r of recipients) {
+        // Stay well under Resend's per-second rate limit on bulk sends —
+        // a tight loop with no delay gets most requests rejected as 429s.
+        if (!isFirst) await new Promise((resolve) => setTimeout(resolve, 200));
+        isFirst = false;
+
         const firstName = r.full_name?.trim().split(' ')[0] || 'there';
         try {
             const { error } = await resend.emails.send({
@@ -91,10 +98,14 @@ export async function POST(request: NextRequest) {
             if (error) throw error;
             sent++;
         } catch (err) {
+            const msg = err instanceof Error ? err.message : typeof err === 'object' && err && 'message' in err
+                ? String((err as { message: unknown }).message)
+                : 'Unknown error';
             console.error(`Bulk email failed for ${r.email}:`, err);
             failed.push(r.email);
+            lastErrorMessage = msg;
         }
     }
 
-    return NextResponse.json({ sent, failed, total: recipients.length });
+    return NextResponse.json({ sent, failed, total: recipients.length, errorMessage: lastErrorMessage });
 }

@@ -102,7 +102,7 @@ function SuccessContent() {
                 )}
 
                 <p className="text-gray-600 text-lg leading-relaxed mb-8">
-                    Your gift goes straight into connecting a Catalyst W founder with the partner who can move her business forward — and getting her to Kigali this December to close it. A receipt is on its way to your email.
+                    Your gift goes straight into connecting a Catalyst W founder with the partner who can move her business forward — and getting her to the Summit in Rwanda to close it. A receipt is on its way to your email.
                 </p>
 
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">

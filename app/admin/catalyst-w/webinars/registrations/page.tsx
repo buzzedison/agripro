@@ -346,7 +346,7 @@ function ComposeModal({
     const [message, setMessage] = useState('');
     const [sending, setSending] = useState(false);
     const [error, setError] = useState('');
-    const [result, setResult] = useState<{ sent: number; failed: string[]; total: number } | null>(null);
+    const [result, setResult] = useState<{ sent: number; failed: string[]; total: number; errorMessage?: string | null } | null>(null);
 
     const handleSend = async () => {
         setError('');
@@ -403,6 +403,11 @@ function ComposeModal({
                                     <p className="text-xs font-bold text-red-700 mb-1 flex items-center gap-1.5">
                                         <AlertCircle size={12} /> {result.failed.length} failed to send
                                     </p>
+                                    {result.errorMessage && (
+                                        <p className="text-xs text-red-700 font-mono bg-red-100/60 rounded px-2 py-1.5 mb-2 break-words">
+                                            {result.errorMessage}
+                                        </p>
+                                    )}
                                     <p className="text-xs text-red-600 break-words">{result.failed.join(', ')}</p>
                                 </div>
                             )}

@@ -22,14 +22,14 @@ const IMPACT_TIERS = [
     },
     {
         amount: 500,
-        title: 'Send a founder to Kigali',
+        title: 'Send a founder to the Summit',
         description: 'Contributes toward one founder\'s travel and accommodation for the Africa Food Futures Summit — where the connections made in the accelerator get closed.',
         highlight: true,
     },
     {
         amount: 1000,
         title: 'Back a founder for 12 weeks',
-        description: 'Helps underwrite one founder\'s full place in the accelerator — diagnosis, matchmaking, pitch prep, and a seat at the Summit in December.',
+        description: 'Helps underwrite one founder\'s full place in the accelerator — diagnosis, matchmaking, pitch prep, and a seat at the Summit.',
     },
 ];
 
@@ -398,10 +398,10 @@ export default function CatalystWDonatePage() {
                         <Users className="w-6 h-6 text-[#0B2C24]" />
                     </div>
                     <h2 className="text-2xl md:text-3xl font-bold mb-4">
-                        40 founders. 25 fellows. One Summit in Kigali this December.
+                        40 founders. 25 fellows. One Summit in Rwanda this March.
                     </h2>
                     <p className="text-gray-500 leading-relaxed mb-8">
-                        Everyone who walks into the Africa Food Futures Summit this December will have gone through the same engine — diagnosed, connected, and prepared. Your gift is what keeps that engine running for the next cohort.
+                        Everyone who walks into the Africa Food Futures Summit will have gone through the same engine — diagnosed, connected, and prepared. Your gift is what keeps that engine running for the next cohort.
                     </p>
                     <div className="flex flex-col sm:flex-row gap-3 justify-center">
                         <a

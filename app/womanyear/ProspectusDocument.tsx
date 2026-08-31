@@ -109,16 +109,16 @@ function ProspectusDocument() {
                 <View>
                     <View style={s.coverDates}>
                         <View style={s.coverDateItem}>
-                            <Text style={s.coverDateLabel}>Applications open</Text>
-                            <Text style={s.coverDateValue}>July 6, 2026</Text>
+                            <Text style={s.coverDateLabel}>Applications</Text>
+                            <Text style={s.coverDateValue}>Open now</Text>
                         </View>
                         <View style={s.coverDateItem}>
-                            <Text style={s.coverDateLabel}>Accelerator</Text>
-                            <Text style={s.coverDateValue}>Sep 1 – Nov 23</Text>
+                            <Text style={s.coverDateLabel}>Programme</Text>
+                            <Text style={s.coverDateValue}>2 Nov 2026 – 7 Feb 2027</Text>
                         </View>
                         <View style={s.coverDateItem}>
-                            <Text style={s.coverDateLabel}>Summit · Kigali</Text>
-                            <Text style={s.coverDateValue}>December 2026</Text>
+                            <Text style={s.coverDateLabel}>Summit</Text>
+                            <Text style={s.coverDateValue}>Rwanda · March 2027</Text>
                         </View>
                     </View>
                     <Text style={s.coverFoot}>2026 — UN International Year of the Woman Farmer</Text>
@@ -248,7 +248,7 @@ function ProspectusDocument() {
                         </View>
                         <View style={s.colItem}>
                             <Text style={s.colTitle}>Offtake</Text>
-                            <Text style={s.colDesc}>Guaranteed buyer trials that become real contracts.</Text>
+                            <Text style={s.colDesc}>Real buyer connections that become real contracts.</Text>
                         </View>
                         <View style={s.colItem}>
                             <Text style={s.colTitle}>Policy access</Text>
@@ -263,7 +263,8 @@ function ProspectusDocument() {
             <Page size="A4" style={s.page}>
                 <View style={s.block}>
                     <Text style={s.eyebrow}>The programme</Text>
-                    <Text style={s.h2}>12 weeks of action. September 1 – November 23, 2026.</Text>
+                    <Text style={s.h2}>12 weeks of action. 2 November 2026 – 7 February 2027.</Text>
+                    <Text style={s.body}>Break from 21 December 2026 – 3 January 2027.</Text>
                     <View style={{ marginTop: 4 }}>
                         <View style={s.step}>
                             <Text style={s.stepNum}>1–3</Text>
@@ -286,7 +287,7 @@ function ProspectusDocument() {
 
                 <View style={s.block}>
                     <Text style={s.eyebrow}>The Summit · Africa Food Futures</Text>
-                    <Text style={s.h2}>Kigali, first week of December 2026.</Text>
+                    <Text style={s.h2}>Rwanda, March 2027.</Text>
                     <Text style={s.body}>
                         The programme culminates in an action-oriented summit showcasing the 40 accelerator
                         founders and 25 fellows. Not abstract panels — every attendee is mobilised into
@@ -297,26 +298,27 @@ function ProspectusDocument() {
                 <View style={s.block}>
                     <Text style={s.eyebrow}>Your investment</Text>
                     <View style={s.priceRow}>
-                        <Text style={s.priceName}>Standard Access</Text>
-                        <Text style={s.priceDesc}>Full programme + Summit</Text>
-                        <Text style={s.priceAmt}>$1,000</Text>
+                        <Text style={s.priceName}>Scholarship</Text>
+                        <Text style={s.priceDesc}>Subsidized fee for exceptional founders</Text>
+                        <Text style={s.priceAmt}>$199</Text>
                     </View>
                     <View style={s.priceRow}>
-                        <Text style={s.priceName}>Subsidized</Text>
-                        <Text style={s.priceDesc}>LDCs & climate-vulnerable regions</Text>
+                        <Text style={s.priceName}>Programme</Text>
+                        <Text style={s.priceDesc}>Full 12-week programme access</Text>
                         <Text style={s.priceAmt}>$399</Text>
                     </View>
                     <View style={s.priceRow}>
-                        <Text style={s.priceName}>Scholarship</Text>
-                        <Text style={s.priceDesc}>Limited slots for exceptional founders</Text>
-                        <Text style={[s.priceAmt, { fontSize: 10 }]}>Fully Funded</Text>
+                        <Text style={s.priceName}>Programme + Summit</Text>
+                        <Text style={s.priceDesc}>Programme access plus Summit entry</Text>
+                        <Text style={s.priceAmt}>$599</Text>
                     </View>
+                    <Text style={[s.body, { marginTop: 8, fontSize: 8.5 }]}>Travel is not included.</Text>
                 </View>
 
                 <View style={s.ctaBand}>
                     <Text style={s.ctaTitle}>Apply for Cohort 2026</Text>
                     <Text style={s.ctaBody}>
-                        Applications open <Text style={s.ctaGold}>July 6, 2026</Text> and close end of August.
+                        <Text style={s.ctaGold}>Applications are open now.</Text> Complete applications reviewed through Friday 16 October 2026.
                     </Text>
                     <Text style={s.ctaBody}>
                         Apply at <Text style={s.ctaGold}>agripro.com/womanyear</Text>
