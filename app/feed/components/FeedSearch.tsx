@@ -15,6 +15,7 @@ interface PersonResult {
 }
 
 interface PostResult {
+    post_details?: { title?: string };
     id: string;
     content: string;
     image_url: string | null;
@@ -50,7 +51,8 @@ export default function FeedSearch() {
     }, []);
 
     useEffect(() => {
-        const q = query.trim();
+        const q = query.trim().slice(0,100);
+        const safePeopleQuery = q.replace(/[^\p{L}\p{N} ._-]/gu, '');
         if (q.length < 2) {
             setPeople([]);
             setPosts([]);
@@ -65,14 +67,9 @@ export default function FeedSearch() {
                     supabase
                         .from('profiles')
                         .select('id, full_name, avatar_url, organization_name, user_type')
-                        .or(`full_name.ilike.%${q}%,organization_name.ilike.%${q}%`)
+                        .or(`full_name.ilike.%${safePeopleQuery}%,organization_name.ilike.%${safePeopleQuery}%`)
                         .limit(5),
-                    supabase
-                        .from('posts')
-                        .select('id, content, image_url, created_at, user_id')
-                        .ilike('content', `%${q}%`)
-                        .order('created_at', { ascending: false })
-                        .limit(5),
+                    supabase.rpc('search_practical_feed', { p_query: q }),
                 ]);
 
                 let postsWithAuthors: PostResult[] = postsData || [];
@@ -192,7 +189,7 @@ export default function FeedSearch() {
                                             </div>
                                             <div className="min-w-0">
                                                 <p className="text-xs font-medium text-gray-700 truncate">{post.author?.full_name || 'Unknown'}</p>
-                                                <p className="text-sm text-gray-600 line-clamp-2">{post.content}</p>
+                                                <p className="text-sm text-gray-600 line-clamp-2">{post.post_details?.title || post.content}</p>
                                             </div>
                                         </Link>
                                     ))}

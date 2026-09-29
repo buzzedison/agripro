@@ -200,10 +200,10 @@ export default function VendorCard({
                                     {businessTypeLabels[vendor.business_type] || vendor.business_type}
                                 </span>
                             </div>
-                            {vendor.rating && vendor.rating > 0 && (
+                            {Number(vendor.rating) > 0 && (
                                 <div className="flex items-center gap-1 text-yellow-500">
                                     <FaStar className="w-4 h-4" />
-                                    <span className="font-medium text-gray-900">{vendor.rating.toFixed(1)}</span>
+                                    <span className="font-medium text-gray-900">{Number(vendor.rating).toFixed(1)}</span>
                                 </div>
                             )}
                         </div>
@@ -272,13 +272,13 @@ export default function VendorCard({
                                 {location}
                             </div>
                         )}
-                        {vendor.rating && vendor.rating > 0 && (
+                        {Number(vendor.rating) > 0 && (
                             <div className="flex items-center gap-1 text-yellow-500">
                                 <FaStar className="w-3 h-3" />
                                 <span className="text-xs font-medium text-gray-700">
-                                    {vendor.rating.toFixed(1)}
+                                    {Number(vendor.rating).toFixed(1)}
                                 </span>
-                                {vendor.total_reviews && (
+                                {!!vendor.total_reviews && (
                                     <span className="text-xs text-gray-400">({vendor.total_reviews})</span>
                                 )}
                             </div>

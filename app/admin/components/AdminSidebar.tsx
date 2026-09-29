@@ -77,6 +77,7 @@ const NAV: NavGroup[] = [
     label: 'Moderation',
     items: [
       { href: '/admin/reports', label: 'Reports', icon: Flag, badge: 'reports' },
+      { href: '/admin/community', label: 'Review & Announcements', icon: FileCheck },
     ],
   },
   {

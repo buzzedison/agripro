@@ -43,10 +43,10 @@ const categories = [
 ];
 
 const stats = [
-  { value: '50+', label: 'Verified Vendors' },
-  { value: '1,000+', label: 'Products Listed' },
-  { value: '20+', label: 'African Countries' },
-  { value: '15+', label: 'Categories' },
+  { value: 'Discover', label: 'Agricultural products' },
+  { value: 'Compare', label: 'Offers from suppliers' },
+  { value: 'Connect', label: 'Private enquiries' },
+  { value: 'Grow', label: 'Your business network' },
 ];
 
 const quickActions = [
@@ -181,20 +181,7 @@ export default function GreenMarketPage() {
                   Become a Vendor
                 </Link>
               </motion.div>
-              <div className="mt-10 grid sm:grid-cols-3 gap-4 text-emerald-100">
-                <div className="bg-white/5 rounded-2xl p-4 backdrop-blur">
-                  <p className="text-sm text-emerald-200">Active connections</p>
-                  <p className="text-2xl font-bold">2,300+</p>
-                </div>
-                <div className="bg-white/5 rounded-2xl p-4 backdrop-blur">
-                  <p className="text-sm text-emerald-200">Requests this week</p>
-                  <p className="text-2xl font-bold">180</p>
-                </div>
-                <div className="bg-white/5 rounded-2xl p-4 backdrop-blur">
-                  <p className="text-sm text-emerald-200">Avg. response time</p>
-                  <p className="text-2xl font-bold">3h</p>
-                </div>
-              </div>
+
             </div>
             <motion.div
               initial={{ opacity: 0, y: 30 }}
@@ -202,38 +189,7 @@ export default function GreenMarketPage() {
               transition={{ duration: 0.6, delay: 0.3 }}
               className="bg-white/5 rounded-3xl p-6 border border-white/10 backdrop-blur space-y-6"
             >
-              <div className="bg-white rounded-2xl p-4 shadow-2xl text-gray-900">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-gray-500">Live vendor</p>
-                    <p className="text-lg font-semibold">Akwaba Fresh Hub</p>
-                  </div>
-                  <span className="text-xs font-semibold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full">
-                    Verified
-                  </span>
-                </div>
-                <p className="mt-3 text-sm text-gray-600">
-                  Organic pineapples • Dried mango • Export ready
-                </p>
-                <div className="mt-4 flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-1 text-gray-500">
-                    <FaMapMarkerAlt className="w-3 h-3" />
-                    Accra, Ghana
-                  </span>
-                  <span className="flex items-center gap-1 text-yellow-500">
-                    <FaStar className="w-3 h-3" />
-                    4.9
-                  </span>
-                </div>
-              </div>
-              <div className="bg-white/10 rounded-2xl p-6 text-sm">
-                <p className="font-semibold text-white">Instant trade snapshot</p>
-                <ul className="mt-3 space-y-2 text-emerald-100/90">
-                  <li>• 12 new vendors onboarding this week</li>
-                  <li>• 40+ product updates in fresh produce</li>
-                  <li>• Messaging unlocked for connected partners</li>
-                </ul>
-              </div>
+              <div className="rounded-2xl bg-white p-6 text-gray-900"><h2 className="text-xl font-bold">A clearer route from browsing to buying</h2><ol className="mt-4 space-y-3 text-sm text-gray-600"><li>1. Find products by category, country and availability.</li><li>2. Compare the price per unit and minimum order.</li><li>3. Request a quote and agree the details privately.</li></ol><Link href="/greenmarket/marketplace" className="mt-5 inline-block font-semibold text-emerald-700">Browse products →</Link></div>
             </motion.div>
           </div>
         </div>

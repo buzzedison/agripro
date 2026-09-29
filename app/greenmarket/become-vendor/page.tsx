@@ -125,7 +125,7 @@ export default function BecomeVendorPage() {
         setError('');
 
         try {
-            // Create vendor profile - instant approval as basic vendor
+            // Create a pending seller profile for moderator review
             const { data: vendor, error: insertError } = await supabase
                 .from('trade_vendors')
                 .insert({
@@ -139,7 +139,7 @@ export default function BecomeVendorPage() {
                     country: formData.country,
                     region: formData.region || null,
                     city: formData.city || null,
-                    status: 'approved', // Instant approval
+                    status: 'pending', // Reviewed before public listing
                     verification_level: 'basic',
                     onboarding_step: 2, // Move to step 2 (profile enhancement)
                     profile_completed: false,

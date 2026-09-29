@@ -20,7 +20,7 @@ interface PageProps {
 }
 
 const businessTypeLabels: Record<string, string> = {
-    'organic-farm': 'Organic Farm',
+    'organic-farm': 'Seller-stated organic Farm',
     'eco-products': 'Eco-Friendly Products',
     'sustainable-fashion': 'Sustainable Fashion',
     'green-tech': 'Green Technology',
@@ -253,7 +253,7 @@ export default async function VendorProfilePage({ params }: PageProps) {
                                                 {product.is_organic && (
                                                     <div className="absolute top-2 right-2 px-2 py-1 bg-green-500 text-white text-xs font-bold rounded-full shadow-sm flex items-center gap-1">
                                                         <FaLeaf className="w-3 h-3" />
-                                                        Organic
+                                                        Seller-stated organic
                                                     </div>
                                                 )}
                                             </div>
@@ -295,7 +295,7 @@ export default async function VendorProfilePage({ params }: PageProps) {
                     {/* Sidebar */}
                     <div className="space-y-6">
                         {/* Trust Badge */}
-                        {vendor.verification_level && vendor.verification_level !== 'basic' && (
+                        {vendor.is_verified && vendor.verification_status === 'approved' && vendor.verification_level !== 'basic' && (
                             <div className="bg-white rounded-2xl shadow-sm p-6">
                                 {(vendor.verification_level as string) === 'agripro_certified' ? (
                                     <>
@@ -309,7 +309,7 @@ export default async function VendorProfilePage({ params }: PageProps) {
                                             </div>
                                         </div>
                                         <p className="text-sm text-gray-600">
-                                            This vendor has been personally vetted by the AgriPro team and meets our verified standards for product quality, business practices, and sustainability.
+                                            AgriPro has reviewed this supplier’s verification details. A badge does not guarantee product quality or fulfilment.
                                         </p>
                                     </>
                                 ) : vendor.verification_level === 'premium' ? (
@@ -393,7 +393,7 @@ export default async function VendorProfilePage({ params }: PageProps) {
                             <h3 className="font-bold text-gray-900 mb-4">Quick Stats</h3>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="text-center p-3 bg-gray-50 rounded-xl">
-                                    <p className="text-2xl font-bold text-gray-900">{vendor.total_products || 0}</p>
+                                    <p className="text-2xl font-bold text-gray-900">{products?.length || 0}</p>
                                     <p className="text-xs text-gray-500">Products</p>
                                 </div>
                                 <div className="text-center p-3 bg-gray-50 rounded-xl">

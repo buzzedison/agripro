@@ -22,6 +22,8 @@ import {
 
 interface Vendor {
     id: string;
+    id_document_url: string | null;
+    business_document_url: string | null;
     business_name: string;
     owner_name: string;
     email: string;
@@ -37,6 +39,7 @@ interface Vendor {
     admin_notes: string | null;
     rejection_reason: string | null;
     created_at: string;
+    updated_at: string;
     verified_at: string | null;
     country: string;
     region: string;
@@ -64,6 +67,9 @@ export default function AdminVendorManagement() {
     const { user, loading: authLoading } = useContentAccess();
     const [vendors, setVendors] = useState<Vendor[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [page,setPage] = useState(1);
+    const [totalPages,setTotalPages] = useState(1);
     const [statusFilter, setStatusFilter] = useState<string>('pending');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
@@ -76,12 +82,13 @@ export default function AdminVendorManagement() {
         if (user && !authLoading) {
             fetchVendors();
         }
-    }, [user, authLoading, statusFilter]);
+    }, [user, authLoading, statusFilter, page]);
 
     const fetchVendors = async () => {
         try {
             setLoading(true);
-            const params = new URLSearchParams();
+            const params = new URLSearchParams({page:String(page)});
+            setError('');
             if (statusFilter !== 'all') {
                 params.set('status', statusFilter);
             }
@@ -90,12 +97,14 @@ export default function AdminVendorManagement() {
             }
 
             const response = await fetch(`/api/admin/trade/vendors?${params}`);
+            if (!response.ok) { const data = await response.json(); throw new Error(data.error || 'Unable to complete this action.'); }
             if (response.ok) {
                 const data = await response.json();
                 setVendors(data.vendors || []);
+                setTotalPages(data.pagination?.totalPages || 1);
             }
         } catch (error) {
-            console.error('Error fetching vendors:', error);
+            setError((error as Error).message);
         } finally {
             setLoading(false);
         }
@@ -114,12 +123,14 @@ export default function AdminVendorManagement() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     vendorId,
+                    expectedVersion: vendors.find(v=>v.id===vendorId)?.updated_at,
                     status,
                     adminNotes: notes || adminNotes,
                     rejectionReason: reason || rejectionReason,
                 }),
             });
 
+            if (!response.ok) { const data = await response.json(); throw new Error(data.error || 'Unable to complete this action.'); }
             if (response.ok) {
                 fetchVendors();
                 setSelectedVendor(null);
@@ -128,7 +139,7 @@ export default function AdminVendorManagement() {
                 setRejectionReason('');
             }
         } catch (error) {
-            console.error('Error updating vendor:', error);
+            setError((error as Error).message);
         } finally {
             setActionLoading(false);
         }
@@ -153,10 +164,12 @@ export default function AdminVendorManagement() {
                 body: JSON.stringify({
                     vendorId: vendor.id,
                     status: 'approved', // Status remains approved
-                    verify: true // Explicit verification flag
+                    verify: true,
+                    expectedVersion: vendor.updated_at
                 }),
             });
 
+            if (!response.ok) { const data = await response.json(); throw new Error(data.error || 'Unable to complete this action.'); }
             if (response.ok) {
                 fetchVendors();
                 if (selectedVendor?.id === vendor.id) {
@@ -164,7 +177,7 @@ export default function AdminVendorManagement() {
                 }
             }
         } catch (error) {
-            console.error('Error verifying vendor:', error);
+            setError((error as Error).message);
         } finally {
             setActionLoading(false);
         }
@@ -183,6 +196,7 @@ export default function AdminVendorManagement() {
     if (authLoading) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                {error && <p role="alert" className="m-4 rounded-lg bg-red-50 p-4 text-sm text-red-700">{error}</p>}
                 <FaSpinner className="h-8 w-8 animate-spin text-green-600" />
             </div>
         );
@@ -191,6 +205,7 @@ export default function AdminVendorManagement() {
     return (
         <div className="min-h-screen bg-gray-50">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                {error && <p role="alert" className="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-700">{error}</p>}
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-4">
@@ -217,7 +232,7 @@ export default function AdminVendorManagement() {
                             {['all', 'pending', 'approved', 'rejected', 'suspended'].map((status) => (
                                 <button
                                     key={status}
-                                    onClick={() => setStatusFilter(status)}
+                                    onClick={() => {setPage(1);setStatusFilter(status);}}
                                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${statusFilter === status
                                         ? 'bg-green-600 text-white'
                                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -357,10 +372,10 @@ export default function AdminVendorManagement() {
                                         )}
                                         {vendor.status === 'approved' && !vendor.is_verified && (
                                             <button
-                                                onClick={() => handleVerify(vendor)}
+                                                onClick={() => setSelectedVendor(vendor)}
                                                 disabled={actionLoading}
                                                 className="px-3 py-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
-                                                title="Verify Vendor"
+                                                title="Review verification documents"
                                             >
                                                 <FaShieldAlt className="w-5 h-5" />
                                             </button>
@@ -379,6 +394,7 @@ export default function AdminVendorManagement() {
                     </div>
                 )}
 
+                {totalPages > 1 && <nav aria-label="Seller review pages" className="my-5 flex justify-center gap-4"><button disabled={page===1 || loading} onClick={()=>setPage(p=>p-1)} className="rounded border px-4 py-2 disabled:opacity-40">Previous</button><span className="py-2">Page {page} of {totalPages}</span><button disabled={page>=totalPages || loading} onClick={()=>setPage(p=>p+1)} className="rounded border px-4 py-2 disabled:opacity-40">Next</button></nav>}
                 {/* View Vendor Modal */}
                 {selectedVendor && !showRejectModal && (
                     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -440,6 +456,8 @@ export default function AdminVendorManagement() {
                                     </div>
                                 )}
 
+                                <section className="rounded-xl border bg-gray-50 p-4"><h3 className="font-semibold">Verification documents</h3><p className="mt-1 text-xs text-gray-500">Private links expire after five minutes. Refresh to renew them. Review the identity document before verifying.</p><div className="mt-3 flex flex-wrap gap-4">{selectedVendor.id_document_url ? <a href={selectedVendor.id_document_url} target="_blank" rel="noopener noreferrer" className="text-sm text-green-700 underline">Review identity document</a> : <p className="text-sm text-gray-500">No accessible identity document</p>}{selectedVendor.business_document_url && <a href={selectedVendor.business_document_url} target="_blank" rel="noopener noreferrer" className="text-sm text-green-700 underline">Review business document</a>}</div></section>
+                                {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
                                 {/* Admin Notes */}
                                 {selectedVendor.status === 'pending' && (
                                     <div>
@@ -495,7 +513,7 @@ export default function AdminVendorManagement() {
                                 {selectedVendor.status === 'approved' && !selectedVendor.is_verified && (
                                     <button
                                         onClick={() => handleVerify(selectedVendor)}
-                                        disabled={actionLoading}
+                                        disabled={actionLoading || !selectedVendor.id_document_url}
                                         className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
                                     >
                                         {actionLoading ? (

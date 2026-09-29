@@ -24,6 +24,11 @@ import { parseContentWithLinksAndHashtags, extractHashtags } from '@/lib/utils/h
 import { parseContentWithAll, extractMentions, nameToUniqueSlug } from '@/lib/utils/mentions';
 import { toast } from 'sonner';
 import ReportModal from '@/components/ReportModal';
+import Announcements from './components/Announcements';
+import PracticalPostFields from './components/PracticalPostFields';
+import PracticalPostCard from './components/PracticalPostCard';
+import { POST_KINDS, PostKind, PostDetails, practicalPostError } from '@/lib/practical-feed';
+import { FEED_TOPICS } from '@/lib/feed-community';
 import { blockUser, muteUser, getBlockedUserIds, getMutedUserIds } from '@/lib/moderation';
 
 // Video URL detection helpers
@@ -325,6 +330,13 @@ const emojiCategories = {
 };
 
 interface Post {
+    post_kind?: PostKind;
+    post_details?: PostDetails;
+    is_closed?: boolean;
+    expires_at?: string | null;
+    topic?: string;
+    country?: string | null;
+    moderation_status?: string;
     id: string;
     user_id: string;
     content: string;
@@ -390,6 +402,9 @@ interface Profile {
     organization_name: string | null;
     country: string | null;
     is_verified: boolean;
+    is_suspended?: boolean;
+    is_blocked?: boolean;
+    suspended_until?: string | null;
 }
 
 const userTypeLabels: Record<string, string> = {
@@ -407,6 +422,7 @@ export default function FeedPage() {
 
     const [user, setUser] = useState<any>(null);
     const [profile, setProfile] = useState<Profile | null>(null);
+    const feedRestricted = !!(profile?.is_blocked || (profile?.is_suspended && (!profile.suspended_until || new Date(profile.suspended_until) > new Date())));
     const [posts, setPosts] = useState<Post[]>([]);
     const [suggestedUsers, setSuggestedUsers] = useState<Profile[]>([]);
     const [loading, setLoading] = useState(true);
@@ -470,6 +486,20 @@ export default function FeedPage() {
     const [repostMenuOpen, setRepostMenuOpen] = useState<string | null>(null);
     const [shareMenuOpen, setShareMenuOpen] = useState<string | null>(null);
 
+    const [topicFilter, setTopicFilter] = useState('');
+    const [countryFilter, setCountryFilter] = useState('');
+    const [postTopic, setPostTopic] = useState('general');
+    const [postKind, setPostKind] = useState<PostKind>('update');
+    const [postDetails, setPostDetails] = useState<PostDetails>({});
+    const [postCountry, setPostCountry] = useState('');
+    const [kindFilter, setKindFilter] = useState('');
+    const [includeClosed, setIncludeClosed] = useState(false);
+    const [interestsOnly, setInterestsOnly] = useState(false);
+    const [countries, setCountries] = useState<string[]>([]);
+    const [feedError, setFeedError] = useState('');
+    const [refreshingFeed, setRefreshingFeed] = useState(false);
+    const feedRequest = useRef(0);
+
     // Moderation: report / block / mute
     const [moderationMenuOpen, setModerationMenuOpen] = useState<string | null>(null);
     const [reportTarget, setReportTarget] = useState<{ type: 'post' | 'user'; id: string; label?: string } | null>(null);
@@ -484,6 +514,8 @@ export default function FeedPage() {
     const [deleteModal, setDeleteModal] = useState<{ open: boolean; postId: string | null }>({ open: false, postId: null });
     const [editModal, setEditModal] = useState<{ open: boolean; post: Post | null }>({ open: false, post: null });
     const [editContent, setEditContent] = useState('');
+    const [editDetails, setEditDetails] = useState<PostDetails>({});
+    const [editCountry, setEditCountry] = useState('');
     const [postMenuOpen, setPostMenuOpen] = useState<string | null>(null);
     const [editCommentModal, setEditCommentModal] = useState<{ open: boolean; comment: Comment | null; postId: string | null }>({ open: false, comment: null, postId: null });
     const [editCommentContent, setEditCommentContent] = useState('');
@@ -518,17 +550,16 @@ export default function FeedPage() {
         fetchBookmarkedPosts();
     }, []);
 
-    // Fetch posts by hashtag when selectedHashtag changes
     useEffect(() => {
         if (!user) return;
-        if (selectedHashtag) {
-            fetchPostsByHashtag(selectedHashtag);
-        } else {
-            setFeedOffset(0);
-            setHasMorePosts(true);
-            fetchPosts(user.id, { offset: 0 });
-        }
-    }, [selectedHashtag, user]);
+        setFeedOffset(0);
+        setHasMorePosts(true);
+        fetchPosts(user.id, { offset: 0 });
+    }, [selectedHashtag, user, topicFilter, countryFilter, feedTab, kindFilter, includeClosed, interestsOnly]);
+
+    useEffect(() => {
+        supabase.rpc('feed_countries').then(({ data }) => setCountries(data || []));
+    }, [supabase]);
 
     const checkAuth = async () => {
         const { data: { user } } = await supabase.auth.getUser();
@@ -539,7 +570,6 @@ export default function FeedPage() {
         setUser(user);
         await Promise.all([
             fetchProfile(user.id),
-            fetchPosts(user.id, { offset: 0 }),
             fetchSuggestedUsers(user.id),
             fetchFollowing(user.id),
             fetchModerationLists(user.id),
@@ -560,62 +590,28 @@ export default function FeedPage() {
             .eq('id', userId)
             .single();
         setProfile(data);
+        setPostCountry(data?.country || '');
     };
 
     const fetchPosts = async (userId: string, options: { offset?: number; append?: boolean; tab?: 'forYou' | 'following' } = {}) => {
         const { offset = 0, append = false, tab = feedTab } = options;
         const limit = FEED_PAGE_SIZE;
+        const requestId = ++feedRequest.current;
+        setFeedError('');
+        if (!append) { setRefreshingFeed(true); setPosts([]); }
 
         if (append) {
             setLoadingMorePosts(true);
         }
 
         try {
-            let postsData: any[] = [];
-
-            if (tab === 'following') {
-                // Following tab: only posts from people you're connected to, plus your own.
-                const ids = [...new Set([...Array.from(followingIds), userId])];
-                const { data: followingData, error: followingError } = await supabase
-                    .from('posts')
-                    .select('*')
-                    .in('user_id', ids)
-                    .order('created_at', { ascending: false })
-                    .range(offset, offset + limit - 1);
-                if (followingError) console.error('Error fetching following feed:', followingError);
-                postsData = followingData || [];
-            } else {
-                // Fetch posts using the new network feed RPC function
-                // This prioritizes connections but also returns other posts
-                try {
-                    const { data, error } = await supabase.rpc('get_network_feed', {
-                        p_limit: limit,
-                        p_offset: offset
-                    });
-
-                    if (error) {
-                        console.error('Error fetching feed via RPC, falling back to basic query:', error);
-                        // Fallback to basic query if RPC fails (e.g. migration not run yet)
-                        const { data: fallbackData } = await supabase
-                            .from('posts')
-                            .select('*')
-                            .order('created_at', { ascending: false })
-                            .range(offset, offset + limit - 1);
-                        postsData = fallbackData || [];
-                    } else {
-                        postsData = data || [];
-                    }
-                } catch (err) {
-                    console.error('Unexpected error fetching feed:', err);
-                    // Fallback
-                    const { data: fallbackData } = await supabase
-                        .from('posts')
-                        .select('*')
-                        .order('created_at', { ascending: false })
-                        .range(offset, offset + limit - 1);
-                    postsData = fallbackData || [];
-                }
-            }
+            const { data, error } = await supabase.rpc('discover_feed_v3', {
+                p_limit: limit, p_offset: offset, p_topic: topicFilter || null,
+                p_country: countryFilter || null, p_following: tab === 'following', p_hashtag: selectedHashtag || null, p_kind: kindFilter || null, p_include_closed: includeClosed, p_interests_only: interestsOnly,
+            });
+            if (requestId !== feedRequest.current) return;
+            if (error) throw error;
+            const postsData: any[] = data || [];
 
             if (postsData && postsData.length > 0) {
                 // Fetch profiles for post authors
@@ -746,6 +742,7 @@ export default function FeedPage() {
                     mentioned_users: postMentionsMap.get(post.id) || new Map()
                 }));
 
+                if (requestId !== feedRequest.current) return;
                 setPosts(prev => {
                     if (append) {
                         const existingIds = new Set(prev.map(p => p.id));
@@ -764,70 +761,22 @@ export default function FeedPage() {
             } else {
                 setHasMorePosts(false);
             }
+        } catch (error) {
+            if (requestId === feedRequest.current) setFeedError('Could not load the community feed. Please retry.');
+            console.error('Feed discovery error:', error);
         } finally {
-            if (append) {
-                setLoadingMorePosts(false);
-            }
+            if (requestId === feedRequest.current) { setLoadingMorePosts(false); setRefreshingFeed(false); }
         }
     };
 
     const loadMorePosts = () => {
-        if (!user || loadingMorePosts || !hasMorePosts || selectedHashtag) return;
+        if (!user || loadingMorePosts || refreshingFeed || !hasMorePosts) return;
         fetchPosts(user.id, { offset: feedOffset, append: true, tab: feedTab });
     };
 
     const switchFeedTab = (tab: 'forYou' | 'following') => {
         if (!user || tab === feedTab) return;
         setFeedTab(tab);
-        setSelectedHashtag(null);
-        fetchPosts(user.id, { offset: 0, tab });
-    };
-
-    const fetchPostsByHashtag = async (hashtag: string) => {
-        if (!user) return;
-
-        setLoading(true);
-        setHasMorePosts(false);
-        try {
-            const response = await fetch(`/api/feed/hashtags?tag=${encodeURIComponent(hashtag)}`);
-            const data = await response.json();
-
-            if (data.posts && data.posts.length > 0) {
-                // Check which posts the user has liked
-                const { data: likesData } = await supabase
-                    .from('post_likes')
-                    .select('post_id')
-                    .eq('user_id', user.id);
-
-                const likedPostIds = new Set(likesData?.map(l => l.post_id) || []);
-
-                // Check which posts the user has reposted
-                const { data: repostsData } = await supabase
-                    .from('post_reposts')
-                    .select('post_id')
-                    .eq('user_id', user.id);
-
-                const repostedPostIds = new Set(repostsData?.map(r => r.post_id) || []);
-
-                const postsWithLikes = data.posts.map((post: any) => ({
-                    ...post,
-                    user_has_liked: likedPostIds.has(post.id),
-                    user_has_reposted: repostedPostIds.has(post.id)
-                }));
-
-                setPosts(postsWithLikes);
-                setFeedOffset(postsWithLikes.length);
-            } else {
-                setPosts([]);
-                setFeedOffset(0);
-            }
-        } catch (error) {
-            console.error('Error fetching posts by hashtag:', error);
-            setPosts([]);
-            setFeedOffset(0);
-        } finally {
-            setLoading(false);
-        }
     };
 
     const fetchTrendingHashtags = async () => {
@@ -1181,7 +1130,9 @@ export default function FeedPage() {
     };
 
     const handlePost = async () => {
-        if ((!newPostContent.trim() && !newPostImage && !isPollMode) || !user) return;
+        if (!user || (postKind === 'update' && !newPostContent.trim() && !newPostImage && !isPollMode)) return;
+        const detailError = practicalPostError(postKind, postDetails, postCountry);
+        if (detailError) { toast.error(detailError); return; }
 
         // Validation for poll
         if (isPollMode) {
@@ -1229,7 +1180,11 @@ export default function FeedPage() {
                     content: newPostContent.trim(),
                     image_url: imageUrl,
                     gif_url: selectedGif,
-                    is_poll: isPollMode
+                    is_poll: isPollMode,
+                    topic: postTopic,
+                    country: postKind === 'update' ? profile?.country || null : postCountry.trim(),
+                    post_kind: postKind,
+                    post_details: postKind === 'update' ? {} : postDetails
                 })
                 .select('*')
                 .single();
@@ -1260,7 +1215,7 @@ export default function FeedPage() {
 
             // Save hashtags if any exist in the content
             const hashtags = extractHashtags(newPostContent);
-            if (hashtags.length > 0 && newPost.id) {
+            if (hashtags.length > 0 && newPost.id && newPost.moderation_status === 'published') {
                 try {
                     await fetch('/api/feed/hashtags', {
                         method: 'POST',
@@ -1278,7 +1233,7 @@ export default function FeedPage() {
             // Save mentions and get mentioned user data for display
             let mentionedUsersMap = new Map<string, string>();
             const mentions = extractMentions(newPostContent);
-            if (mentions.length > 0 && newPost.id) {
+            if (mentions.length > 0 && newPost.id && newPost.moderation_status === 'published') {
                 try {
                     const mentionResponse = await fetch('/api/feed/mentions', {
                         method: 'POST',
@@ -1300,27 +1255,17 @@ export default function FeedPage() {
                 }
             }
 
-            // Add the post to the feed with current user's profile
-            const postWithProfile: Post = {
-                ...newPost,
-                profile: {
-                    full_name: profile?.full_name || 'Anonymous',
-                    avatar_url: profile?.avatar_url || null,
-                    user_type: profile?.user_type || 'farmer',
-                    organization_name: profile?.organization_name || null,
-                    is_verified: profile?.is_verified || false,
-                },
-                user_has_liked: false,
-                mentioned_users: mentionedUsersMap
-            };
-
-            setPosts(prev => [postWithProfile, ...prev]);
+            if (newPost.moderation_status === 'published') {
+                await fetchPosts(user.id, { offset: 0 });
+            }
             setNewPostContent('');
+            setPostDetails({});
+            setPostKind('update');
             removeImage();
             setSelectedGif(null);
             setIsPollMode(false);
             setPollOptions(['', '']);
-            toast.success('Post shared with your network.');
+            toast.success(newPost.moderation_status === 'pending' ? 'Post submitted for review. Track it in My activity.' : 'Post shared with your network.');
         } catch (err: any) {
             console.error('Error posting:', err?.message || err);
             toast.error(`Failed to post: ${err?.message || 'Unknown error'}`);
@@ -1452,42 +1397,15 @@ export default function FeedPage() {
 
             if (insertError) throw insertError;
 
-            // Add the quote post to the feed
-            const postWithProfile: Post = {
-                ...newPost,
-                profile: {
-                    full_name: profile?.full_name || 'Anonymous',
-                    avatar_url: profile?.avatar_url || null,
-                    user_type: profile?.user_type || 'farmer',
-                    organization_name: profile?.organization_name || null,
-                    is_verified: profile?.is_verified || false,
-                },
-                quoted_post: {
-                    id: quoteModal.post.id,
-                    content: quoteModal.post.content,
-                    image_url: quoteModal.post.image_url,
-                    created_at: quoteModal.post.created_at,
-                    profile: quoteModal.post.profile
-                },
-                user_has_liked: false,
-                user_has_reposted: false
-            };
-
-            setPosts([postWithProfile, ...posts]);
-
-            // Also increment the repost count on the original post
-            setPosts(prev => prev.map(p =>
-                p.id === quoteModal.post!.id
-                    ? { ...p, reposts_count: p.reposts_count + 1 }
-                    : p
-            ));
+            if (newPost.moderation_status === 'published') await fetchPosts(user.id, { offset: 0 });
+            toast.success(newPost.moderation_status === 'pending' ? 'Quote submitted for review. Track it in My activity.' : 'Quote shared.');
 
             setQuoteModal({ open: false, post: null });
             setQuoteContent('');
 
             // Save hashtags if any exist in the quote content
             const hashtags = extractHashtags(quoteContent);
-            if (hashtags.length > 0 && newPost.id) {
+            if (hashtags.length > 0 && newPost.id && newPost.moderation_status === 'published') {
                 try {
                     await fetch('/api/feed/hashtags', {
                         method: 'POST',
@@ -1504,7 +1422,7 @@ export default function FeedPage() {
 
             // Save mentions if any exist in the quote content
             const mentions = extractMentions(quoteContent);
-            if (mentions.length > 0 && newPost.id) {
+            if (mentions.length > 0 && newPost.id && newPost.moderation_status === 'published') {
                 try {
                     await fetch('/api/feed/mentions', {
                         method: 'POST',
@@ -1520,6 +1438,7 @@ export default function FeedPage() {
             }
         } catch (err: any) {
             console.error('Error creating quote post:', err?.message || err);
+            toast.error(err?.message || 'Could not share this quote.');
         } finally {
             setPosting(false);
         }
@@ -1702,6 +1621,7 @@ export default function FeedPage() {
             }
         } catch (err: any) {
             console.error('Error commenting:', err?.message || err?.code || JSON.stringify(err));
+            toast.error(err?.message || 'Could not send your comment.');
         } finally {
             setSubmittingComment(prev => {
                 const next = new Set(prev);
@@ -1725,26 +1645,26 @@ export default function FeedPage() {
     };
 
     const handleEditPost = async () => {
-        if (!editModal.post || !editContent.trim()) return;
+        if (!editModal.post || ((!editModal.post.post_kind || editModal.post.post_kind === 'update') && !editContent.trim())) return;
+        const detailError = practicalPostError(editModal.post.post_kind || 'update', editDetails, editCountry);
+        if (detailError) { toast.error(detailError); return; }
 
         setSaving(true);
         try {
             const { error } = await supabase
                 .from('posts')
-                .update({ content: editContent.trim() })
+                .update({ content: editContent.trim(), ...(editModal.post.post_kind && editModal.post.post_kind !== 'update' ? { post_details: editDetails, country: editCountry.trim() } : {}) })
                 .eq('id', editModal.post.id);
 
             if (error) throw error;
 
-            setPosts(posts.map(p =>
-                p.id === editModal.post!.id
-                    ? { ...p, content: editContent.trim() }
-                    : p
-            ));
+            if (user) await fetchPosts(user.id, { offset: 0 });
+            toast.success('Edit saved. If it needs review, you can track it in My activity.');
             setEditModal({ open: false, post: null });
             setEditContent('');
         } catch (err) {
             console.error('Error editing post:', err);
+            toast.error((err as { message?: string }).message || 'Could not save your edit.');
         } finally {
             setSaving(false);
         }
@@ -1752,6 +1672,8 @@ export default function FeedPage() {
 
     const openEditModal = (post: Post) => {
         setEditContent(post.content);
+        setEditDetails(post.post_details || {});
+        setEditCountry(post.country || profile?.country || '');
         setEditModal({ open: true, post });
         setPostMenuOpen(null);
     };
@@ -1787,6 +1709,7 @@ export default function FeedPage() {
             setEditCommentContent('');
         } catch (err) {
             console.error('Error editing comment:', err);
+            toast.error((err as { message?: string }).message || 'Could not save your edit.');
         } finally {
             setSaving(false);
         }
@@ -1940,17 +1863,47 @@ export default function FeedPage() {
 
                     {/* Main Feed */}
                     <div className="lg:col-span-6 space-y-4">
+                        <section className="rounded-2xl border border-green-100 bg-gradient-to-br from-green-50 via-white to-emerald-50 p-5 sm:p-6">
+                            <p className="text-xs font-semibold uppercase tracking-widest text-green-700">AgriPro community</p>
+                            <h1 className="mt-2 text-2xl font-bold tracking-tight text-gray-900">Grow together.</h1>
+                            <p className="mt-2 max-w-lg text-sm leading-relaxed text-gray-600">Share what’s working, ask the community, and find your next opportunity in agriculture.</p>
+                            <details className="mt-4 border-t border-green-100 pt-3 text-sm text-gray-600">
+                                <summary className="cursor-pointer font-semibold text-green-800">Keep this a useful, trusted space</summary>
+                                <p className="mt-2 leading-relaxed">Post original, relevant updates. No repeated promotions, scams, or unsolicited links. Add context to offers and cite sources for advice. Use the post menu to report spam, mute, or block someone.</p>
+                                <p className="mt-2 text-xs">Up to 5,000 characters and 3 links per message. Wait 15 seconds between submissions; the hourly limit is 30 posts, comments, or edits.</p>
+                            </details>
+                        </section>
+                        {feedRestricted && <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                            <p className="font-semibold">Your feed access is {profile?.is_blocked ? 'blocked' : 'suspended'}{profile?.suspended_until && !profile?.is_blocked ? ` until ${new Date(profile.suspended_until).toLocaleString()}` : ''}.</p>
+                            <Link href="/feed/activity" className="mt-2 inline-block font-semibold underline">View status or submit an appeal</Link>
+                        </div>}
+                        <Announcements />
+                        <div className="rounded-2xl border border-gray-100 bg-white p-4">
+                            <div className="mb-3 flex items-center justify-between gap-3"><h2 className="text-sm font-semibold text-gray-900">Find your conversations</h2><div className="flex flex-wrap justify-end gap-3"><Link href="/feed/preferences" className="text-xs font-semibold text-green-700 hover:underline">Feed preferences</Link><Link href="/feed/enquiries" className="text-xs font-semibold text-green-700 hover:underline">My enquiries</Link><Link href="/feed/activity" className="text-xs font-semibold text-green-700 hover:underline">Activity & appeals</Link></div></div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <label className="text-xs font-medium text-gray-500">Topic<select aria-label="Filter feed by topic" value={topicFilter} onChange={e => setTopicFilter(e.target.value)} className="mt-1 w-full rounded-lg border border-gray-200 bg-white p-2.5 text-sm text-gray-800"><option value="">All topics</option>{FEED_TOPICS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</select></label>
+                                <label className="text-xs font-medium text-gray-500">Location<select aria-label="Filter feed by country" value={countryFilter} onChange={e => setCountryFilter(e.target.value)} className="mt-1 w-full rounded-lg border border-gray-200 bg-white p-2.5 text-sm text-gray-800"><option value="">Everywhere</option>{countries.map(c => <option key={c}>{c}</option>)}</select></label>
+                            </div>
+                            {(topicFilter || countryFilter) && <button onClick={() => { setTopicFilter(''); setCountryFilter(''); }} className="mt-3 text-xs font-semibold text-green-700">Clear filters</button>}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2" aria-label="Post type filters">
+                            <button onClick={() => setKindFilter('')} aria-pressed={!kindFilter} className={`rounded-full border px-3 py-2 text-xs font-semibold ${!kindFilter ? 'border-green-700 bg-green-700 text-white' : 'bg-white text-gray-600'}`}>Everything</button>
+                            {POST_KINDS.filter(k => k.value !== 'update').map(k => <button key={k.value} onClick={() => setKindFilter(k.value)} aria-pressed={kindFilter === k.value} className={`rounded-full border px-3 py-2 text-xs font-semibold ${kindFilter === k.value ? 'border-green-700 bg-green-700 text-white' : 'bg-white text-gray-600'}`}>{k.label}</button>)}
+                            <label className="flex items-center gap-2 text-xs text-gray-500"><input type="checkbox" checked={interestsOnly} onChange={e=>setInterestsOnly(e.target.checked)} />Only my interests</label><label className="ml-auto flex items-center gap-2 text-xs text-gray-500"><input type="checkbox" checked={includeClosed} onChange={e=>setIncludeClosed(e.target.checked)} className="rounded" />Include closed posts</label>
+                        </div>
                         {/* Feed tabs */}
                         {!selectedHashtag && (
                             <div className="inline-flex items-center gap-1 p-1 rounded-full bg-white border border-gray-100 shadow-sm">
                                 <button
                                     onClick={() => switchFeedTab('forYou')}
+                                    aria-pressed={feedTab === 'forYou'}
                                     className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${feedTab === 'forYou' ? 'bg-green-600 text-white' : 'text-gray-500 hover:text-gray-700'}`}
                                 >
                                     For You
                                 </button>
                                 <button
                                     onClick={() => switchFeedTab('following')}
+                                    aria-pressed={feedTab === 'following'}
                                     className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${feedTab === 'following' ? 'bg-green-600 text-white' : 'text-gray-500 hover:text-gray-700'}`}
                                 >
                                     Following
@@ -1987,7 +1940,7 @@ export default function FeedPage() {
                         {/* Create Post */}
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
                             <div className="flex gap-3">
-                                <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">
+                                <div className="w-10 h-10 rounded-full bg-gray-100 hidden sm:flex items-center justify-center overflow-hidden flex-shrink-0">
                                     {profile?.avatar_url ? (
                                         <Image src={profile.avatar_url} alt="" width={40} height={40} className="object-cover" />
                                     ) : (
@@ -1996,17 +1949,29 @@ export default function FeedPage() {
                                         </span>
                                     )}
                                 </div>
-                                <div className="flex-1 relative">
+                                <div className="flex-1 min-w-0 relative">
+                                    <div className="mb-4 grid grid-cols-2 gap-2">{POST_KINDS.map(k => <button key={k.value} type="button" disabled={posting || feedRestricted} aria-pressed={postKind === k.value} onClick={() => { setPostKind(k.value); setPostDetails({}); if (k.value !== 'update') setIsPollMode(false); }} className={`rounded-xl border px-3 py-2.5 text-left text-xs font-semibold transition-colors ${postKind === k.value ? 'border-green-600 bg-green-50 text-green-800' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>{k.action}</button>)}</div>
+                                    <PracticalPostFields kind={postKind} details={postDetails} onChange={setPostDetails} country={postCountry} onCountryChange={setPostCountry} disabled={posting || feedRestricted} />
+                                    <label className="mb-2 flex items-center gap-2 text-xs font-medium text-gray-500">Post topic
+                                        <select value={postTopic} onChange={e => setPostTopic(e.target.value)} className="rounded-full border border-gray-200 px-3 py-1 text-xs text-gray-700">{FEED_TOPICS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</select>
+                                    </label>
                                     <textarea
                                         ref={textareaRef}
+                                        aria-label="Write a community post"
+                                        maxLength={5000}
+                                        disabled={feedRestricted}
                                         value={newPostContent}
                                         onChange={handlePostContentChange}
                                         onKeyDown={handleMentionKeyDown}
-                                        placeholder="Share an update, insight, or question... (Use @ to mention, # for hashtags)"
+                                        placeholder={postKind === 'update' ? "Share an update… Use @ to mention or # for hashtags." : postKind === 'question' ? "What have you tried? Include symptoms, timing, and helpful context." : "Add useful context, specifications, or instructions (optional)…"}
                                         className="w-full px-0 py-2 text-gray-900 placeholder-gray-400 border-0 resize-none focus:ring-0 focus:outline-none text-[15px]"
                                         rows={3}
                                     />
 
+                                    <div className="flex items-center justify-between gap-3 pb-2 text-xs text-gray-400">
+                                        <span>New members’ promotional posts may need review.</span>
+                                        <span className={newPostContent.length > 4800 ? 'font-semibold text-amber-700' : ''}>{newPostContent.length.toLocaleString()} / 5,000</span>
+                                    </div>
                                     {/* Mention Autocomplete Dropdown */}
                                     {showMentionDropdown && mentionSuggestions.length > 0 && (
                                         <div className="absolute left-0 top-full mt-1 w-full max-w-sm bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50 max-h-60 overflow-y-auto">
@@ -2172,8 +2137,8 @@ export default function FeedPage() {
 
                                                 {/* Poll Toggle */}
                                                 <button
-                                                    onClick={() => !newPostImage && setIsPollMode(!isPollMode)}
-                                                    disabled={!!newPostImage}
+                                                    onClick={() => postKind === 'update' && !newPostImage && setIsPollMode(!isPollMode)}
+                                                    disabled={!!newPostImage || postKind !== 'update'}
                                                     aria-pressed={isPollMode}
                                                     className={`p-2 rounded-lg transition-colors ${isPollMode
                                                         ? "text-green-600 bg-green-50"
@@ -2220,7 +2185,7 @@ export default function FeedPage() {
                                             )}
                                             <button
                                                 onClick={handlePost}
-                                                disabled={(!newPostContent.trim() && !newPostImage && !isPollMode) || posting}
+                                                disabled={feedRestricted || newPostContent.length > 5000 || (postKind === 'update' && !newPostContent.trim() && !newPostImage && !isPollMode) || posting}
                                                 className="inline-flex items-center gap-2 px-5 py-2 bg-green-600 text-white font-semibold rounded-full hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                             >
                                                 {posting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
@@ -2234,7 +2199,7 @@ export default function FeedPage() {
 
                         {/* Posts Feed */}
                         <div className="space-y-4">
-                            {posts.length > 0 ? (
+                            {feedError ? <div role="alert" className="rounded-xl bg-red-50 p-5 text-sm text-red-700">{feedError}<button onClick={() => user && fetchPosts(user.id)} className="ml-3 font-semibold underline">Retry</button></div> : refreshingFeed ? <div role="status" className="rounded-2xl bg-white p-8 text-center text-sm text-gray-500">Finding conversations…</div> : posts.length > 0 ? (
                                 posts.filter((post) => !blockedUserIds.has(post.user_id) && !mutedUserIds.has(post.user_id)).map((post) => {
                                     const commentsForPost = postComments[post.id] || [];
                                     const commentCount = commentsForPost.length;
@@ -2249,6 +2214,8 @@ export default function FeedPage() {
                                             className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
                                         >
                                         <div className="p-4">
+                                            {(post.topic || post.country) && <div className="mb-3 flex flex-wrap gap-2 text-xs text-green-800">{post.topic && <span className="rounded-full bg-green-50 px-2.5 py-1">{FEED_TOPICS.find(t => t.value === post.topic)?.label}</span>}{post.country && <span className="rounded-full bg-gray-50 px-2.5 py-1 text-gray-500">{post.country}</span>}</div>}
+                                            <PracticalPostCard post={post} userId={user?.id} />
                                             {/* Post Header */}
                                             <div className="flex items-start gap-3 mb-3">
                                                 <Link href={`/connect/${post.profile?.full_name ? nameToUniqueSlug(post.profile.full_name, post.user_id) : post.user_id}`} className="flex-shrink-0">
@@ -2583,7 +2550,7 @@ export default function FeedPage() {
                                                                     <Copy className="w-4 h-4" /> Copy link
                                                                 </button>
                                                                 <button
-                                                                    onClick={() => sharePostToWhatsApp(post.id, post.content)}
+                                                                    onClick={() => sharePostToWhatsApp(post.id, post.post_details?.title || post.content)}
                                                                     className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
                                                                 >
                                                                     <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.148.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" /><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.934-1.395A9.94 9.94 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18a7.94 7.94 0 01-4.052-1.107l-.29-.172-3.011.85.815-2.928-.19-.303A7.94 7.94 0 014 12c0-4.41 3.59-8 8-8s8 3.59 8 8-3.59 8-8 8z" /></svg>
@@ -3301,12 +3268,12 @@ export default function FeedPage() {
                                         <MessageCircle className="w-8 h-8 text-gray-400" />
                                     </div>
                                     <h3 className="text-lg font-bold text-gray-900 mb-2">
-                                        {feedTab === 'following' && !selectedHashtag ? 'No posts from your network yet' : 'No posts yet'}
+                                        {interestsOnly ? 'No posts match your saved interests yet' : topicFilter || countryFilter || selectedHashtag || kindFilter ? 'No conversations match these filters' : feedTab === 'following' ? 'No posts from your network yet' : 'No posts yet'}
                                     </h3>
                                     <p className="text-gray-500 mb-4">
-                                        {feedTab === 'following' && !selectedHashtag
+                                        {interestsOnly ? <Link href="/feed/preferences" className="text-green-700 underline">Choose or update your interests</Link> : feedTab === 'following' && !selectedHashtag
                                             ? 'Connect with more people to see their posts here.'
-                                            : 'Be the first to share something with the community!'}
+                                            : topicFilter || countryFilter || selectedHashtag || kindFilter ? 'Try another topic or location, or clear your filters.' : 'Be the first to share something with the community!'}
                                     </p>
                                     {feedTab === 'following' && !selectedHashtag && (
                                         <Link
@@ -3319,7 +3286,7 @@ export default function FeedPage() {
                                 </div>
                             )}
 
-                            {!selectedHashtag && posts.length > 0 && (
+                            {!feedError && !refreshingFeed && posts.length > 0 && (
                                 <div className="flex justify-center pt-2">
                                     <button
                                         onClick={loadMorePosts}
@@ -3532,7 +3499,7 @@ export default function FeedPage() {
                             initial={{ scale: 0.95, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.95, opacity: 0 }}
-                            className="bg-white rounded-2xl shadow-xl max-w-lg w-full overflow-hidden"
+                            className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
                             onClick={(e) => e.stopPropagation()}
                         >
                             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
@@ -3560,7 +3527,9 @@ export default function FeedPage() {
                                         <p className="text-xs text-gray-500">Editing post</p>
                                     </div>
                                 </div>
+                                <PracticalPostFields kind={editModal.post.post_kind || 'update'} details={editDetails} onChange={setEditDetails} country={editCountry} onCountryChange={setEditCountry} disabled={saving} />
                                 <textarea
+                                    maxLength={5000}
                                     value={editContent}
                                     onChange={(e) => setEditContent(e.target.value)}
                                     className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
@@ -3589,7 +3558,7 @@ export default function FeedPage() {
                                 </button>
                                 <button
                                     onClick={handleEditPost}
-                                    disabled={saving || !editContent.trim()}
+                                    disabled={saving || ((!editModal.post.post_kind || editModal.post.post_kind === 'update') && !editContent.trim())}
                                     className="flex-1 px-4 py-2.5 text-white font-medium bg-green-600 rounded-xl hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
                                 >
                                     {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}

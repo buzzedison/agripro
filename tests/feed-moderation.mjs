@@ -1,0 +1,72 @@
+// Run with PGLITE_MODULE pointing at an installed @electric-sql/pglite module.
+// This uses an isolated in-memory PostgreSQL database, never a live Supabase project.
+import assert from 'node:assert/strict';
+import { createTestDatabase } from './feed-fixture.mjs';
+const db = await createTestDatabase();
+const admin = '00000000-0000-0000-0000-000000000001';
+const author = '00000000-0000-0000-0000-000000000002';
+const viewer = '00000000-0000-0000-0000-000000000003';
+await db.exec(`INSERT INTO auth.users VALUES ('${admin}','admin@test.local'),('${author}','author@test.local'),('${viewer}','viewer@test.local'); INSERT INTO profiles(id) SELECT id FROM auth.users; INSERT INTO admin_users VALUES ('admin@test.local',true);`);
+async function as(id, email) { await db.exec(`RESET ROLE; SET request.uid='${id}'; SET request.email='${email}'; SET ROLE authenticated;`); }
+async function root(sql) { await db.exec('RESET ROLE'); await db.exec(sql); }
+async function rejects(sql, pattern) { await assert.rejects(() => db.exec(sql), pattern); }
+async function age() { await root("UPDATE feed_submission_log SET submitted_at = submitted_at - interval '1 minute'"); await as(author,'author@test.local'); }
+const post = text => `INSERT INTO posts(user_id,content) VALUES('${author}','${text}') RETURNING id`;
+await as(author,'author@test.local');
+await rejects(`SELECT moderate_feed_user('${viewer}','block','spam campaign',7)`, /Admin access/);
+const [{ rows: [{ id: postId }] }] = await db.exec(post('Useful crop update'));
+await rejects(post('Another update'), /15 seconds/);
+await age();
+await rejects(post(' USEFUL   CROP UPDATE '), /already shared/);
+await rejects(post('https://one.test https://two.test https://three.test https://four.test'), /3 links/);
+await rejects(post('x'.repeat(5001)), /5,000/);
+await db.exec(`UPDATE posts SET content='Updated crop insight' WHERE id='${postId}'`);
+await rejects(`UPDATE posts SET content='Rapid edit' WHERE id='${postId}'`, /15 seconds/);
+await rejects(`UPDATE posts SET user_id='${viewer}' WHERE id='${postId}'`, /Author and publication/);
+await rejects(`UPDATE profiles SET is_blocked=true WHERE id='${author}'`, /Only admins/);
+await as(admin,'admin@test.local');
+await rejects(`SELECT moderate_feed_user('${admin}','block','spam campaign',7)`, /own account/);
+await rejects(`SELECT moderate_feed_user('${author}','suspend','spam campaign',999)`, /1, 7 or 30/);
+await db.exec(`SELECT moderate_feed_user('${author}','suspend','Repeated promotional spam',7)`);
+await as(author,'author@test.local');
+await rejects(`UPDATE profiles SET is_suspended=false WHERE id='${author}'`, /Only admins/);
+await rejects(post('Try bypass suspension'), /restricted/);
+await rejects(`INSERT INTO post_comments(post_id,user_id,content) VALUES('${postId}','${author}','Comment bypass')`, /restricted/);
+await rejects(`INSERT INTO post_reposts(post_id,user_id) VALUES('${postId}','${author}')`, /row-level security/);
+await as(viewer,'viewer@test.local');
+assert.equal((await db.query('SELECT * FROM posts')).rows.length,0);
+assert.equal((await db.query('SELECT * FROM get_network_feed()')).rows.length,0);
+await db.exec("RESET ROLE; SET request.uid=''; SET request.email=''; SET ROLE anon");
+assert.equal((await db.query('SELECT * FROM posts')).rows.length,0);
+assert.equal((await db.query('SELECT * FROM get_network_feed()')).rows.length,0);
+await as(admin,'admin@test.local');
+assert.equal((await db.query('SELECT * FROM posts')).rows.length,1);
+await db.exec(`UPDATE profiles SET suspended_until=now()-interval '1 day' WHERE id='${author}'`);
+await as(viewer,'viewer@test.local');
+assert.equal((await db.query('SELECT * FROM get_network_feed()')).rows.length,1);
+await as(admin,'admin@test.local');
+await db.exec(`SELECT moderate_feed_user('${author}','block','Repeated promotional spam',7)`);
+await as(viewer,'viewer@test.local');
+assert.equal((await db.query('SELECT * FROM posts')).rows.length,0);
+await as(admin,'admin@test.local');
+await db.exec(`SELECT moderate_feed_user('${author}','restore','Appeal accepted after review',7)`);
+await age();
+await db.exec(`INSERT INTO post_comments(post_id,user_id,content) VALUES('${postId}','${author}','A useful comment')`);
+await db.exec(`INSERT INTO post_likes(post_id,user_id) VALUES('${postId}','${author}')`);
+await age();
+await root(`INSERT INTO feed_submission_log(user_id,fingerprint,submitted_at) SELECT '${author}',i::text,now()-interval '1 minute' FROM generate_series(1,30) i`);
+await as(author,'author@test.local');
+await rejects(post('Hourly quota bypass'), /hourly limit/);
+await root(`CREATE TABLE deletion_dependency(user_id uuid REFERENCES auth.users(id)); INSERT INTO deletion_dependency VALUES('${author}')`);
+await as(admin,'admin@test.local');
+await rejects(`SELECT moderate_feed_user('${author}','delete','Confirmed spam account removal',7)`, /foreign key/);
+assert.equal((await db.query(`SELECT * FROM moderation_actions WHERE user_id='${author}' AND action='delete'`)).rows.length,0);
+await root('DROP TABLE deletion_dependency');
+await as(admin,'admin@test.local');
+await db.exec(`SELECT moderate_feed_user('${author}','delete','Confirmed spam account removal',7)`);
+assert.equal((await db.query(`SELECT * FROM posts WHERE user_id='${author}'`)).rows.length,0);
+assert.equal((await db.query(`SELECT * FROM moderation_actions WHERE user_id='${author}'`)).rows.length,4);
+await root('SELECT 1');
+assert.equal((await db.query(`SELECT * FROM auth.users WHERE id='${author}'`)).rows.length,0);
+await db.close();
+console.log('PASS: spam limits, edits, permissions, suspension, expiry, feed visibility, restore, counter updates, deletion and audit persistence.');

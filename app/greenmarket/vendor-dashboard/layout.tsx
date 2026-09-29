@@ -14,7 +14,7 @@ const navItems = [
     { label: 'Products', href: '/greenmarket/vendor-dashboard/products', icon: Package },
     { label: 'Profile', href: '/greenmarket/vendor-dashboard/profile', icon: User },
     { label: 'Verify', href: '/greenmarket/vendor-dashboard/verify', icon: Shield },
-    { label: 'Settings', href: '/greenmarket/vendor-dashboard/settings', icon: Settings },
+    { label: 'Enquiries', href: '/feed/enquiries', icon: Bell },
 ];
 
 interface VendorInfo {

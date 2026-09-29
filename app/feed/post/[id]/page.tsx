@@ -1,4 +1,7 @@
 'use client';
+import PracticalPostCard from '../../components/PracticalPostCard';
+import QuestionAnswerSummary from '../../components/QuestionAnswerSummary';
+import { PostKind, PostDetails } from '@/lib/practical-feed';
 
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -105,6 +108,12 @@ interface AuthorProfile {
 }
 
 interface PostData {
+    post_kind?: PostKind;
+    post_details?: PostDetails;
+    is_closed?: boolean;
+    expires_at?: string | null;
+    moderation_status?: string;
+    moderation_feedback?: string | null;
     id: string;
     user_id: string;
     content: string;
@@ -169,6 +178,7 @@ export default function PostPermalinkPage() {
     const [post, setPost] = useState<PostData | null>(null);
     const [liked, setLiked] = useState(false);
     const [likeBusy, setLikeBusy] = useState(false);
+    const [answerVersion, setAnswerVersion] = useState(0);
     const [comments, setComments] = useState<CommentData[]>([]);
     const [commentText, setCommentText] = useState('');
     const [submittingComment, setSubmittingComment] = useState(false);
@@ -354,8 +364,8 @@ export default function PostPermalinkPage() {
             setReplyTo(null);
             setPost((p) => (p ? { ...p, comments_count: p.comments_count + 1 } : p));
             await load();
-        } catch {
-            toast.error('Could not post your comment');
+        } catch (error) {
+            toast.error((error as { message?: string }).message || 'Could not post your comment');
         } finally {
             setSubmittingComment(false);
         }
@@ -486,6 +496,8 @@ export default function PostPermalinkPage() {
                         </div>
                     </div>
 
+                    {post.moderation_status && post.moderation_status !== 'published' && <div className="mb-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900"><p className="font-semibold">{post.moderation_status === 'pending' ? 'Awaiting moderator review' : 'Not approved for publication'}</p>{post.moderation_feedback && <p className="mt-1">{post.moderation_feedback}</p>}<Link href="/feed/activity" className="mt-2 inline-block underline">View reviews & appeals</Link></div>}
+                    <PracticalPostCard key={`${post.id}-${answerVersion}`} post={post} userId={user?.id} />
                     {post.content && (
                         <p className="text-gray-800 whitespace-pre-wrap mb-3 leading-relaxed">
                             {parseContentWithAll(post.content, undefined, undefined)}
@@ -611,6 +623,7 @@ export default function PostPermalinkPage() {
                     />
                 )}
 
+                <div id="comments" className="scroll-mt-24"><QuestionAnswerSummary post={post} userId={user?.id} comments={comments} onChange={() => setAnswerVersion(v=>v+1)} /></div>
                 {/* Comment composer */}
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-4">
                     {user ? (
@@ -621,7 +634,7 @@ export default function PostPermalinkPage() {
                                     value={commentText}
                                     onChange={(e) => setCommentText(e.target.value)}
                                     rows={2}
-                                    placeholder="Write a comment..."
+                                    placeholder={post.post_kind === 'question' ? "Share your advice and explain what helped…" : "Write a comment…"}
                                     className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm resize-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
                                 />
                                 <div className="flex justify-end mt-2">
@@ -652,7 +665,7 @@ export default function PostPermalinkPage() {
                         <p className="text-center text-sm text-gray-400 py-6">No comments yet. Be the first to reply.</p>
                     ) : (
                         topLevelComments.map((comment) => (
-                            <div key={comment.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                            <div id={`comment-${comment.id}`} key={comment.id} className="scroll-mt-24 bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
                                 <div className="flex items-start gap-3">
                                     <Link href={profileHref(comment.profile)}>
                                         <Avatar profile={comment.profile} size={32} />

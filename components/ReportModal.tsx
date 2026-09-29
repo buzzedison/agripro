@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Flag, Loader2, CheckCircle } from 'lucide-react';
@@ -26,8 +27,8 @@ export default function ReportModal({ reporterId, targetType, targetId, targetLa
         try {
             await reportContent({ reporterId, targetType, targetId, reason, details });
             setSubmitted(true);
-        } catch {
-            toast.error('Could not submit report. Please try again.');
+        } catch (error) {
+            toast.error((error as { message?: string }).message || 'Could not submit report. Please try again.');
         } finally {
             setSubmitting(false);
         }
@@ -55,7 +56,7 @@ export default function ReportModal({ reporterId, targetType, targetId, targetLa
                 >
                     <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
                         <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                            <Flag className="w-4 h-4 text-red-500" /> Report {targetType === 'user' ? 'account' : targetType}
+                            <Flag className="w-4 h-4 text-red-500" /> Report {targetType === 'user' ? 'account' : targetType === 'enquiry_message' ? 'message' : targetType}
                         </h3>
                         <button onClick={onClose} className="p-1.5 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600">
                             <X className="w-4 h-4" />
@@ -70,8 +71,9 @@ export default function ReportModal({ reporterId, targetType, targetId, targetLa
                                 </div>
                                 <p className="font-bold text-gray-900 mb-1">Report submitted</p>
                                 <p className="text-sm text-gray-500 mb-5">
-                                    Thanks — our team will review {targetLabel || 'this'} shortly.
+                                    Thanks — our team will review {targetLabel || 'this'}.
                                 </p>
+                                <Link href="/feed/activity" className="mb-4 block text-sm font-semibold text-green-700 underline">Track your report</Link>
                                 <button
                                     onClick={onClose}
                                     className="px-6 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-full hover:bg-gray-800"
@@ -82,7 +84,7 @@ export default function ReportModal({ reporterId, targetType, targetId, targetLa
                         ) : (
                             <>
                                 <p className="text-sm text-gray-500 mb-4">
-                                    Why are you reporting {targetLabel || 'this'}? Reports are reviewed by our team.
+                                    Why are you reporting {targetLabel || 'this'}? {targetType === 'enquiry_message' ? 'Submitting shares this message and your explanation with moderators.' : 'Reports are reviewed by our team.'}
                                 </p>
                                 <div className="space-y-2 mb-4">
                                     {(Object.keys(REPORT_REASON_LABELS) as ReportReason[]).map((r) => (
@@ -104,6 +106,8 @@ export default function ReportModal({ reporterId, targetType, targetId, targetLa
                                     ))}
                                 </div>
                                 <textarea
+                                    maxLength={2000}
+                                    aria-label="Report details"
                                     value={details}
                                     onChange={(e) => setDetails(e.target.value)}
                                     rows={3}

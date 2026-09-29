@@ -55,6 +55,7 @@ export default async function EditProductPage({ params }: PageProps) {
         categoryId: product.category_id,
         stockStatus: product.stock_status,
         isOrganic: product.is_organic,
+        minOrderQuantity: product.min_order_quantity,
         imageUrls: product.images || []
     }
 

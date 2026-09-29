@@ -87,6 +87,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (postId) {
+      const { data: post } = await supabase.from('posts').select('user_id,moderation_status').eq('id',postId).maybeSingle();
+      if (!post || post.user_id !== user.id || post.moderation_status !== 'published') {
+        return NextResponse.json({ error: 'Mentions are available only for your published posts.' }, { status: 403 });
+      }
+    }
+
     // Extract mentions from content (match @username pattern)
     const mentionRegex = /@([a-zA-Z][a-zA-Z0-9\s]+?)(?=\s|$|[^\w])/g;
     const matches = content.matchAll(mentionRegex);

@@ -27,6 +27,8 @@ export async function submitVendorForm(data: VendorFormData) {
     // Get current user if logged in
     const { data: { user } } = await supabase.auth.getUser()
 
+    if (!user) return {success:false,error:'Please sign in before applying to become a seller.'};
+
     // Insert vendor application into database
     const { data: vendor, error: dbError } = await supabase
       .from('trade_vendors')

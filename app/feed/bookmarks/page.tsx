@@ -1,4 +1,5 @@
 'use client';
+import PracticalPostCard from '../components/PracticalPostCard';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -157,6 +158,7 @@ export default function BookmarksPage() {
                                 </div>
 
                                 {/* Post Content */}
+                                <PracticalPostCard post={post} userId={user?.id} />
                                 <p className="text-gray-900 whitespace-pre-wrap mb-4 text-[15px] leading-relaxed">
                                     {parseContentWithAll(
                                         post.content,

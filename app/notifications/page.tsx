@@ -25,9 +25,10 @@ interface Notification {
   id: string;
   user_id: string;
   actor_id: string;
-  type: 'mention' | 'like' | 'comment' | 'repost' | 'follow' | 'connection_request' | 'connection_accepted';
+  type: 'mention' | 'like' | 'comment' | 'repost' | 'follow' | 'connection_request' | 'connection_accepted' | 'enquiry' | 'enquiry_update' | 'answer_accepted' | 'enquiry_reply';
   post_id?: string;
   comment_id?: string;
+  enquiry_id?: string;
   message: string;
   read: boolean;
   created_at: string;
@@ -43,7 +44,7 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [markingRead, setMarkingRead] = useState(false);
-  const [filter, setFilter] = useState<'all' | 'unread' | 'mention' | 'like' | 'comment' | 'follow'>('all');
+  const [filter, setFilter] = useState<'all' | 'unread' | 'mention' | 'like' | 'comment' | 'follow' | 'practical'>('all');
   const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => {
@@ -133,7 +134,11 @@ export default function NotificationsPage() {
     }
 
     // Navigate based on notification type
-    if (notification.type === 'connection_request') {
+    if (notification.type === 'enquiry_reply') {
+      router.push(`/feed/enquiries/${notification.enquiry_id}`);
+    } else if (notification.type === 'enquiry' || notification.type === 'enquiry_update') {
+      router.push(`/feed/enquiries/${notification.enquiry_id}`);
+    } else if (notification.type === 'connection_request') {
       router.push('/connect/requests');
     } else if (notification.type === 'follow' || notification.type === 'connection_accepted') {
       // Navigate to the actor's profile
@@ -142,16 +147,21 @@ export default function NotificationsPage() {
         : notification.actor_id;
       router.push(`/connect/${profileSlug}`);
     } else if (notification.post_id) {
-      router.push(`/feed?post=${notification.post_id}`);
+      router.push(`/feed/post/${notification.post_id}`);
     }
   };
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
+      case 'answer_accepted':
+        return <CheckCheck className="w-5 h-5 text-green-600" />;
       case 'mention':
         return <AtSign className="w-5 h-5 text-blue-500" />;
       case 'like':
         return <Heart className="w-5 h-5 text-red-500 fill-red-500" />;
+      case 'enquiry_reply':
+      case 'enquiry':
+      case 'enquiry_update':
       case 'comment':
         return <MessageCircle className="w-5 h-5 text-green-500" />;
       case 'repost':
@@ -170,6 +180,7 @@ export default function NotificationsPage() {
   const filteredNotifications = notifications.filter(n => {
     if (filter === 'all') return true;
     if (filter === 'unread') return !n.read;
+    if (filter === 'practical') return ['enquiry', 'enquiry_update', 'answer_accepted', 'enquiry_reply'].includes(n.type);
     return n.type === filter;
   });
 
@@ -218,11 +229,13 @@ export default function NotificationsPage() {
           )}
         </div>
 
+        <Link href="/feed/preferences" className="mb-4 inline-block text-sm font-semibold text-green-700 hover:underline">Manage feed alerts</Link>
         {/* Filters */}
         <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
           {[
             { key: 'all', label: 'All' },
             { key: 'unread', label: 'Unread' },
+            { key: 'practical', label: 'Enquiries & answers' },
             { key: 'mention', label: 'Mentions' },
             { key: 'like', label: 'Likes' },
             { key: 'comment', label: 'Comments' },

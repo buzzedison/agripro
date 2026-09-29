@@ -1,187 +1,209 @@
-'use server'
+"use server";
 
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
-import { z } from 'zod'
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import { z } from "zod";
 
-const currencyOptions = ['GHS', 'USD', 'KES', 'NGN', 'ZAR', 'EUR'] as const
+const currencyOptions = ["GHS", "USD", "KES", "NGN", "ZAR", "EUR"] as const;
 
 const productSchema = z.object({
-    name: z.string().min(3, 'Product name must be at least 3 characters'),
-    description: z.string().min(10, 'Description must be at least 10 characters'),
-    price: z.coerce.number().positive('Price must be positive'),
-    currency: z.enum(currencyOptions),
-    unit: z.string().min(1, 'Unit is required (e.g. kg, piece)'),
-    categoryId: z.string().uuid('Invalid category'),
-    stockStatus: z.enum(['in_stock', 'low_stock', 'out_of_stock']),
-    isOrganic: z.boolean().optional(),
-    imageUrls: z.array(z.string().url()).min(1, 'At least one image is required'),
-})
+  name: z
+    .string()
+    .trim()
+    .min(3, "Product name must be at least 3 characters")
+    .max(160),
+  description: z
+    .string()
+    .trim()
+    .min(10, "Description must be at least 10 characters")
+    .max(5000),
+  price: z.coerce.number().positive("Price must be positive").max(99999999.99),
+  minOrderQuantity: z.coerce.number().int().min(1).max(1000000000),
+  currency: z.enum(currencyOptions),
+  unit: z.string().min(1, "Unit is required (e.g. kg, piece)"),
+  categoryId: z.string().uuid("Invalid category"),
+  stockStatus: z.enum(["in_stock", "low_stock", "out_of_stock"]),
+  isOrganic: z.boolean().optional(),
+  imageUrls: z
+    .array(
+      z
+        .string()
+        .url()
+        .refine((url) => url.startsWith("https://"), "Images must use HTTPS"),
+    )
+    .min(1, "At least one image is required")
+    .max(8, "Use up to 8 images"),
+});
 
 export async function createProduct(prevState: any, formData: FormData) {
-    const supabase = await createClient()
+  const supabase = await createClient();
 
-    // 1. Get current user
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-        return { error: 'You must be logged in to post a product' }
-    }
+  // 1. Get current user
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "You must be logged in to post a product" };
+  }
 
-    // 2. Get vendor profile
-    const { data: vendor } = await supabase
-        .from('trade_vendors')
-        .select('id, slug')
-        .eq('user_id', user.id)
-        .single()
+  // 2. Get vendor profile
+  const { data: vendor } = await supabase
+    .from("trade_vendors")
+    .select("id, slug")
+    .eq("user_id", user.id)
+    .single();
 
-    if (!vendor) {
-        return { error: 'You must have a vendor profile to post products' }
-    }
+  if (!vendor) {
+    return { error: "You must have a vendor profile to post products" };
+  }
 
-    // 3. Parse and validate form data
-    // Note: FormData handling for arrays/booleans needs care
-    const rawImages = formData.get('imageUrls') as string
-    const imageUrls = rawImages ? rawImages.split(',').filter(Boolean) : []
+  // 3. Parse and validate form data
+  // Note: FormData handling for arrays/booleans needs care
+  const rawImages = formData.get("imageUrls") as string;
+  const imageUrls = rawImages ? rawImages.split(",").filter(Boolean) : [];
 
-    const rawData = {
-        name: formData.get('name'),
-        description: formData.get('description'),
-        price: formData.get('price'),
-        currency: formData.get('currency') || 'GHS',
-        unit: formData.get('unit'),
-        categoryId: formData.get('categoryId'),
-        stockStatus: formData.get('stockStatus'),
-        isOrganic: formData.get('isOrganic') === 'on',
-        imageUrls: imageUrls
-    }
+  const rawData = {
+    name: formData.get("name"),
+    description: formData.get("description"),
+    price: formData.get("price"),
+    minOrderQuantity: formData.get("minOrderQuantity") || 1,
+    currency: formData.get("currency") || "GHS",
+    unit: formData.get("unit"),
+    categoryId: formData.get("categoryId"),
+    stockStatus: formData.get("stockStatus"),
+    isOrganic: formData.get("isOrganic") === "on",
+    imageUrls: imageUrls,
+  };
 
-    const validatedFields = productSchema.safeParse(rawData)
+  const validatedFields = productSchema.safeParse(rawData);
 
-    if (!validatedFields.success) {
-        return {
-            error: 'Validation failed',
-            fieldErrors: validatedFields.error.flatten().fieldErrors,
-        }
-    }
+  if (!validatedFields.success) {
+    return {
+      error: "Validation failed",
+      fieldErrors: validatedFields.error.flatten().fieldErrors,
+    };
+  }
 
-    const data = validatedFields.data
+  const data = validatedFields.data;
 
-    // 4. Insert into database
-    const { error } = await supabase.from('trade_products').insert({
-        vendor_id: vendor.id,
-        category_id: data.categoryId,
-        name: data.name,
-        description: data.description,
-        price: data.price,
-        unit: data.unit,
-        currency: data.currency,
-        stock_status: data.stockStatus,
-        is_organic: data.isOrganic,
-        images: data.imageUrls,
-        is_active: true,
-        // slug is auto-generated by DB trigger usually, but let's check
-        // The migration `005` doesn't seem to have a product slug trigger, only vendor slug.
-        // I should create a slug manually here.
-        slug: generateSlug(data.name)
-    })
+  // 4. Insert into database
+  const { error } = await supabase.from("trade_products").insert({
+    vendor_id: vendor.id,
+    category_id: data.categoryId,
+    name: data.name,
+    description: data.description,
+    price: data.price,
+    min_order_quantity: data.minOrderQuantity,
+    unit: data.unit,
+    currency: data.currency,
+    stock_status: data.stockStatus,
+    is_organic: data.isOrganic,
+    images: data.imageUrls,
+    is_active: true,
+    // slug is auto-generated by DB trigger usually, but let's check
+    // The migration `005` doesn't seem to have a product slug trigger, only vendor slug.
+    // I should create a slug manually here.
+    slug: generateSlug(data.name),
+  });
 
-    if (error) {
-        console.error('Error creating product:', error)
-        return { error: 'Failed to create product. Please try again.' }
-    }
+  if (error) {
+    console.error("Error creating product:", error);
+    return {
+      error: error.message || "Failed to create product. Please try again.",
+    };
+  }
 
-    // 5. Update vendor stats (total_products)
-    // This might be better as a database trigger, but we can do it here for now or assume existing triggers usage if present
-    // Migration 005 has `total_products` column but no trigger to update it.
-
-    const { error: rpcError } = await supabase.rpc('increment_vendor_product_count', { vendor_id: vendor.id })
-
-    if (rpcError) {
-        // Fallback: manual update if RPC fails or doesn't exist
-        const { count } = await supabase.from('trade_products').select('*', { count: 'exact', head: true }).eq('vendor_id', vendor.id)
-        await supabase.from('trade_vendors').update({ total_products: count }).eq('id', vendor.id)
-    }
-
-    redirect(`/greenmarket/dashboard`)
+  redirect(`/greenmarket/dashboard`);
 }
 
 function generateSlug(name: string): string {
-    return name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)/g, '') +
-        '-' + Math.random().toString(36).substring(2, 7)
+  const base =
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "") || "product";
+  return `${base}-${crypto.randomUUID().slice(0, 8)}`;
 }
 
-export async function updateProduct(productId: string, prevState: any, formData: FormData) {
-    const supabase = await createClient()
+export async function updateProduct(
+  productId: string,
+  prevState: any,
+  formData: FormData,
+) {
+  const supabase = await createClient();
 
-    // 1. Get current user
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-        return { error: 'You must be logged in to update a product' }
-    }
+  // 1. Get current user
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "You must be logged in to update a product" };
+  }
 
-    // 2. Validate ownership
-    // Check if product belongs to a vendor owned by the user
-    const { data: product } = await supabase
-        .from('trade_products')
-        .select('*, vendor:trade_vendors(user_id)')
-        .eq('id', productId)
-        .single()
+  // 2. Validate ownership
+  // Check if product belongs to a vendor owned by the user
+  const { data: product } = await supabase
+    .from("trade_products")
+    .select("*, vendor:trade_vendors(user_id)")
+    .eq("id", productId)
+    .single();
 
-    if (!product || !product.vendor || product.vendor.user_id !== user.id) {
-        return { error: 'You do not have permission to edit this product' }
-    }
+  if (!product || !product.vendor || product.vendor.user_id !== user.id) {
+    return { error: "You do not have permission to edit this product" };
+  }
 
-    // 3. Parse and validate form data
-    const rawImages = formData.get('imageUrls') as string
-    const imageUrls = rawImages ? rawImages.split(',').filter(Boolean) : []
+  // 3. Parse and validate form data
+  const rawImages = formData.get("imageUrls") as string;
+  const imageUrls = rawImages ? rawImages.split(",").filter(Boolean) : [];
 
-    const rawData = {
-        name: formData.get('name'),
-        description: formData.get('description'),
-        price: formData.get('price'),
-        currency: formData.get('currency') || 'GHS',
-        unit: formData.get('unit'),
-        categoryId: formData.get('categoryId'),
-        stockStatus: formData.get('stockStatus'),
-        isOrganic: formData.get('isOrganic') === 'on',
-        imageUrls: imageUrls
-    }
+  const rawData = {
+    name: formData.get("name"),
+    description: formData.get("description"),
+    price: formData.get("price"),
+    minOrderQuantity: formData.get("minOrderQuantity") || 1,
+    currency: formData.get("currency") || "GHS",
+    unit: formData.get("unit"),
+    categoryId: formData.get("categoryId"),
+    stockStatus: formData.get("stockStatus"),
+    isOrganic: formData.get("isOrganic") === "on",
+    imageUrls: imageUrls,
+  };
 
-    const validatedFields = productSchema.safeParse(rawData)
+  const validatedFields = productSchema.safeParse(rawData);
 
-    if (!validatedFields.success) {
-        return {
-            error: 'Validation failed',
-            fieldErrors: validatedFields.error.flatten().fieldErrors,
-        }
-    }
+  if (!validatedFields.success) {
+    return {
+      error: "Validation failed",
+      fieldErrors: validatedFields.error.flatten().fieldErrors,
+    };
+  }
 
-    const data = validatedFields.data
+  const data = validatedFields.data;
 
-    // 4. Update database
-    const { error } = await supabase
-        .from('trade_products')
-        .update({
-            category_id: data.categoryId,
-            name: data.name,
-            description: data.description,
-            price: data.price,
-        unit: data.unit,
-        currency: data.currency,
-        stock_status: data.stockStatus,
-        is_organic: data.isOrganic,
-            images: data.imageUrls,
-            updated_at: new Date().toISOString()
-        })
-        .eq('id', productId)
+  // 4. Update database
+  const { error } = await supabase
+    .from("trade_products")
+    .update({
+      category_id: data.categoryId,
+      name: data.name,
+      description: data.description,
+      price: data.price,
+      min_order_quantity: data.minOrderQuantity,
+      unit: data.unit,
+      currency: data.currency,
+      stock_status: data.stockStatus,
+      is_organic: data.isOrganic,
+      images: data.imageUrls,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", productId);
 
-    if (error) {
-        console.error('Error updating product:', error)
-        return { error: 'Failed to update product. Please try again.' }
-    }
+  if (error) {
+    console.error("Error updating product:", error);
+    return {
+      error: error.message || "Failed to update product. Please try again.",
+    };
+  }
 
-    redirect(`/greenmarket/products/${product.slug}`)
+  redirect(`/greenmarket/products/${product.slug}`);
 }

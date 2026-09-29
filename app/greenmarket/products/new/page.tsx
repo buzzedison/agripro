@@ -63,7 +63,7 @@ export default async function NewProductPage() {
                 <div className="flex items-center justify-between mb-8">
                     <div>
                         <h1 className="text-3xl font-bold text-gray-900">Add New Product</h1>
-                        <p className="text-gray-600 mt-1">List a new item in your store</p>
+                        <p className="text-gray-600 mt-1">Save a product for your store. Listings become public after seller approval.</p>
                     </div>
                 </div>
 
@@ -71,6 +71,7 @@ export default async function NewProductPage() {
                     categories={categories || []}
                     userId={user.id}
                     action={createProduct}
+                    submitLabel="Save product"
                 />
             </div>
         </div>

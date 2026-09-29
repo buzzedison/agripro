@@ -16,12 +16,15 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
+        const { data: isAdmin, error: adminError } = await supabase.rpc('is_admin_user');
+        if (adminError || !isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
         const searchParams = request.nextUrl.searchParams;
         const status = searchParams.get('status'); // 'complete', 'incomplete', 'all'
-        const search = searchParams.get('search');
+        const search = searchParams.get('search')?.replace(/[^\p{L}\p{N}@ ._-]/gu, '').slice(0, 100);
         const userType = searchParams.get('user_type');
-        const page = parseInt(searchParams.get('page') || '1');
-        const limit = parseInt(searchParams.get('limit') || '50');
+        const page = Math.max(1, Math.min(100000, Math.floor(Number(searchParams.get('page'))) || 1));
+        const limit = Math.max(1, Math.min(100, Math.floor(Number(searchParams.get('limit'))) || 50));
         const offset = (page - 1) * limit;
 
         // Use service role client to bypass RLS

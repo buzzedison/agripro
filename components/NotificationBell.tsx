@@ -23,9 +23,10 @@ interface Notification {
   id: string;
   user_id: string;
   actor_id: string;
-  type: 'mention' | 'like' | 'comment' | 'repost' | 'follow' | 'connection_request' | 'connection_accepted';
+  type: 'mention' | 'like' | 'comment' | 'repost' | 'follow' | 'connection_request' | 'connection_accepted' | 'enquiry' | 'enquiry_update' | 'answer_accepted' | 'enquiry_reply';
   post_id?: string;
   comment_id?: string;
+  enquiry_id?: string;
   message: string;
   read: boolean;
   created_at: string;
@@ -125,7 +126,11 @@ export default function NotificationBell() {
     }
 
     // Navigate based on notification type
-    if (notification.type === 'connection_request') {
+    if (notification.type === 'enquiry_reply') {
+      router.push(`/feed/enquiries/${notification.enquiry_id}`);
+    } else if (notification.type === 'enquiry' || notification.type === 'enquiry_update') {
+      router.push(`/feed/enquiries/${notification.enquiry_id}`);
+    } else if (notification.type === 'connection_request') {
       router.push('/connect/requests');
     } else if (notification.type === 'follow' || notification.type === 'connection_accepted') {
       // Navigate to the actor's profile
@@ -142,10 +147,15 @@ export default function NotificationBell() {
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
+      case 'answer_accepted':
+        return <CheckCheck className="w-5 h-5 text-green-600" />;
       case 'mention':
         return <AtSign className="w-4 h-4 text-blue-500" />;
       case 'like':
         return <Heart className="w-4 h-4 text-red-500 fill-red-500" />;
+      case 'enquiry_reply':
+      case 'enquiry':
+      case 'enquiry_update':
       case 'comment':
         return <MessageCircle className="w-4 h-4 text-green-500" />;
       case 'repost':

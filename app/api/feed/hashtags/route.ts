@@ -32,11 +32,11 @@ export async function POST(request: NextRequest) {
     // Verify the post belongs to the user
     const { data: post, error: postError } = await supabase
       .from('posts')
-      .select('user_id')
+      .select('user_id,moderation_status')
       .eq('id', postId)
       .single();
 
-    if (postError || !post || post.user_id !== user.id) {
+    if (postError || !post || post.user_id !== user.id || post.moderation_status !== 'published') {
       return NextResponse.json(
         { error: 'Post not found or unauthorized' },
         { status: 404 }

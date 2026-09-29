@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import MemberModeration from '../components/MemberModeration';
 import { useContentAccess } from '@/lib/hooks/useContentAccess';
 import { nameToUniqueSlug } from '@/lib/utils/mentions';
 import {
@@ -34,6 +35,9 @@ interface Profile {
     is_public: boolean;
     is_verified: boolean;
     profile_complete: boolean;
+    is_suspended: boolean;
+    is_blocked: boolean;
+    suspended_until: string | null;
     created_at: string;
 }
 
@@ -65,17 +69,21 @@ export default function AdminMembersPage() {
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [userTypeFilter, setUserTypeFilter] = useState<string>('all');
     const [searchQuery, setSearchQuery] = useState('');
+    const [error, setError] = useState('');
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
 
     useEffect(() => {
         if (user && !authLoading) {
             fetchProfiles();
         }
-    }, [user, authLoading, statusFilter, userTypeFilter]);
+    }, [user, authLoading, statusFilter, userTypeFilter, page]);
 
     const fetchProfiles = async () => {
         try {
             setLoading(true);
-            const params = new URLSearchParams();
+            setError('');
+            const params = new URLSearchParams({ page: String(page) });
             if (statusFilter !== 'all') {
                 params.set('status', statusFilter);
             }
@@ -87,13 +95,15 @@ export default function AdminMembersPage() {
             }
 
             const response = await fetch(`/api/admin/members?${params}`);
+            if (!response.ok) throw new Error('Unable to load members. Admin access is required.');
             if (response.ok) {
                 const data = await response.json();
                 setProfiles(data.profiles || []);
+                setTotalPages(data.pagination?.totalPages || 1);
                 setStats(data.stats || { total: 0, complete: 0, incomplete: 0 });
             }
         } catch (error) {
-            console.error('Error fetching profiles:', error);
+            setError(error instanceof Error ? error.message : 'Unable to load members.');
         } finally {
             setLoading(false);
         }
@@ -101,7 +111,7 @@ export default function AdminMembersPage() {
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
-        fetchProfiles();
+        if (page !== 1) setPage(1); else fetchProfiles();
     };
 
     const formatDate = (dateString: string) => {
@@ -135,7 +145,7 @@ export default function AdminMembersPage() {
                         <div>
                             <h1 className="text-3xl font-bold text-gray-900">Members</h1>
                             <p className="mt-1 text-gray-600">
-                                View all signed-up users and their profile status
+                                Manage members, review access, and act on spam.
                             </p>
                         </div>
                     </div>
@@ -190,7 +200,7 @@ export default function AdminMembersPage() {
                             ].map(({ key, label }) => (
                                 <button
                                     key={key}
-                                    onClick={() => setStatusFilter(key)}
+                                    onClick={() => { setStatusFilter(key); setPage(1); }}
                                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${statusFilter === key
                                         ? 'bg-green-600 text-white'
                                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -204,7 +214,7 @@ export default function AdminMembersPage() {
                         {/* User Type Filter */}
                         <select
                             value={userTypeFilter}
-                            onChange={(e) => setUserTypeFilter(e.target.value)}
+                            onChange={(e) => { setUserTypeFilter(e.target.value); setPage(1); }}
                             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm"
                         >
                             <option value="all">All Types</option>
@@ -236,6 +246,7 @@ export default function AdminMembersPage() {
                     </div>
                 </div>
 
+                {error && <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}</p>}
                 {/* Members List */}
                 {loading ? (
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center">
@@ -337,6 +348,7 @@ export default function AdminMembersPage() {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="flex flex-col gap-1">
+                                                    <span className="text-xs font-semibold text-gray-700">{profile.is_blocked ? 'Blocked from feed' : profile.is_suspended && (!profile.suspended_until || new Date(profile.suspended_until) > new Date()) ? `Suspended${profile.suspended_until ? ' until ' + formatDate(profile.suspended_until) : ''}` : 'Feed access active'}</span>
                                                     {profile.profile_complete ? (
                                                         <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800">
                                                             <FaCheckCircle className="w-3 h-3" />
@@ -366,6 +378,7 @@ export default function AdminMembersPage() {
                                                 >
                                                     View <FaExternalLinkAlt className="w-3 h-3" />
                                                 </Link>
+                                                <div className="mt-2"><MemberModeration userId={profile.id} name={profile.full_name || "member"} onComplete={fetchProfiles} /></div>
                                             </td>
                                         </tr>
                                     ))}
@@ -373,10 +386,14 @@ export default function AdminMembersPage() {
                             </table>
                         </div>
 
+                        <div className="flex justify-end gap-2 border-t p-3">
+                            <button disabled={page <= 1} onClick={() => setPage(page - 1)} className="rounded-lg border px-3 py-2 text-sm disabled:opacity-40">Previous</button>
+                            <button disabled={page >= totalPages} onClick={() => setPage(page + 1)} className="rounded-lg border px-3 py-2 text-sm disabled:opacity-40">Next</button>
+                        </div>
                         {/* Results count */}
                         <div className="px-6 py-3 border-t border-gray-200 bg-gray-50">
                             <p className="text-sm text-gray-500">
-                                Showing {profiles.length} member{profiles.length !== 1 ? 's' : ''}
+                                Page {page} of {totalPages} · Showing {profiles.length} member{profiles.length !== 1 ? 's' : ''}
                             </p>
                         </div>
                     </div>

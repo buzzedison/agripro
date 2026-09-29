@@ -1,611 +1,307 @@
-'use client';
-
-import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import Image from 'next/image';
-import { createClient } from '@/lib/supabase/client';
-import {
-    Shield, ArrowLeft, Upload, CheckCircle, AlertCircle,
-    FileText, Camera, Loader2, X, Eye, Building2, Star
-} from 'lucide-react';
-import { motion } from 'framer-motion';
-
-interface Vendor {
-    id: string;
-    business_name: string;
-    verification_level: 'basic' | 'verified' | 'premium';
-    verification_status: 'not_submitted' | 'pending_review' | 'approved' | 'rejected';
-    onboarding_step: number | null;
-    id_document_url: string | null;
-    id_document_type: string | null;
-    business_document_url: string | null;
-    business_document_type: string | null;
-}
-
-export default function VerifyVendorPage() {
-    const router = useRouter();
-    const supabase = createClient();
-    
-    const [vendor, setVendor] = useState<Vendor | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [uploading, setUploading] = useState<'id' | 'business' | null>(null);
-    const [submitting, setSubmitting] = useState(false);
-    const [error, setError] = useState('');
-    const [success, setSuccess] = useState('');
-    
-    const [idFile, setIdFile] = useState<File | null>(null);
-    const [idPreview, setIdPreview] = useState<string | null>(null);
-    const [idType, setIdType] = useState('ghana_card');
-    
-    const [businessFile, setBusinessFile] = useState<File | null>(null);
-    const [businessPreview, setBusinessPreview] = useState<string | null>(null);
-    const [businessType, setBusinessType] = useState('business_registration');
-
-    useEffect(() => {
-        fetchVendorData();
-    }, []);
-
-    const fetchVendorData = async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (!user) {
-            router.push('/auth/login?redirectTo=/greenmarket/vendor-dashboard/verify');
-            return;
-        }
-
-        const { data: vendorData, error } = await supabase
-            .from('trade_vendors')
-            .select('id, business_name, verification_level, verification_status, onboarding_step, id_document_url, id_document_type, business_document_url, business_document_type')
-            .eq('user_id', user.id)
-            .single();
-
-        if (error || !vendorData) {
-            router.push('/greenmarket/become-vendor');
-            return;
-        }
-
-        setVendor(vendorData);
-        if (vendorData.id_document_url) {
-            setIdPreview(vendorData.id_document_url);
-        }
-        if (vendorData.business_document_url) {
-            setBusinessPreview(vendorData.business_document_url);
-        }
-        setLoading(false);
-    };
-
-    const handleFileSelect = (file: File, type: 'id' | 'business') => {
-        if (file.size > 5 * 1024 * 1024) {
-            setError('File size must be less than 5MB');
-            return;
-        }
-
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
-        if (!allowedTypes.includes(file.type)) {
-            setError('Please upload a JPG, PNG, WebP, or PDF file');
-            return;
-        }
-
-        setError('');
-
-        if (type === 'id') {
-            setIdFile(file);
-            if (file.type.startsWith('image/')) {
-                setIdPreview(URL.createObjectURL(file));
-            } else {
-                setIdPreview(null);
-            }
-        } else {
-            setBusinessFile(file);
-            if (file.type.startsWith('image/')) {
-                setBusinessPreview(URL.createObjectURL(file));
-            } else {
-                setBusinessPreview(null);
-            }
-        }
-    };
-
-    const uploadFile = async (file: File, path: string) => {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${path}/${Date.now()}.${fileExt}`;
-
-        const { data, error } = await supabase.storage
-            .from('vendor-documents')
-            .upload(fileName, file, {
-                cacheControl: '3600',
-                upsert: false
-            });
-
-        if (error) throw error;
-
-        const { data: { publicUrl } } = supabase.storage
-            .from('vendor-documents')
-            .getPublicUrl(fileName);
-
-        return publicUrl;
-    };
-
-    const handleSubmitVerification = async () => {
-        if (!vendor) return;
-        
-        setSubmitting(true);
-        setError('');
-        setSuccess('');
-
-        try {
-            const updates: any = {
-                verification_submitted_at: new Date().toISOString(),
-                verification_status: 'pending_review',
-                is_verified: false
-            };
-
-            // Upload ID document if new file selected
-            if (idFile) {
-                setUploading('id');
-                const idUrl = await uploadFile(idFile, `${vendor.id}/id`);
-                updates.id_document_url = idUrl;
-                updates.id_document_type = idType;
-            }
-
-            // Upload business document if new file selected
-            if (businessFile) {
-                setUploading('business');
-                const businessUrl = await uploadFile(businessFile, `${vendor.id}/business`);
-                updates.business_document_url = businessUrl;
-                updates.business_document_type = businessType;
-            }
-
-            // Preserve onboarding step progression once documents submitted
-            if (vendor.verification_level === 'basic' && (idFile || vendor.id_document_url)) {
-                updates.onboarding_step = Math.max(vendor.onboarding_step || 2, 4);
-            }
-
-            const { error: updateError } = await supabase
-                .from('trade_vendors')
-                .update(updates)
-                .eq('id', vendor.id);
-
-            if (updateError) throw updateError;
-
-            setSuccess('Documents submitted for review. You will receive an update once approved.');
-            
-            // Refresh vendor data
-            await fetchVendorData();
-
-            // Redirect after short delay
-            setTimeout(() => {
-                router.push('/greenmarket/vendor-dashboard?verified=true');
-            }, 2000);
-
-        } catch (err: any) {
-            console.error('Verification error:', err);
-            setError(err.message || 'Failed to submit verification. Please try again.');
-        } finally {
-            setSubmitting(false);
-            setUploading(null);
-        }
-    };
-
-    if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <Loader2 className="w-8 h-8 animate-spin text-green-600" />
-            </div>
+"use client";
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { vendorDocumentPath } from "@/lib/marketplace";
+import { communityError } from "@/lib/feed-community";
+type Vendor = {
+  id: string;
+  business_name: string;
+  verification_status: string;
+  id_document_url: string | null;
+  business_document_url: string | null;
+  id_document_type: string | null;
+  business_document_type: string | null;
+};
+export default function VendorVerification() {
+  const supabase = createClient(),
+    router = useRouter();
+  const [vendor, setVendor] = useState<Vendor | null>(null),
+    [loading, setLoading] = useState(true),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState(""),
+    [success, setSuccess] = useState("");
+  const [idFile, setIdFile] = useState<File | null>(null),
+    [businessFile, setBusinessFile] = useState<File | null>(null),
+    [idType, setIdType] = useState("national_id"),
+    [businessType, setBusinessType] = useState("registration");
+  const [links, setLinks] = useState<{ identity?: string; business?: string }>(
+    {},
+  );
+  const load = useCallback(async () => {
+    try {
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      if (!user) {
+        router.replace(
+          "/auth/login?redirectTo=/greenmarket/vendor-dashboard/verify",
         );
-    }
-
-    if (!vendor) return null;
-
-    const isPendingReview = vendor.verification_status === 'pending_review';
-    const isRejected = vendor.verification_status === 'rejected';
-    const canSubmit = (idFile || businessFile) && !isPendingReview;
-    const isAlreadyVerified = vendor.verification_level === 'verified' || vendor.verification_level === 'premium';
-    const isAlreadyPremium = vendor.verification_level === 'premium';
-    const statusChip = (() => {
-        switch (vendor.verification_status) {
-            case 'pending_review':
-                return <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">Pending review</span>;
-            case 'approved':
-                return <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">Approved</span>;
-            case 'rejected':
-                return <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">Needs updates</span>;
-            default:
-                return <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">Not submitted</span>;
+        return;
+      }
+      const { data, error } = await supabase
+        .from("trade_vendors")
+        .select(
+          "id,business_name,verification_status,id_document_url,business_document_url,id_document_type,business_document_type",
+        )
+        .eq("user_id", user.id)
+        .single();
+      if (error) throw error;
+      setVendor(data);
+      setIdType(data.id_document_type || "national_id");
+      setBusinessType(data.business_document_type || "registration");
+      const next: { identity?: string; business?: string } = {};
+      for (const [key, value] of [
+        ["identity", data.id_document_url],
+        ["business", data.business_document_url],
+      ] as const) {
+        const path = vendorDocumentPath(value, data.id);
+        if (path) {
+          const { data: link, error } = await supabase.storage
+            .from("vendor-documents")
+            .createSignedUrl(path, 300);
+          if (error) throw error;
+          if (link) next[key] = link.signedUrl;
         }
-    })();
-    const statusDescriptionMap: Record<Vendor['verification_status'], string> = {
-        not_submitted: 'Upload your ID and business docs to kick off verification.',
-        pending_review: 'Thanks! Your verification is under review by the AgriPro team.',
-        approved: 'All documents have been approved. You are good to trade!',
-        rejected: 'We need updates on your documents. Please re-upload with the correct details.'
-    };
-
-    return (
-        <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-3xl mx-auto">
-                {/* Header */}
-                <div className="mb-8">
-                    <Link
-                        href="/greenmarket/vendor-dashboard"
-                        className="inline-flex items-center text-gray-500 hover:text-gray-700 mb-4"
-                    >
-                        <ArrowLeft className="w-4 h-4 mr-2" /> Back to Dashboard
-                    </Link>
-                    <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                        <Shield className="w-8 h-8 text-blue-600" />
-                        Vendor Verification
-                    </h1>
-                    <p className="text-gray-600 mt-2">
-                        Upload your documents to get verified and build trust with buyers.
-                    </p>
-                </div>
-
-                {/* Current Status */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`rounded-xl p-6 mb-8 ${
-                        vendor.verification_status === 'pending_review'
-                            ? 'bg-amber-50 border border-amber-200'
-                            : vendor.verification_status === 'approved'
-                            ? 'bg-green-50 border border-green-200'
-                            : vendor.verification_status === 'rejected'
-                            ? 'bg-red-50 border border-red-200'
-                            : 'bg-gray-50 border border-gray-200'
-                    }`}
+      }
+      setLinks(next);
+    } catch (e) {
+      setError(communityError(e));
+    } finally {
+      setLoading(false);
+    }
+  }, [supabase, router]);
+  useEffect(() => {
+    void load();
+  }, [load]);
+  function choose(file: File | undefined, kind: "id" | "business") {
+    setError("");
+    if (
+      file &&
+      (!["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(
+        file.type,
+      ) ||
+        file.size > 5 * 1024 * 1024)
+    ) {
+      setError("Use a JPG, PNG, WebP or PDF file up to 5MB.");
+      return;
+    }
+    if (kind === "id") setIdFile(file || null);
+    else setBusinessFile(file || null);
+  }
+  async function upload(file: File, kind: string) {
+    const extension = (
+      {
+        "image/jpeg": "jpg",
+        "image/png": "png",
+        "image/webp": "webp",
+        "application/pdf": "pdf",
+      } as Record<string, string>
+    )[file.type];
+    const path = `${vendor!.id}/${kind}/${crypto.randomUUID()}.${extension}`;
+    const { error } = await supabase.storage
+      .from("vendor-documents")
+      .upload(path, file, { upsert: false, contentType: file.type });
+    if (error) throw error;
+    return path;
+  }
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!vendor || busy) return;
+    setBusy(true);
+    setError("");
+    setSuccess("");
+    try {
+      const identity = idFile
+        ? await upload(idFile, "id")
+        : vendorDocumentPath(vendor.id_document_url, vendor.id);
+      const business = businessFile
+        ? await upload(businessFile, "business")
+        : vendorDocumentPath(vendor.business_document_url, vendor.id);
+      if (!identity)
+        throw new Error("Choose an identity document before submitting.");
+      const { error } = await supabase
+        .from("trade_vendors")
+        .update({
+          id_document_url: identity,
+          business_document_url: business,
+          id_document_type: idType,
+          business_document_type: business ? businessType : null,
+          verification_status: "pending_review",
+          verification_submitted_at: new Date().toISOString(),
+        })
+        .eq("id", vendor.id);
+      if (error) throw error;
+      setIdFile(null);
+      setBusinessFile(null);
+      setSuccess(
+        "Documents submitted for review. Check this page for the decision.",
+      );
+      await load();
+    } catch (e) {
+      setError(communityError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  const approved = vendor?.verification_status === "approved";
+  return (
+    <main className="mx-auto max-w-3xl space-y-6 p-5 sm:p-8">
+      <Link
+        href="/greenmarket/vendor-dashboard"
+        className="text-sm font-semibold text-green-700"
+      >
+        ← Seller dashboard
+      </Link>
+      <header>
+        <h1 className="text-2xl font-bold">Verify your identity</h1>
+        <p className="mt-3 text-sm text-gray-600">
+          Seller approval makes your listings public. Identity verification adds
+          a badge after a moderator reviews your documents.
+        </p>
+      </header>
+      {error && (
+        <p
+          role="alert"
+          className="rounded-xl bg-red-50 p-4 text-sm text-red-700"
+        >
+          {error}
+        </p>
+      )}
+      {success && (
+        <p
+          role="status"
+          className="rounded-xl bg-green-50 p-4 text-sm text-green-800"
+        >
+          {success}
+        </p>
+      )}
+      {loading ? (
+        <p>Loading verification details…</p>
+      ) : (
+        vendor && (
+          <>
+            <section className="rounded-xl border bg-white p-5">
+              <p className="font-semibold">{vendor.business_name}</p>
+              <p className="mt-2 text-sm text-gray-600">
+                Status:{" "}
+                {(
+                  {
+                    approved: "Identity verified",
+                    pending_review: "Awaiting review",
+                    rejected: "Please submit clearer documents",
+                    not_submitted: "Not submitted",
+                  } as Record<string, string>
+                )[vendor.verification_status] || "Not submitted"}
+              </p>
+              <p className="mt-3 text-xs text-gray-500">
+                Your files are private to you and authorized reviewers. Document
+                links expire after five minutes.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-4 text-sm text-green-700">
+                {links.identity && (
+                  <a
+                    href={links.identity}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline"
+                  >
+                    View identity document
+                  </a>
+                )}
+                {links.business && (
+                  <a
+                    href={links.business}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline"
+                  >
+                    View business document
+                  </a>
+                )}
+                <button
+                  onClick={() => {
+                    setError("");
+                    void load();
+                  }}
+                  className="underline"
                 >
-                    <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                            vendor.verification_status === 'approved'
-                                ? 'bg-green-100'
-                                : vendor.verification_status === 'pending_review'
-                                ? 'bg-amber-100'
-                                : vendor.verification_status === 'rejected'
-                                ? 'bg-red-100'
-                                : 'bg-gray-200'
-                        }`}>
-                            {vendor.verification_status === 'approved' ? (
-                                <CheckCircle className="w-6 h-6 text-green-600" />
-                            ) : vendor.verification_status === 'pending_review' ? (
-                                <Loader2 className="w-6 h-6 text-amber-600 animate-spin" />
-                            ) : vendor.verification_status === 'rejected' ? (
-                                <AlertCircle className="w-6 h-6 text-red-600" />
-                            ) : (
-                                <Shield className="w-6 h-6 text-gray-400" />
-                            )}
-                        </div>
-                        <div>
-                            <div className="flex items-center gap-3 flex-wrap">
-                                <h3 className="font-bold text-gray-900">
-                                    {vendor.verification_level === 'premium'
-                                        ? 'Premium Vendor'
-                                        : vendor.verification_level === 'verified'
-                                        ? 'Verified Vendor'
-                                        : 'Basic Vendor'}
-                                </h3>
-                                {statusChip}
-                            </div>
-                            <p className="text-sm text-gray-600">
-                                {statusDescriptionMap[vendor.verification_status]}
-                            </p>
-                        </div>
-                    </div>
-                </motion.div>
-
-                {isPendingReview && (
-                    <div className="mb-8 rounded-2xl border border-amber-200 bg-white p-4 flex items-start gap-3">
-                        <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
-                        <div className="text-sm text-gray-700">
-                            <p className="font-semibold text-amber-700">Documents submitted</p>
-                            <p>We&apos;re reviewing your verification. You can keep updating products while you wait.</p>
-                        </div>
-                    </div>
-                )}
-
-                {isRejected && (
-                    <div className="mb-8 rounded-2xl border border-red-200 bg-white p-4 flex items-start gap-3">
-                        <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
-                        <div className="text-sm text-gray-700">
-                            <p className="font-semibold text-red-700">Action required</p>
-                            <p>Please upload clearer documents so we can approve your profile.</p>
-                        </div>
-                    </div>
-                )}
-
-                {/* Verification Tiers Info */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className="bg-white rounded-xl border border-gray-200 p-6 mb-8"
+                  Refresh status & links
+                </button>
+              </div>
+            </section>
+            {approved ? (
+              <p className="rounded-xl bg-blue-50 p-4 text-sm text-blue-900">
+                Your identity review is complete. Contact support if you need to
+                replace approved documents.
+              </p>
+            ) : (
+              <form
+                onSubmit={submit}
+                className="space-y-5 rounded-xl border bg-white p-5"
+              >
+                <label className="block text-sm font-medium">
+                  Identity document type
+                  <select
+                    value={idType}
+                    onChange={(e) => setIdType(e.target.value)}
+                    className="mt-2 w-full rounded-lg border bg-white p-3"
+                  >
+                    <option value="national_id">National ID</option>
+                    <option value="passport">Passport</option>
+                    <option value="drivers_license">Driver’s licence</option>
+                  </select>
+                </label>
+                <label className="block text-sm font-medium">
+                  Identity document
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                    disabled={busy}
+                    onChange={(e) => choose(e.target.files?.[0], "id")}
+                    className="mt-2 block w-full text-sm"
+                  />
+                </label>
+                <label className="block text-sm font-medium">
+                  Business document type
+                  <select
+                    value={businessType}
+                    onChange={(e) => setBusinessType(e.target.value)}
+                    className="mt-2 w-full rounded-lg border bg-white p-3"
+                  >
+                    <option value="registration">Business registration</option>
+                    <option value="licence">Business licence</option>
+                    <option value="tax">Tax registration</option>
+                  </select>
+                </label>
+                <label className="block text-sm font-medium">
+                  Business document (optional)
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                    disabled={busy}
+                    onChange={(e) => choose(e.target.files?.[0], "business")}
+                    className="mt-2 block w-full text-sm"
+                  />
+                </label>
+                <p className="text-xs text-gray-500">
+                  JPG, PNG, WebP or PDF, up to 5MB per file. An identity badge
+                  does not certify product quality or guarantee a transaction.
+                </p>
+                <button
+                  disabled={busy || (!idFile && !vendor.id_document_url)}
+                  className="rounded-xl bg-green-700 px-5 py-3 text-sm font-semibold text-white disabled:opacity-50"
                 >
-                    <h3 className="font-bold text-gray-900 mb-4">Verification Levels</h3>
-                    <div className="space-y-4">
-                        <div className="flex items-start gap-4 p-4 rounded-lg bg-gray-50">
-                            <div className="w-3 h-3 bg-gray-400 rounded-full mt-1.5" />
-                            <div>
-                                <h4 className="font-semibold text-gray-900">Basic Vendor</h4>
-                                <p className="text-sm text-gray-600">Can list products and receive inquiries</p>
-                            </div>
-                        </div>
-                        <div className={`flex items-start gap-4 p-4 rounded-lg ${isAlreadyVerified ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'}`}>
-                            <div className="w-3 h-3 bg-blue-500 rounded-full mt-1.5" />
-                            <div className="flex-1">
-                                <h4 className="font-semibold text-gray-900">Verified Vendor</h4>
-                                <p className="text-sm text-gray-600">Blue badge, higher search ranking, buyer trust</p>
-                                <p className="text-xs text-blue-600 mt-1">Requires: National ID or Passport</p>
-                            </div>
-                            {isAlreadyVerified && <CheckCircle className="w-5 h-5 text-blue-600" />}
-                        </div>
-                        <div className={`flex items-start gap-4 p-4 rounded-lg ${isAlreadyPremium ? 'bg-amber-50 border border-amber-200' : 'bg-gray-50'}`}>
-                            <div className="w-3 h-3 bg-amber-500 rounded-full mt-1.5" />
-                            <div className="flex-1">
-                                <h4 className="font-semibold text-gray-900">Premium Vendor</h4>
-                                <p className="text-sm text-gray-600">Gold badge, featured placement, priority support</p>
-                                <p className="text-xs text-amber-600 mt-1">Requires: ID + Business Registration</p>
-                            </div>
-                            {isAlreadyPremium && <Star className="w-5 h-5 text-amber-600 fill-current" />}
-                        </div>
-                    </div>
-                </motion.div>
-
-                {/* Upload Forms */}
-                <div className="space-y-6">
-                    {/* ID Document Upload */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                        className="bg-white rounded-xl border border-gray-200 overflow-hidden"
-                    >
-                        <div className="p-6 border-b border-gray-100 bg-gray-50">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <FileText className="w-5 h-5 text-blue-600" />
-                                    <div>
-                                        <h3 className="font-bold text-gray-900">Personal ID Document</h3>
-                                        <p className="text-sm text-gray-500">Required for Verified status</p>
-                                    </div>
-                                </div>
-                                {vendor.id_document_url && (
-                                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-                                        <CheckCircle className="w-3 h-3" /> Uploaded
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                        
-                        <div className="p-6">
-                            <div className="mb-4">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Document Type
-                                </label>
-                                <select
-                                    value={idType}
-                                    onChange={(e) => setIdType(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                >
-                                    <option value="national_id">National ID Card</option>
-                                    <option value="passport">Passport</option>
-                                    <option value="drivers_license">Driver&apos;s License</option>
-                                </select>
-                            </div>
-
-                            <div
-                                className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${
-                                    idPreview
-                                        ? 'border-green-300 bg-green-50'
-                                        : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
-                                }`}
-                                onClick={() => document.getElementById('id-upload')?.click()}
-                            >
-                                {idPreview ? (
-                                    <div className="relative">
-                                        {idFile?.type.startsWith('image/') || vendor.id_document_url ? (
-                                            <div className="relative w-48 h-32 mx-auto rounded-lg overflow-hidden">
-                                                <Image
-                                                    src={idPreview}
-                                                    alt="ID Preview"
-                                                    fill
-                                                    className="object-cover"
-                                                />
-                                            </div>
-                                        ) : (
-                                            <FileText className="w-12 h-12 text-green-600 mx-auto" />
-                                        )}
-                                        <p className="text-sm text-green-600 font-medium mt-3">
-                                            {idFile ? idFile.name : 'Document uploaded'}
-                                        </p>
-                                        <button
-                                            type="button"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setIdFile(null);
-                                                setIdPreview(vendor.id_document_url);
-                                            }}
-                                            className="mt-2 text-xs text-gray-500 hover:text-red-600"
-                                        >
-                                            Change file
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <Camera className="w-10 h-10 text-gray-400 mx-auto mb-3" />
-                                        <p className="text-sm text-gray-600 font-medium">
-                                            Click to upload or drag and drop
-                                        </p>
-                                        <p className="text-xs text-gray-400 mt-1">
-                                            JPG, PNG, WebP or PDF (Max 5MB)
-                                        </p>
-                                    </>
-                                )}
-                            </div>
-                            <input
-                                id="id-upload"
-                                type="file"
-                                accept="image/jpeg,image/png,image/webp,application/pdf"
-                                className="hidden"
-                                onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0], 'id')}
-                            />
-                        </div>
-                    </motion.div>
-
-                    {/* Business Document Upload */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 }}
-                        className="bg-white rounded-xl border border-gray-200 overflow-hidden"
-                    >
-                        <div className="p-6 border-b border-gray-100 bg-gray-50">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <Building2 className="w-5 h-5 text-amber-600" />
-                                    <div>
-                                        <h3 className="font-bold text-gray-900">Business Registration (Optional)</h3>
-                                        <p className="text-sm text-gray-500">Required for Premium status</p>
-                                    </div>
-                                </div>
-                                {vendor.business_document_url && (
-                                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-                                        <CheckCircle className="w-3 h-3" /> Uploaded
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                        
-                        <div className="p-6">
-                            <div className="mb-4">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Document Type
-                                </label>
-                                <select
-                                    value={businessType}
-                                    onChange={(e) => setBusinessType(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                                >
-                                    <option value="business_registration">Business Registration Certificate</option>
-                                    <option value="tax_certificate">Tax Identification Certificate</option>
-                                    <option value="trade_license">Trade License</option>
-                                    <option value="cooperative_cert">Cooperative Certificate</option>
-                                    <option value="other">Other Business Document</option>
-                                </select>
-                            </div>
-
-                            <div
-                                className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${
-                                    businessPreview
-                                        ? 'border-green-300 bg-green-50'
-                                        : 'border-gray-300 hover:border-amber-400 hover:bg-amber-50'
-                                }`}
-                                onClick={() => document.getElementById('business-upload')?.click()}
-                            >
-                                {businessPreview ? (
-                                    <div className="relative">
-                                        {businessFile?.type.startsWith('image/') || vendor.business_document_url ? (
-                                            <div className="relative w-48 h-32 mx-auto rounded-lg overflow-hidden">
-                                                <Image
-                                                    src={businessPreview}
-                                                    alt="Business Doc Preview"
-                                                    fill
-                                                    className="object-cover"
-                                                />
-                                            </div>
-                                        ) : (
-                                            <FileText className="w-12 h-12 text-green-600 mx-auto" />
-                                        )}
-                                        <p className="text-sm text-green-600 font-medium mt-3">
-                                            {businessFile ? businessFile.name : 'Document uploaded'}
-                                        </p>
-                                        <button
-                                            type="button"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setBusinessFile(null);
-                                                setBusinessPreview(vendor.business_document_url);
-                                            }}
-                                            className="mt-2 text-xs text-gray-500 hover:text-red-600"
-                                        >
-                                            Change file
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <Upload className="w-10 h-10 text-gray-400 mx-auto mb-3" />
-                                        <p className="text-sm text-gray-600 font-medium">
-                                            Click to upload or drag and drop
-                                        </p>
-                                        <p className="text-xs text-gray-400 mt-1">
-                                            JPG, PNG, WebP or PDF (Max 5MB)
-                                        </p>
-                                    </>
-                                )}
-                            </div>
-                            <input
-                                id="business-upload"
-                                type="file"
-                                accept="image/jpeg,image/png,image/webp,application/pdf"
-                                className="hidden"
-                                onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0], 'business')}
-                            />
-                        </div>
-                    </motion.div>
-                </div>
-
-                {/* Error/Success Messages */}
-                {error && (
-                    <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3 text-red-700">
-                        <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                        {error}
-                    </div>
-                )}
-
-                {success && (
-                    <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-xl flex items-center gap-3 text-green-700">
-                        <CheckCircle className="w-5 h-5 flex-shrink-0" />
-                        {success}
-                    </div>
-                )}
-
-                {/* Submit Button */}
-                <div className="mt-8">
-                    <button
-                        onClick={handleSubmitVerification}
-                        disabled={!canSubmit || submitting}
-                        className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    >
-                        {submitting ? (
-                            <>
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                                {uploading === 'id'
-                                    ? 'Uploading ID...'
-                                    : uploading === 'business'
-                                    ? 'Uploading Business Doc...'
-                                    : 'Processing...'}
-                            </>
-                        ) : isPendingReview ? (
-                            <>
-                                <Shield className="w-5 h-5" />
-                                Awaiting review
-                            </>
-                        ) : (
-                            <>
-                                <Shield className="w-5 h-5" />
-                                Submit for Verification
-                            </>
-                        )}
-                    </button>
-                    <p className="text-center text-xs text-gray-400 mt-4">
-                        Your documents are securely stored and used only for verification purposes.
-                    </p>
-                    {isPendingReview && (
-                        <p className="text-center text-xs text-amber-600 mt-2">
-                            No action required while we review your submission.
-                        </p>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
+                  {busy ? "Submitting…" : "Submit for review"}
+                </button>
+              </form>
+            )}
+          </>
+        )
+      )}
+    </main>
+  );
 }

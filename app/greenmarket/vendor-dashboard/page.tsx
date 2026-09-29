@@ -96,7 +96,7 @@ const dashboardActions = [
     {
         title: 'Respond to messages',
         description: 'Keep buyers warm inside AgriPro.',
-        href: '/messages',
+        href: '/feed/enquiries',
         icon: MessageCircle
     }
 ];
@@ -333,6 +333,7 @@ function VendorDashboardContent() {
                     ))}
                 </div>
 
+                {vendor.status !== 'approved' && <p role="status" className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{vendor.status === 'pending' ? 'Your seller application is awaiting review. You can prepare products now; they become public after approval.' : 'Your seller account is currently unavailable. Contact support about the review decision.'}</p>}
                 {vendor.verification_status === 'pending_review' && (
                     <div className="mb-8 rounded-2xl border border-amber-200 bg-white p-5 flex items-start gap-3">
                         <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />

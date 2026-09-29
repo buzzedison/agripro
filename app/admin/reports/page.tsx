@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import MemberModeration from '../components/MemberModeration';
 import { createClient } from '@/lib/supabase/client';
 import { REPORT_REASON_LABELS, type ReportReason, type ReportStatus, type ReportTargetType } from '@/lib/moderation';
 import {
-    Flag, ExternalLink, Trash2, ShieldOff, CheckCircle2, XCircle, Loader2, RefreshCw, User as UserIcon,
+    Flag, ExternalLink, Trash2, CheckCircle2, XCircle, Loader2, RefreshCw, User as UserIcon,
 } from 'lucide-react';
 
 interface ReportRow {
@@ -54,11 +55,23 @@ export default function AdminReportsPage() {
     const [error, setError] = useState<string | null>(null);
 
     const resolveTarget = useCallback(async (r: ReportRow): Promise<ReportRow['target']> => {
+        if (r.target_type === 'enquiry_message') {
+            const { data: evidence } = await supabase.from('feed_enquiry_report_evidence').select('body,sender_id').eq('report_id', r.id).maybeSingle();
+            const { data: message } = await supabase.from('feed_enquiry_messages').select('removed_at').eq('id',r.target_id).maybeSingle();
+            if (!evidence) return {exists:false,label:'Private message',preview:'Reported evidence unavailable.'};
+            const { data: author } = evidence.sender_id ? await supabase.from('profiles').select('full_name').eq('id',evidence.sender_id).maybeSingle() : {data:null};
+            return {exists:!!message && !message.removed_at,label:'Private message',preview:evidence.body,authorName:author?.full_name,authorId:evidence.sender_id || undefined};
+        }
+        if (r.target_type === 'product') {
+            const {data: product}=await supabase.from('trade_products').select('name,description,vendor:trade_vendors(user_id,business_name)').eq('id',r.target_id).maybeSingle();
+            const vendor=product?.vendor as unknown as {user_id:string,business_name:string} | null;
+            return {exists:!!product,label:'Product listing',preview:product ? `${product.name}\n${product.description}` : 'Listing removed.',authorId:vendor?.user_id,authorName:vendor?.business_name};
+        }
         if (r.target_type === 'post') {
-            const { data: post } = await supabase.from('posts').select('id, content, user_id').eq('id', r.target_id).maybeSingle();
+            const { data: post } = await supabase.from('posts').select('id, content, user_id, post_kind, post_details').eq('id', r.target_id).maybeSingle();
             if (!post) return { exists: false, label: 'Post', preview: 'Post no longer exists (already removed).' };
             const { data: author } = await supabase.from('profiles').select('full_name').eq('id', post.user_id).maybeSingle();
-            return { exists: true, label: 'Post', preview: post.content, authorName: author?.full_name, authorId: post.user_id };
+            return { exists: true, label: 'Post', preview: [post.post_details?.title, post.content, ...Object.entries(post.post_details || {}).filter(([key]) => key !== 'title').map(([key,value]) => `${key.replace(/_/g, ' ')}: ${value}`)].filter(Boolean).join('\n'), authorName: author?.full_name, authorId: post.user_id };
         }
         if (r.target_type === 'comment') {
             const { data: comment } = await supabase.from('post_comments').select('id, content, user_id').eq('id', r.target_id).maybeSingle();
@@ -120,16 +133,27 @@ export default function AdminReportsPage() {
             .from('content_reports')
             .update({ status, reviewed_at: new Date().toISOString(), admin_notes: notes })
             .eq('id', id);
-        if (updateError) setError(updateError.message);
+        if (updateError) {
+            setError(updateError.message);
+            setBusy(false);
+            return;
+        }
         await fetchReports();
         setSelected(null);
         setBusy(false);
     };
 
     const deleteTargetContent = async (r: ReportRow) => {
-        if (!confirm(`Delete this ${r.target_type}? This cannot be undone.`)) return;
+        if (!confirm(`Remove this ${r.target_type === 'enquiry_message' ? 'private message' : r.target_type}? This cannot be undone.`)) return;
+        if (r.target_type === 'enquiry_message') {
+            setBusy(true);
+            const {error} = await supabase.rpc('remove_reported_enquiry_message',{p_report:r.id});
+            if (error) setError(error.message);
+            else { await fetchReports(); setSelected(null); }
+            setBusy(false); return;
+        }
         setBusy(true);
-        const table = r.target_type === 'post' ? 'posts' : 'post_comments';
+        const table = r.target_type === 'product' ? 'trade_products' : r.target_type === 'post' ? 'posts' : 'post_comments';
         const { error: deleteError } = await supabase.from(table).delete().eq('id', r.target_id);
         if (deleteError) {
             setError(deleteError.message);
@@ -137,20 +161,6 @@ export default function AdminReportsPage() {
             return;
         }
         await updateStatus(r.id, 'actioned', 'Content deleted by admin.');
-    };
-
-    const suspendAuthor = async (r: ReportRow) => {
-        const authorId = r.target_type === 'user' ? r.target_id : r.target?.authorId;
-        if (!authorId) return;
-        if (!confirm(`Suspend ${r.target?.authorName || 'this user'}? Their content will be hidden platform-wide.`)) return;
-        setBusy(true);
-        const { error: suspendError } = await supabase.from('profiles').update({ is_suspended: true }).eq('id', authorId);
-        if (suspendError) {
-            setError(suspendError.message);
-            setBusy(false);
-            return;
-        }
-        await updateStatus(r.id, 'actioned', 'Author suspended by admin.');
     };
 
     const pendingCount = reports.filter((r) => r.status === 'pending').length;
@@ -162,7 +172,7 @@ export default function AdminReportsPage() {
                     <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
                         <Flag className="w-6 h-6 text-red-500" /> Reports
                     </h1>
-                    <p className="text-sm text-gray-500 mt-1">Review reported posts, comments and accounts.</p>
+                    <p className="text-sm text-gray-500 mt-1">Review reported posts, comments, private messages and accounts.</p>
                 </div>
                 <button
                     onClick={fetchReports}
@@ -173,7 +183,7 @@ export default function AdminReportsPage() {
                 </button>
             </div>
 
-            <div className="inline-flex items-center gap-1 p-1 mb-6 rounded-lg bg-gray-100">
+            <div className="flex flex-wrap items-center gap-1 p-1 mb-6 rounded-lg bg-gray-100">
                 {STATUS_TABS.map((t) => (
                     <button
                         key={t.value}
@@ -291,17 +301,11 @@ export default function AdminReportsPage() {
                                     disabled={busy}
                                     className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50"
                                 >
-                                    <Trash2 className="w-4 h-4" /> Delete {selected.target_type}
+                                    <Trash2 className="w-4 h-4" /> Remove {selected.target_type === 'enquiry_message' ? 'message' : selected.target_type}
                                 </button>
                             )}
-                            {selected.target?.exists && (
-                                <button
-                                    onClick={() => suspendAuthor(selected)}
-                                    disabled={busy}
-                                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800 disabled:opacity-50"
-                                >
-                                    <ShieldOff className="w-4 h-4" /> Suspend {selected.target.authorName || 'user'}
-                                </button>
+                            {selected.target?.authorId && (
+                                <MemberModeration userId={selected.target.authorId} name={selected.target.authorName || 'member'} onComplete={async () => { setSelected(null); await fetchReports(); }} />
                             )}
                             <button
                                 onClick={() => updateStatus(selected.id, 'dismissed', 'No action needed.')}

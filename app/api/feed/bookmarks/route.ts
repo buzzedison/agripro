@@ -34,6 +34,11 @@ export async function GET() {
           comments_count,
           reposts_count,
           quoted_post_id,
+          post_kind,
+          post_details,
+          moderation_status,
+          is_closed,
+          expires_at,
           profile:profiles!posts_user_id_fkey (
             full_name,
             avatar_url,
