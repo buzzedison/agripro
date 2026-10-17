@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
@@ -30,189 +30,14 @@ import PracticalPostCard from './components/PracticalPostCard';
 import { POST_KINDS, PostKind, PostDetails, practicalPostError } from '@/lib/practical-feed';
 import { FEED_TOPICS } from '@/lib/feed-community';
 import { blockUser, muteUser, getBlockedUserIds, getMutedUserIds } from '@/lib/moderation';
+import ComposerMediaPreview from './components/ComposerMediaPreview';
+import ReactionButton, { ReactionType } from './components/ReactionButton';
+import TranslateButton from './components/TranslateButton';
+import PublicFeedPreview from './components/PublicFeedPreview';
+import { useNewPostsSignal, NewPostsBanner, InfiniteScrollSentinel } from './components/LiveFeed';
+import { isVideoUrl, extractVideoUrl, InlineVideoPlayer, ResilientImage, PostMediaGallery } from './components/FeedMedia';
+import { ComposerMedia, addComposerFiles, releaseComposerMedia, uploadPostMedia, removeUploadedMedia } from '@/lib/feed-media';
 
-// Video URL detection helpers
-function isVideoUrl(url: string): boolean {
-    if (!url) return false;
-    const videoExtensions = /\.(mp4|webm|ogg|mov|avi|mkv)(\?.*)?$/i;
-    const youtubeRegex = /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)/i;
-    const vimeoRegex = /vimeo\.com\/(?:video\/)?(\d+)/i;
-    return videoExtensions.test(url) || youtubeRegex.test(url) || vimeoRegex.test(url);
-}
-
-function getVideoType(url: string): 'youtube' | 'vimeo' | 'direct' | null {
-    if (!url) return null;
-    if (/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)/i.test(url)) return 'youtube';
-    if (/vimeo\.com/i.test(url)) return 'vimeo';
-    if (/\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(url)) return 'direct';
-    return null;
-}
-
-function getYouTubeId(url: string): string | null {
-    const match = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-    return match ? match[1] : null;
-}
-
-function getVimeoId(url: string): string | null {
-    const match = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
-    return match ? match[1] : null;
-}
-
-// Extract video URL from post content
-function extractVideoUrl(content: string): string | null {
-    const urls = extractUrls(content);
-    for (const url of urls) {
-        if (isVideoUrl(url)) return url;
-    }
-    return null;
-}
-
-// Inline Video Player Component
-function InlineVideoPlayer({ url }: { url: string }) {
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [isMuted, setIsMuted] = useState(true);
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const videoType = getVideoType(url);
-
-    const handlePlayPause = () => {
-        if (videoRef.current) {
-            if (isPlaying) {
-                videoRef.current.pause();
-            } else {
-                videoRef.current.play();
-            }
-            setIsPlaying(!isPlaying);
-        }
-    };
-
-    const toggleMute = () => {
-        if (videoRef.current) {
-            videoRef.current.muted = !isMuted;
-            setIsMuted(!isMuted);
-        }
-    };
-
-    if (videoType === 'youtube') {
-        const videoId = getYouTubeId(url);
-        if (!videoId) return null;
-
-        return (
-            <div className="relative rounded-xl overflow-hidden mb-3 bg-black group">
-                <div className="relative aspect-video">
-                    <iframe
-                        src={`https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`}
-                        title="YouTube video"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        className="absolute inset-0 w-full h-full"
-                    />
-                </div>
-                <a
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="absolute top-3 right-3 bg-black/70 hover:bg-black/90 text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    Open on YouTube
-                </a>
-            </div>
-        );
-    }
-
-    if (videoType === 'vimeo') {
-        const videoId = getVimeoId(url);
-        if (!videoId) return null;
-
-        return (
-            <div className="relative rounded-xl overflow-hidden mb-3 bg-black group">
-                <div className="relative aspect-video">
-                    <iframe
-                        src={`https://player.vimeo.com/video/${videoId}?title=0&byline=0&portrait=0`}
-                        title="Vimeo video"
-                        allow="autoplay; fullscreen; picture-in-picture"
-                        allowFullScreen
-                        className="absolute inset-0 w-full h-full"
-                    />
-                </div>
-                <a
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="absolute top-3 right-3 bg-black/70 hover:bg-black/90 text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    Open on Vimeo
-                </a>
-            </div>
-        );
-    }
-
-    if (videoType === 'direct') {
-        return (
-            <div className="relative rounded-xl overflow-hidden mb-3 bg-black group">
-                <video
-                    ref={videoRef}
-                    src={url}
-                    className="w-full max-h-[500px] object-contain"
-                    muted={isMuted}
-                    playsInline
-                    loop
-                    onPlay={() => setIsPlaying(true)}
-                    onPause={() => setIsPlaying(false)}
-                    onClick={handlePlayPause}
-                />
-
-                {/* Play overlay when paused */}
-                {!isPlaying && (
-                    <button
-                        onClick={handlePlayPause}
-                        className="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/40 transition-colors"
-                    >
-                        <div className="w-16 h-16 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
-                            <Play className="w-8 h-8 text-gray-900 ml-1" fill="currentColor" />
-                        </div>
-                    </button>
-                )}
-
-                {/* Controls overlay */}
-                <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={handlePlayPause}
-                                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors"
-                            >
-                                {isPlaying ? (
-                                    <span className="text-sm font-bold">❚❚</span>
-                                ) : (
-                                    <Play className="w-4 h-4 ml-0.5" fill="currentColor" />
-                                )}
-                            </button>
-                            <button
-                                onClick={toggleMute}
-                                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors"
-                            >
-                                {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                            </button>
-                        </div>
-                        <a
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1.5 text-white text-xs font-medium hover:underline"
-                        >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                            Open video
-                        </a>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    return null;
-}
 
 const FEED_PAGE_SIZE = 20;
 
@@ -293,34 +118,6 @@ function LoadingFeedPlaceholder() {
     );
 }
 
-interface ResilientImageProps {
-    src?: string | null;
-    alt: string;
-    className?: string;
-    fallbackText?: string;
-}
-
-function ResilientImage({ src, alt, className = '', fallbackText = 'Media unavailable' }: ResilientImageProps) {
-    const [hasError, setHasError] = useState(false);
-
-    if (!src || hasError) {
-        return (
-            <div className={`${className} flex items-center justify-center bg-gray-100 text-gray-500 text-xs gap-2`}>
-                <ImageIcon className="w-4 h-4" />
-                <span>{fallbackText}</span>
-            </div>
-        );
-    }
-
-    return (
-        <img
-            src={src}
-            alt={alt}
-            className={className}
-            onError={() => setHasError(true)}
-        />
-    );
-}
 
 // Emoji picker data
 const emojiCategories = {
@@ -341,9 +138,13 @@ interface Post {
     user_id: string;
     content: string;
     image_url: string | null;
+    media_urls?: string[] | null;
+    media_alt?: string[] | null;
     gif_url: string | null;
     created_at: string;
     likes_count: number;
+    reaction_counts?: Partial<Record<ReactionType, number>>;
+    user_reaction?: ReactionType | null;
     comments_count: number;
     reposts_count: number;
     views_count?: number;
@@ -426,10 +227,11 @@ export default function FeedPage() {
     const [posts, setPosts] = useState<Post[]>([]);
     const [suggestedUsers, setSuggestedUsers] = useState<Profile[]>([]);
     const [loading, setLoading] = useState(true);
+    const [signedOut, setSignedOut] = useState(false);
     const [posting, setPosting] = useState(false);
     const [newPostContent, setNewPostContent] = useState('');
-    const [newPostImage, setNewPostImage] = useState<File | null>(null);
-    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [composerMedia, setComposerMedia] = useState<ComposerMedia[]>([]);
+    const hasComposerMedia = composerMedia.length > 0;
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
     const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
@@ -485,6 +287,8 @@ export default function FeedPage() {
     const [repostsModal, setRepostsModal] = useState<{ open: boolean; postId: string | null }>({ open: false, postId: null });
     const [repostMenuOpen, setRepostMenuOpen] = useState<string | null>(null);
     const [shareMenuOpen, setShareMenuOpen] = useState<string | null>(null);
+    const [canNativeShare, setCanNativeShare] = useState(false);
+    useEffect(() => { setCanNativeShare(typeof navigator !== 'undefined' && typeof navigator.share === 'function'); }, []);
 
     const [topicFilter, setTopicFilter] = useState('');
     const [countryFilter, setCountryFilter] = useState('');
@@ -505,6 +309,8 @@ export default function FeedPage() {
     const [reportTarget, setReportTarget] = useState<{ type: 'post' | 'user'; id: string; label?: string } | null>(null);
     const [blockedUserIds, setBlockedUserIds] = useState<Set<string>>(new Set());
     const [mutedUserIds, setMutedUserIds] = useState<Set<string>>(new Set());
+    const hiddenAuthorIds = useMemo(() => new Set([...blockedUserIds, ...mutedUserIds]), [blockedUserIds, mutedUserIds]);
+    const { newPostsCount, resetNewPosts } = useNewPostsSignal(supabase, user?.id ?? null, hiddenAuthorIds);
     const [reposters, setReposters] = useState<any[]>([]);
     const [loadingReposters, setLoadingReposters] = useState(false);
 
@@ -561,10 +367,45 @@ export default function FeedPage() {
         supabase.rpc('feed_countries').then(({ data }) => setCountries(data || []));
     }, [supabase]);
 
+    // Composer drafts: text and structured fields survive refreshes and dropped connections.
+    // Photos/videos cannot be stored this way, so they must be re-attached.
+    const draftKey = user ? `agripro-feed-draft:${user.id}` : null;
+    const draftRestored = useRef(false);
+    useEffect(() => {
+        if (!draftKey || draftRestored.current) return;
+        draftRestored.current = true;
+        try {
+            const saved = JSON.parse(localStorage.getItem(draftKey) || 'null');
+            if (!saved?.content && !saved?.details) return;
+            setNewPostContent(saved.content || '');
+            if (saved.kind) setPostKind(saved.kind);
+            if (saved.details) setPostDetails(saved.details);
+            if (saved.topic) setPostTopic(saved.topic);
+            if (saved.country) setPostCountry(saved.country);
+            toast.message('Restored your unsent draft.');
+        } catch { /* storage unavailable or corrupt: start empty */ }
+    }, [draftKey]);
+    useEffect(() => {
+        if (!draftKey || !draftRestored.current) return;
+        const handle = setTimeout(() => {
+            try {
+                const hasDetails = Object.values(postDetails).some(v => v !== '' && v != null);
+                if (!newPostContent.trim() && !hasDetails) localStorage.removeItem(draftKey);
+                else localStorage.setItem(draftKey, JSON.stringify({ content: newPostContent, kind: postKind, details: hasDetails ? postDetails : null, topic: postTopic, country: postCountry }));
+            } catch { /* ignore */ }
+        }, 500);
+        return () => clearTimeout(handle);
+    }, [draftKey, newPostContent, postKind, postDetails, postTopic, postCountry]);
+    const clearDraft = () => {
+        try { if (draftKey) localStorage.removeItem(draftKey); } catch { /* ignore */ }
+    };
+
     const checkAuth = async () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-            router.push('/auth/login?redirectTo=/feed');
+            // Signed-out visitors get a read-only preview instead of a login wall
+            setSignedOut(true);
+            setLoading(false);
             return;
         }
         setUser(user);
@@ -598,7 +439,7 @@ export default function FeedPage() {
         const limit = FEED_PAGE_SIZE;
         const requestId = ++feedRequest.current;
         setFeedError('');
-        if (!append) { setRefreshingFeed(true); setPosts([]); }
+        if (!append) { setRefreshingFeed(true); setPosts([]); resetNewPosts(); }
 
         if (append) {
             setLoadingMorePosts(true);
@@ -623,13 +464,22 @@ export default function FeedPage() {
 
                 const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
 
-                // Check which posts the user has liked
-                const { data: likesData } = await supabase
-                    .from('post_likes')
-                    .select('post_id')
-                    .eq('user_id', userId);
-
-                const likedPostIds = new Set(likesData?.map(l => l.post_id) || []);
+                // The user's reaction and per-type reaction totals for the loaded posts
+                const loadedIds = postsData.map(p => p.id);
+                const [likesResult, { data: reactionRows }] = await Promise.all([
+                    supabase.from('post_likes').select('post_id, reaction').eq('user_id', userId).in('post_id', loadedIds),
+                    supabase.rpc('post_reaction_counts', { p_post_ids: loadedIds }),
+                ]);
+                // Before migration 062 there is no reaction column: fall back to plain likes
+                const likesData = likesResult.error
+                    ? (await supabase.from('post_likes').select('post_id').eq('user_id', userId).in('post_id', loadedIds)).data
+                    : likesResult.data;
+                const userReactions = new Map<string, ReactionType>((likesData || []).map((l: any) => [l.post_id, (l.reaction || 'like') as ReactionType]));
+                const likedPostIds = new Set(userReactions.keys());
+                const reactionCounts = new Map<string, Partial<Record<ReactionType, number>>>();
+                (reactionRows || []).forEach((r: { post_id: string; reaction: ReactionType; total: number }) => {
+                    reactionCounts.set(r.post_id, { ...(reactionCounts.get(r.post_id) || {}), [r.reaction]: Number(r.total) });
+                });
 
                 // Check which posts the user has reposted
                 const { data: repostsData } = await supabase
@@ -738,6 +588,8 @@ export default function FeedPage() {
                         profile_incomplete: true,
                     },
                     user_has_liked: likedPostIds.has(post.id),
+                    user_reaction: userReactions.get(post.id) ?? null,
+                    reaction_counts: reactionCounts.get(post.id),
                     user_has_reposted: repostedPostIds.has(post.id),
                     mentioned_users: postMentionsMap.get(post.id) || new Map()
                 }));
@@ -882,6 +734,20 @@ export default function FeedPage() {
         setShareMenuOpen(null);
     };
 
+    const sharePostNatively = async (postId: string, content: string) => {
+        setShareMenuOpen(null);
+        try {
+            await navigator.share({ title: 'AgriPro Network', text: content.slice(0, 140), url: getPostShareUrl(postId) });
+        } catch (err: any) {
+            if (err?.name !== 'AbortError') toast.error('Could not open sharing options');
+        }
+    };
+
+    const shareToFacebook = (postId: string) => {
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(getPostShareUrl(postId))}`, '_blank', 'noopener,noreferrer');
+        setShareMenuOpen(null);
+    };
+
     const handleBlockUser = async (targetUserId: string, targetName: string) => {
         if (!user) return;
         if (!confirm(`Block ${targetName}? They won't be able to see your posts or message you, and you won't see theirs.`)) return;
@@ -1017,24 +883,26 @@ export default function FeedPage() {
         }
     };
 
-    const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            setNewPostImage(file);
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setImagePreview(reader.result as string);
-            };
-            reader.readAsDataURL(file);
-        }
+    const handleMediaSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        if (files.length === 0) return;
+        const { media, error } = addComposerFiles(composerMedia, files);
+        if (error) toast.error(error);
+        setComposerMedia(media);
+        if (media.length > 0) setIsPollMode(false);
     };
 
-    const removeImage = () => {
-        setNewPostImage(null);
-        setImagePreview(null);
-        if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-        }
+    const removeComposerMedia = (id: string) => {
+        setComposerMedia(prev => {
+            releaseComposerMedia(prev.filter(m => m.id === id));
+            return prev.filter(m => m.id !== id);
+        });
+    };
+
+    const clearComposerMedia = () => {
+        setComposerMedia(prev => { releaseComposerMedia(prev); return []; });
+        if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
     const insertEmoji = (emoji: string) => {
@@ -1130,7 +998,7 @@ export default function FeedPage() {
     };
 
     const handlePost = async () => {
-        if (!user || (postKind === 'update' && !newPostContent.trim() && !newPostImage && !isPollMode)) return;
+        if (!user || (postKind === 'update' && !newPostContent.trim() && !hasComposerMedia && !isPollMode)) return;
         const detailError = practicalPostError(postKind, postDetails, postCountry);
         if (detailError) { toast.error(detailError); return; }
 
@@ -1144,33 +1012,16 @@ export default function FeedPage() {
 
         setPosting(true);
         setUploadStatus(isPollMode ? 'Preparing your poll...' : 'Preparing your update...');
+        let uploadedUrls: string[] = [];
         try {
-            let imageUrl = null;
-
-            // Upload image if present
-            if (newPostImage) {
-                setUploadStatus('Uploading image...');
-                const fileExt = newPostImage.name.split('.').pop();
-                const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-
-                const { error: uploadError } = await supabase.storage
-                    .from('post-images')
-                    .upload(fileName, newPostImage);
-
-                if (uploadError) {
-                    console.error('Image upload error:', uploadError.message);
-                    // Continue without image if upload fails
-                    toast.error('Image upload failed. Posting without the image.');
-                } else {
-                    const { data: { publicUrl } } = supabase.storage
-                        .from('post-images')
-                        .getPublicUrl(fileName);
-                    imageUrl = publicUrl;
-                }
-                setUploadStatus('Publishing your update...');
-            } else {
-                setUploadStatus('Publishing your update...');
+            // Upload all media first; any failure stops the post instead of publishing without it
+            let mediaAlts: string[] = [];
+            if (hasComposerMedia) {
+                const uploaded = await uploadPostMedia(supabase, user.id, composerMedia, setUploadStatus);
+                uploadedUrls = uploaded.urls;
+                mediaAlts = uploaded.alts;
             }
+            setUploadStatus('Publishing your update...');
 
             // Insert the post
             const { data: newPost, error: insertError } = await supabase
@@ -1178,7 +1029,9 @@ export default function FeedPage() {
                 .insert({
                     user_id: user.id,
                     content: newPostContent.trim(),
-                    image_url: imageUrl,
+                    image_url: uploadedUrls[0] || null,
+                    // media columns (062) are only sent when needed, so single-photo posts keep working before that migration
+                    ...(uploadedUrls.length > 1 || mediaAlts.some(Boolean) ? { media_urls: uploadedUrls, media_alt: mediaAlts } : {}),
                     gif_url: selectedGif,
                     is_poll: isPollMode,
                     topic: postTopic,
@@ -1193,6 +1046,7 @@ export default function FeedPage() {
                 console.error('Insert error:', insertError.message);
                 throw insertError;
             }
+            uploadedUrls = []; // now owned by the post
 
             // Insert Poll Options
             if (isPollMode && newPost) {
@@ -1261,13 +1115,15 @@ export default function FeedPage() {
             setNewPostContent('');
             setPostDetails({});
             setPostKind('update');
-            removeImage();
+            clearComposerMedia();
             setSelectedGif(null);
             setIsPollMode(false);
             setPollOptions(['', '']);
+            clearDraft();
             toast.success(newPost.moderation_status === 'pending' ? 'Post submitted for review. Track it in My activity.' : 'Post shared with your network.');
         } catch (err: any) {
             console.error('Error posting:', err?.message || err);
+            if (uploadedUrls.length) await removeUploadedMedia(supabase, uploadedUrls);
             toast.error(`Failed to post: ${err?.message || 'Unknown error'}`);
         } finally {
             setPosting(false);
@@ -1275,27 +1131,31 @@ export default function FeedPage() {
         }
     };
 
-    const handleLike = async (postId: string, isLiked: boolean) => {
+    const handleReact = async (postId: string, reaction: ReactionType | null) => {
         if (!user) return;
+        const before = posts.find(p => p.id === postId);
+        if (!before) return;
+        const previous = before.user_reaction ?? (before.user_has_liked ? 'like' : null);
+        if (previous === reaction) return;
 
-        setPosts(posts.map(p =>
-            p.id === postId
-                ? { ...p, likes_count: p.likes_count + (isLiked ? -1 : 1), user_has_liked: !isLiked }
-                : p
-        ));
+        const applyReaction = (p: Post, from: ReactionType | null, to: ReactionType | null): Post => {
+            const counts = { ...(p.reaction_counts || {}) };
+            if (from) counts[from] = Math.max(0, (counts[from] || 0) - 1);
+            if (to) counts[to] = (counts[to] || 0) + 1;
+            const delta = (to ? 1 : 0) - (from ? 1 : 0);
+            return { ...p, reaction_counts: counts, user_reaction: to, user_has_liked: !!to, likes_count: Math.max(0, p.likes_count + delta) };
+        };
+        setPosts(prev => prev.map(p => (p.id === postId ? applyReaction(p, previous, reaction) : p)));
 
-        try {
-            if (isLiked) {
-                await supabase.from('post_likes').delete().eq('post_id', postId).eq('user_id', user.id);
-            } else {
-                await supabase.from('post_likes').insert({ post_id: postId, user_id: user.id });
-            }
-        } catch (err) {
-            setPosts(posts.map(p =>
-                p.id === postId
-                    ? { ...p, likes_count: p.likes_count + (isLiked ? 1 : -1), user_has_liked: isLiked }
-                    : p
-            ));
+        const likes = supabase.from('post_likes');
+        const { error } = !reaction
+            ? await likes.delete().eq('post_id', postId).eq('user_id', user.id)
+            : !previous
+                ? await likes.insert({ post_id: postId, user_id: user.id, reaction })
+                : await likes.update({ reaction }).eq('post_id', postId).eq('user_id', user.id);
+        if (error) {
+            setPosts(prev => prev.map(p => (p.id === postId ? applyReaction(p, reaction, previous) : p)));
+            toast.error('Could not save your reaction. Please try again.');
         }
     };
 
@@ -1787,6 +1647,10 @@ export default function FeedPage() {
         return <LoadingFeedPlaceholder />;
     }
 
+    if (signedOut) {
+        return <PublicFeedPreview />;
+    }
+
     return (
         <div className="min-h-screen bg-gray-100">
             <div className="max-w-6xl mx-auto px-4 py-6">
@@ -2016,22 +1880,13 @@ export default function FeedPage() {
                                         </div>
                                     )}
 
-                                    {/* Image Preview */}
-                                    {imagePreview && (
-                                        <div className="relative mt-2 mb-3">
-                                            <img
-                                                src={imagePreview}
-                                                alt="Preview"
-                                                className="w-full max-h-80 object-cover rounded-xl"
-                                            />
-                                            <button
-                                                onClick={removeImage}
-                                                className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"
-                                            >
-                                                <X className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    )}
+                                    {/* Photo / video previews */}
+                                    <ComposerMediaPreview
+                                        media={composerMedia}
+                                        disabled={posting}
+                                        onRemove={removeComposerMedia}
+                                        onAltChange={(id, alt) => setComposerMedia(prev => prev.map(m => m.id === id ? { ...m, alt } : m))}
+                                    />
 
                                     {/* GIF Preview */}
                                     {selectedGif && (
@@ -2084,18 +1939,21 @@ export default function FeedPage() {
 
                                     <div className="flex items-center justify-between pt-3 border-t border-gray-100">
                                         <div className="flex gap-1">
-                                            {/* Image Upload */}
+                                            {/* Photo / video upload: up to 4 photos or 1 video */}
                                             <input
                                                 ref={fileInputRef}
                                                 type="file"
-                                                accept="image/*"
-                                                onChange={handleImageSelect}
+                                                accept="image/*,video/mp4,video/webm,video/quicktime"
+                                                multiple
+                                                onChange={handleMediaSelect}
                                                 className="hidden"
                                             />
                                             <button
                                                 onClick={() => fileInputRef.current?.click()}
-                                                className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                                                title="Add image"
+                                                disabled={posting || isPollMode}
+                                                aria-label="Add photos or a video"
+                                                className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
+                                                title="Add up to 4 photos or 1 video"
                                             >
                                                 <Camera className="w-5 h-5" />
                                             </button>
@@ -2137,8 +1995,8 @@ export default function FeedPage() {
 
                                                 {/* Poll Toggle */}
                                                 <button
-                                                    onClick={() => postKind === 'update' && !newPostImage && setIsPollMode(!isPollMode)}
-                                                    disabled={!!newPostImage || postKind !== 'update'}
+                                                    onClick={() => postKind === 'update' && !hasComposerMedia && setIsPollMode(!isPollMode)}
+                                                    disabled={hasComposerMedia || postKind !== 'update'}
                                                     aria-pressed={isPollMode}
                                                     className={`p-2 rounded-lg transition-colors ${isPollMode
                                                         ? "text-green-600 bg-green-50"
@@ -2185,7 +2043,7 @@ export default function FeedPage() {
                                             )}
                                             <button
                                                 onClick={handlePost}
-                                                disabled={feedRestricted || newPostContent.length > 5000 || (postKind === 'update' && !newPostContent.trim() && !newPostImage && !isPollMode) || posting}
+                                                disabled={feedRestricted || newPostContent.length > 5000 || (postKind === 'update' && !newPostContent.trim() && !hasComposerMedia && !isPollMode) || posting}
                                                 className="inline-flex items-center gap-2 px-5 py-2 bg-green-600 text-white font-semibold rounded-full hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                             >
                                                 {posting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
@@ -2198,6 +2056,13 @@ export default function FeedPage() {
                         </div>
 
                         {/* Posts Feed */}
+                        <NewPostsBanner
+                            count={newPostsCount}
+                            onShow={() => {
+                                window.scrollTo({ top: 0, behavior: prefersReducedMotion ? 'auto' : 'smooth' });
+                                if (user) fetchPosts(user.id, { offset: 0 });
+                            }}
+                        />
                         <div className="space-y-4">
                             {feedError ? <div role="alert" className="rounded-xl bg-red-50 p-5 text-sm text-red-700">{feedError}<button onClick={() => user && fetchPosts(user.id)} className="ml-3 font-semibold underline">Retry</button></div> : refreshingFeed ? <div role="status" className="rounded-2xl bg-white p-8 text-center text-sm text-gray-500">Finding conversations…</div> : posts.length > 0 ? (
                                 posts.filter((post) => !blockedUserIds.has(post.user_id) && !mutedUserIds.has(post.user_id)).map((post) => {
@@ -2348,6 +2213,7 @@ export default function FeedPage() {
                                                     post.mentioned_users
                                                 )}
                                             </p>
+                                            <TranslateButton text={[post.post_details?.title, post.content].filter(Boolean).join('\n\n')} />
 
                                             {/* Video Player - if video URL found in content */}
                                             {(() => {
@@ -2367,15 +2233,7 @@ export default function FeedPage() {
                                                 ))}
 
                                             {/* Post Image or Video */}
-                                            {post.image_url && (
-                                                isVideoUrl(post.image_url) ? (
-                                                    <InlineVideoPlayer url={post.image_url} />
-                                                ) : (
-                                                    <div className="rounded-xl overflow-hidden mb-3 bg-gray-100">
-                                                        <ResilientImage src={post.image_url} alt="Post media" className="w-full max-h-[500px] object-cover" />
-                                                    </div>
-                                                )
-                                            )}
+                                            <PostMediaGallery post={post} />
 
                                             {/* GIF Display */}
                                             {post.gif_url && (
@@ -2429,18 +2287,13 @@ export default function FeedPage() {
 
                                             {/* Post Actions */}
                                             <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                                                <button
-                                                    onClick={() => handleLike(post.id, post.user_has_liked || false)}
-                                                    aria-pressed={post.user_has_liked || false}
-                                                    aria-label={post.user_has_liked ? 'Unlike post' : 'Like post'}
-                                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${post.user_has_liked
-                                                        ? 'text-red-500 bg-red-50'
-                                                        : 'text-gray-500 hover:text-red-500 hover:bg-red-50'
-                                                        }`}
-                                                >
-                                                    <Heart className={`w-5 h-5 ${post.user_has_liked ? 'fill-current' : ''}`} />
-                                                    <span className="text-sm font-medium">{post.likes_count || ''}</span>
-                                                </button>
+                                                <ReactionButton
+                                                    total={post.likes_count}
+                                                    counts={post.reaction_counts}
+                                                    current={post.user_reaction ?? (post.user_has_liked ? 'like' : null)}
+                                                    onReact={(reaction) => handleReact(post.id, reaction)}
+                                                    disabled={feedRestricted}
+                                                />
                                                 <button
                                                     onClick={() => toggleComments(post.id)}
                                                     aria-expanded={expandedComments.has(post.id)}
@@ -2556,6 +2409,20 @@ export default function FeedPage() {
                                                                     <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.148.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" /><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.934-1.395A9.94 9.94 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18a7.94 7.94 0 01-4.052-1.107l-.29-.172-3.011.85.815-2.928-.19-.303A7.94 7.94 0 014 12c0-4.41 3.59-8 8-8s8 3.59 8 8-3.59 8-8 8z" /></svg>
                                                                     WhatsApp
                                                                 </button>
+                                                                <button
+                                                                    onClick={() => shareToFacebook(post.id)}
+                                                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                                                                >
+                                                                    <ExternalLink className="w-4 h-4" /> Facebook
+                                                                </button>
+                                                                {canNativeShare && (
+                                                                    <button
+                                                                        onClick={() => sharePostNatively(post.id, post.post_details?.title || post.content)}
+                                                                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                                                                    >
+                                                                        <Share2 className="w-4 h-4" /> More options…
+                                                                    </button>
+                                                                )}
                                                             </motion.div>
                                                         )}
                                                     </AnimatePresence>
@@ -3288,6 +3155,7 @@ export default function FeedPage() {
 
                             {!feedError && !refreshingFeed && posts.length > 0 && (
                                 <div className="flex justify-center pt-2">
+                                    <InfiniteScrollSentinel onVisible={loadMorePosts} disabled={!hasMorePosts || loadingMorePosts} />
                                     <button
                                         onClick={loadMorePosts}
                                         disabled={!hasMorePosts || loadingMorePosts}
