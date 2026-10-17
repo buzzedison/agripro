@@ -12,6 +12,7 @@ import {
     graceInfo, GRACE_PERIOD_DAYS, weekStartISO,
 } from '@/lib/fellows/accountability';
 import { type FellowDesignation, designationLabel, isAmbassador } from '@/lib/fellows/designation';
+import AdminAccess from './AdminAccess';
 
 type Fellow = {
     id: string;
@@ -468,6 +469,8 @@ export default function AdminFellowsPage() {
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
+
+                        <AdminAccess key={selected.id} fellowId={selected.id} name={selected.full_name} />
 
                         <dl className="space-y-3 text-sm mb-6">
                             <div>
