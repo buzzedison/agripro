@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
-import { buildBrandedEmail, plainTextToHtml } from '@/lib/email/branded-email';
+import { buildBrandedEmail, plainTextToHtml, escapeHtml } from '@/lib/email/branded-email';
+import { requireAdminApi } from '@/lib/admin-auth';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const FROM = 'AgriPro Catalyst W <noreply@agriprohub.com>';
@@ -71,6 +72,8 @@ const TEMPLATES = {
 };
 
 export async function POST(request: NextRequest) {
+    const auth = await requireAdminApi();
+    if (auth.response) return auth.response;
     if (!resend) return NextResponse.json({ error: 'Email not configured' }, { status: 503 });
 
     const { email, name, business, template, subject: customSubject, body: customBody } = await request.json();
@@ -103,7 +106,7 @@ export async function POST(request: NextRequest) {
     const t = TEMPLATES[template as keyof typeof TEMPLATES];
     if (!t) return NextResponse.json({ error: 'Unknown template' }, { status: 400 });
 
-    const { subject, html } = t(name, business);
+    const { subject, html } = t(escapeHtml(name), business ? escapeHtml(business) : undefined);
 
     try {
         await resend.emails.send({ from: FROM, to: email, subject, html });

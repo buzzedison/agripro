@@ -18,6 +18,7 @@ import {
   LogOut,
   ExternalLink,
   Flag,
+  ClipboardCheck,
 } from 'lucide-react';
 
 interface NavItem {
@@ -51,7 +52,9 @@ const NAV: NavGroup[] = [
   {
     label: 'Catalyst W',
     items: [
-      { href: '/admin/catalyst-w', label: 'Accelerator', icon: Sparkles },
+      { href: '/admin/catalyst-w', label: 'Accelerator', icon: Sparkles, exact: true },
+      { href: '/admin/catalyst-w/clean-up', label: 'Applicant Clean-up', icon: FileCheck },
+      { href: '/admin/catalyst-w/selection', label: 'Selection & Interviews', icon: ClipboardCheck },
       { href: '/admin/catalyst-w/webinars', label: 'Webinars & Events', icon: Globe2 },
       { href: '/admin/catalyst-w/webinars/registrations', label: 'Webinar Registrations', icon: Users },
       { href: '/admin/fellowship/catalyst-w', label: 'Fellowship Applications', icon: GraduationCap },

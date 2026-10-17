@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import CustomEmailComposer from '@/components/admin/CustomEmailComposer';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -9,7 +10,7 @@ import {
     DollarSign, Send, Eye, AlertCircle, Mail,
 } from 'lucide-react';
 
-type SubmissionStatus = 'new' | 'reviewed' | 'interviewed' | 'accepted' | 'paid' | 'waitlisted' | 'rejected';
+type SubmissionStatus = 'new' | 'reviewed' | 'shortlisted' | 'interviewed' | 'accepted' | 'paid' | 'waitlisted' | 'rejected';
 type EmailTemplate = 'reviewed' | 'interview' | 'accept' | 'paid' | 'waitlist' | 'follow_up' | 'reject';
 
 type Submission = {
@@ -52,6 +53,7 @@ const TYPE_LABELS: Record<string, string> = {
 const STATUS_CONFIG: Record<SubmissionStatus, { label: string; color: string }> = {
     new:         { label: 'New',         color: 'bg-blue-100 text-blue-700' },
     reviewed:    { label: 'Reviewed',    color: 'bg-yellow-100 text-yellow-700' },
+    shortlisted: { label: 'Shortlisted', color: 'bg-indigo-100 text-indigo-700' },
     interviewed: { label: 'Interviewed', color: 'bg-purple-100 text-purple-700' },
     accepted:    { label: 'Accepted',    color: 'bg-green-100 text-green-700' },
     paid:        { label: 'Paid',        color: 'bg-emerald-100 text-emerald-700' },
@@ -65,7 +67,7 @@ const TYPE_COLORS: Record<string, string> = {
     plan: 'bg-indigo-100 text-indigo-800',
 };
 
-const STAGE_PIPELINE: SubmissionStatus[] = ['new', 'reviewed', 'interviewed', 'accepted', 'paid'];
+const STAGE_PIPELINE: SubmissionStatus[] = ['new', 'reviewed', 'shortlisted', 'interviewed', 'accepted', 'paid'];
 
 const STAGE_EMAIL_MAP: Partial<Record<SubmissionStatus, EmailTemplate>> = {
     reviewed: 'reviewed',
@@ -76,7 +78,7 @@ const STAGE_EMAIL_MAP: Partial<Record<SubmissionStatus, EmailTemplate>> = {
     rejected: 'reject',
 };
 
-const STAT_KEYS = ['total', 'new', 'reviewed', 'interviewed', 'accepted', 'paid', 'rejected'] as const;
+const STAT_KEYS = ['total', 'new', 'reviewed', 'shortlisted', 'interviewed', 'accepted', 'paid', 'rejected'] as const;
 
 function monthKey(d: string) {
     const date = new Date(d);
@@ -311,6 +313,7 @@ export default function CatalystWAdminPage() {
         total: submissions.length,
         new: submissions.filter(s => s.status === 'new').length,
         reviewed: submissions.filter(s => s.status === 'reviewed').length,
+        shortlisted: submissions.filter(s => s.status === 'shortlisted').length,
         interviewed: submissions.filter(s => s.status === 'interviewed').length,
         accepted: submissions.filter(s => s.status === 'accepted').length,
         paid: submissions.filter(s => s.status === 'paid').length,
@@ -347,7 +350,13 @@ export default function CatalystWAdminPage() {
                             <h1 className="text-3xl font-black">AgriPro Catalyst W</h1>
                             <p className="text-white/60 mt-1">Programme Submissions · 2026</p>
                         </div>
-                        <div className="flex gap-3">
+                        <div className="flex flex-wrap gap-3">
+                            <Link href="/admin/catalyst-w/clean-up" className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors">
+                                Clean-up
+                            </Link>
+                            <Link href="/admin/catalyst-w/selection" className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors">
+                                Selection & interviews
+                            </Link>
                             <button onClick={fetchSubmissions} className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors">
                                 <RefreshCw size={14} /> Refresh
                             </button>
@@ -358,7 +367,7 @@ export default function CatalystWAdminPage() {
                     </div>
 
                     {/* Stats */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mt-6">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 mt-6">
                         {STAT_KEYS.map(key => (
                             <button
                                 key={key}
