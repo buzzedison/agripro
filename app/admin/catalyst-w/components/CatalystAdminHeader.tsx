@@ -8,6 +8,12 @@ const TABS = [
     { href: '/admin/catalyst-w', label: 'All submissions' },
     { href: '/admin/catalyst-w/clean-up', label: 'Clean-up' },
     { href: '/admin/catalyst-w/selection', label: 'Selection & interviews' },
+    { href: '/admin/catalyst-w/scholarships', label: 'Scholarships' },
+    { href: '/admin/catalyst-w/offers', label: 'Offers & places' },
+    { href: '/admin/catalyst-w/funding', label: 'Partners & funding' },
+    { href: '/admin/catalyst-w/countries', label: 'Countries' },
+    { href: '/admin/catalyst-w/groups', label: 'Groups & welcome' },
+    { href: '/admin/catalyst-w/readiness', label: 'Launch readiness' },
 ];
 
 export default function CatalystAdminHeader({ title, subtitle, onRefresh, children }: {
