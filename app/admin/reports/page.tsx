@@ -62,6 +62,13 @@ export default function AdminReportsPage() {
             const { data: author } = evidence.sender_id ? await supabase.from('profiles').select('full_name').eq('id',evidence.sender_id).maybeSingle() : {data:null};
             return {exists:!!message && !message.removed_at,label:'Private message',preview:evidence.body,authorName:author?.full_name,authorId:evidence.sender_id || undefined};
         }
+        if (r.target_type === 'trade_review') {
+            const { data: review } = await supabase.from('trade_reviews').select('rating, body, buyer_id, hidden_at, vendor:trade_vendors(business_name)').eq('id', r.target_id).maybeSingle();
+            if (!review) return { exists: false, label: 'Supplier review', preview: 'Review no longer exists.' };
+            const vendor = review.vendor as unknown as { business_name: string } | null;
+            const { data: author } = await supabase.from('profiles').select('full_name').eq('id', review.buyer_id).maybeSingle();
+            return { exists: !review.hidden_at, label: `Review of ${vendor?.business_name || 'supplier'}`, preview: `${review.rating}★ ${review.body}${review.hidden_at ? '\n(Already hidden)' : ''}`, authorName: author?.full_name, authorId: review.buyer_id };
+        }
         if (r.target_type === 'product') {
             const {data: product}=await supabase.from('trade_products').select('name,description,vendor:trade_vendors(user_id,business_name)').eq('id',r.target_id).maybeSingle();
             const vendor=product?.vendor as unknown as {user_id:string,business_name:string} | null;
@@ -144,7 +151,14 @@ export default function AdminReportsPage() {
     };
 
     const deleteTargetContent = async (r: ReportRow) => {
-        if (!confirm(`Remove this ${r.target_type === 'enquiry_message' ? 'private message' : r.target_type}? This cannot be undone.`)) return;
+        if (!confirm(r.target_type === 'trade_review' ? 'Hide this review from the public? It can be restored by an admin.' : `Remove this ${r.target_type === 'enquiry_message' ? 'private message' : r.target_type}? This cannot be undone.`)) return;
+        if (r.target_type === 'trade_review') {
+            setBusy(true);
+            const { error } = await supabase.rpc('moderate_trade_review', { p_review: r.target_id, p_hide: true, p_reason: 'Removed after report' });
+            if (error) { setError(error.message); setBusy(false); return; }
+            await updateStatus(r.id, 'actioned', 'Review hidden by admin.');
+            return;
+        }
         if (r.target_type === 'enquiry_message') {
             setBusy(true);
             const {error} = await supabase.rpc('remove_reported_enquiry_message',{p_report:r.id});

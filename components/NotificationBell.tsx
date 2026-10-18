@@ -16,17 +16,19 @@ import {
   UserCheck,
   CheckCheck,
   X,
-  Loader2
+  Loader2,
+  Bookmark, Star,
 } from 'lucide-react';
 
 interface Notification {
   id: string;
   user_id: string;
   actor_id: string;
-  type: 'mention' | 'like' | 'comment' | 'repost' | 'follow' | 'connection_request' | 'connection_accepted' | 'enquiry' | 'enquiry_update' | 'answer_accepted' | 'enquiry_reply';
+  type: 'mention' | 'like' | 'comment' | 'repost' | 'follow' | 'connection_request' | 'connection_accepted' | 'enquiry' | 'enquiry_update' | 'answer_accepted' | 'enquiry_reply' | 'saved_item_update' | 'new_review';
   post_id?: string;
   comment_id?: string;
   enquiry_id?: string;
+  product_id?: string;
   message: string;
   read: boolean;
   created_at: string;
@@ -126,7 +128,11 @@ export default function NotificationBell() {
     }
 
     // Navigate based on notification type
-    if (notification.type === 'enquiry_reply') {
+    if (notification.type === 'saved_item_update' && notification.product_id) {
+      router.push(`/greenmarket/products/id/${notification.product_id}`);
+    } else if (notification.type === 'new_review') {
+      router.push('/greenmarket/vendor-dashboard/insights#reviews');
+    } else if (notification.type === 'enquiry_reply') {
       router.push(`/feed/enquiries/${notification.enquiry_id}`);
     } else if (notification.type === 'enquiry' || notification.type === 'enquiry_update') {
       router.push(`/feed/enquiries/${notification.enquiry_id}`);
@@ -147,6 +153,10 @@ export default function NotificationBell() {
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
+      case 'saved_item_update':
+        return <Bookmark className="w-4 h-4 text-green-600" />;
+      case 'new_review':
+        return <Star className="w-4 h-4 text-amber-500 fill-amber-400" />;
       case 'answer_accepted':
         return <CheckCheck className="w-5 h-5 text-green-600" />;
       case 'mention':

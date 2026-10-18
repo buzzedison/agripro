@@ -6,12 +6,13 @@ import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import {
     LayoutDashboard, Package, User, Shield, Settings,
-    ExternalLink, Store, LogOut, Bell, Menu, Star, CheckCircle
+    ExternalLink, Store, LogOut, Bell, Menu, Star, CheckCircle, BarChart3
 } from 'lucide-react';
 
 const navItems = [
     { label: 'Dashboard', href: '/greenmarket/vendor-dashboard', icon: LayoutDashboard, exact: true },
     { label: 'Products', href: '/greenmarket/vendor-dashboard/products', icon: Package },
+    { label: 'Insights', href: '/greenmarket/vendor-dashboard/insights', icon: BarChart3 },
     { label: 'Profile', href: '/greenmarket/vendor-dashboard/profile', icon: User },
     { label: 'Verify', href: '/greenmarket/vendor-dashboard/verify', icon: Shield },
     { label: 'Enquiries', href: '/feed/enquiries', icon: Bell },

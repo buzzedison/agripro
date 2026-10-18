@@ -160,6 +160,12 @@ function Marketplace() {
                 My enquiries
               </Link>
               <Link
+                href="/greenmarket/saved"
+                className="rounded-xl border border-emerald-700 px-4 py-3 text-sm font-semibold"
+              >
+                Saved
+              </Link>
+              <Link
                 href="/greenmarket/become-vendor"
                 className="rounded-xl bg-white px-4 py-3 text-sm font-semibold text-emerald-950"
               >

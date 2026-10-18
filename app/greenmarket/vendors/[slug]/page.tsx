@@ -1,4 +1,9 @@
+import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabase/server';
+import ShareButtons from '../../components/ShareButtons';
+import SaveButton from '../../components/SaveButton';
+import VendorReviews, { PublicReview, ReviewSummary } from '../../components/VendorReviews';
+import type { ReviewSummaryRow } from '@/lib/marketplace-reputation';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -29,6 +34,31 @@ const businessTypeLabels: Record<string, string> = {
     'other': 'General',
 };
 
+// Link previews for shared supplier pages; only approved suppliers get a detailed preview.
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+    const { slug } = await params;
+    const supabase = await createClient();
+    const { data: vendor } = await supabase
+        .from('trade_vendors')
+        .select('id, business_name, product_description, logo_url, cover_image_url, city, country')
+        .eq('slug', slug)
+        .eq('status', 'approved')
+        .maybeSingle();
+    if (!vendor) return { title: 'Supplier | AgriPro Green Market' };
+    const where = [vendor.city, vendor.country].filter(Boolean).join(', ');
+    const title = `${vendor.business_name}${where ? ` — ${where}` : ''} | AgriPro Green Market`;
+    const text = (vendor.product_description || '').replace(/\s+/g, ' ').trim();
+    const description = text.length > 200 ? `${text.slice(0, 199).trimEnd()}…` : text || `${vendor.business_name} on AgriPro Green Market.`;
+    const image = vendor.cover_image_url || vendor.logo_url;
+    return {
+        title: title.replace(' | AgriPro Green Market', ' · Green Market'), // the site layout appends "| AgriPro"
+        description,
+        alternates: { canonical: `/greenmarket/vendors/${slug}` },
+        openGraph: { type: 'website', title, description, url: `/greenmarket/vendors/${slug}`, siteName: 'AgriPro Green Market', images: image ? [{ url: image, alt: vendor.business_name }] : undefined },
+        twitter: { card: image ? 'summary_large_image' : 'summary', title, description, images: image ? [image] : undefined },
+    };
+}
+
 export default async function VendorProfilePage({ params }: PageProps) {
     const { slug } = await params;
     const supabase = await createClient();
@@ -54,6 +84,19 @@ export default async function VendorProfilePage({ params }: PageProps) {
         .order('created_at', { ascending: false });
 
     const location = [vendor.city, vendor.region, vendor.country].filter(Boolean).join(', ');
+
+    // Ratings come only from buyer reviews (migration 065); older databases show none.
+    const [{ data: reviewRows }, { data: summaryRows }, { data: { user } }] = await Promise.all([
+        supabase.rpc('vendor_reviews', { p_vendor: vendor.id, p_limit: 20 }),
+        supabase.rpc('vendor_review_summary', { p_vendor_ids: [vendor.id] }),
+        supabase.auth.getUser(),
+    ]);
+    const reviews = (reviewRows || []) as PublicReview[];
+    const summaryRow = ((summaryRows || []) as ReviewSummaryRow[])[0];
+    const summary: ReviewSummary = summaryRow ? { average: Number(summaryRow.average), total: summaryRow.total, would_trade_again_pct: summaryRow.would_trade_again_pct } : null;
+    vendor.rating = summary?.average ?? 0;
+    vendor.total_reviews = summary?.total ?? 0;
+    const isOwner = !!user && user.id === vendor.user_id;
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -162,6 +205,7 @@ export default async function VendorProfilePage({ params }: PageProps) {
 
                                 {/* Contact Buttons */}
                                 <div className="flex flex-wrap gap-3 mt-6">
+                                    {!isOwner && <SaveButton vendorId={vendor.id} returnTo={`/greenmarket/vendors/${vendor.slug}`} />}
                                     {vendor.email && (
                                         <a
                                             href={`mailto:${vendor.email}`}
@@ -180,6 +224,11 @@ export default async function VendorProfilePage({ params }: PageProps) {
                                             Call
                                         </a>
                                     )}
+                                    <ShareButtons
+                                        path={`/greenmarket/vendors/${vendor.slug}`}
+                                        title={vendor.business_name}
+                                        text={`${vendor.business_name}${location ? ` (${location})` : ''} on AgriPro Green Market`}
+                                    />
                                     {vendor.website && (
                                         <a
                                             href={vendor.website}
@@ -290,6 +339,8 @@ export default async function VendorProfilePage({ params }: PageProps) {
                                 </div>
                             )}
                         </div>
+
+                        <VendorReviews vendorId={vendor.id} slug={vendor.slug} reviews={reviews} summary={summary} isOwner={isOwner} />
                     </div>
 
                     {/* Sidebar */}

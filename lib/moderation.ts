@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 
-export type ReportTargetType = 'post' | 'comment' | 'user' | 'enquiry_message' | 'product';
+export type ReportTargetType = 'post' | 'comment' | 'user' | 'enquiry_message' | 'product' | 'trade_review';
 export type ReportReason = 'spam' | 'harassment' | 'misinformation' | 'inappropriate' | 'other';
 export type ReportStatus = 'pending' | 'reviewed' | 'actioned' | 'dismissed';
 

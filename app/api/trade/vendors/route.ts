@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { pageOptions, searchPattern, literalPattern } from "@/lib/marketplace";
+import { withReviewSummary } from "@/lib/marketplace-reputation";
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient(),
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
       .range(offset, offset + limit - 1);
     if (error) throw error;
     return NextResponse.json({
-      vendors: data,
+      vendors: await withReviewSummary(supabase, data || []),
       pagination: {
         page,
         limit,

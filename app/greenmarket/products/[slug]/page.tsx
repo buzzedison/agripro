@@ -1,4 +1,8 @@
+import type { Metadata } from "next";
 import ProductEnquiry from "../../components/ProductEnquiry";
+import ShareButtons from "../../components/ShareButtons";
+import SaveButton from "../../components/SaveButton";
+import ViewTracker from "../../components/ViewTracker";
 import { productPrice } from "@/lib/marketplace";
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
@@ -19,6 +23,38 @@ import {
 
 interface PageProps {
   params: Promise<{ slug: string }>;
+}
+
+const clip = (text: string, max: number) => {
+  const clean = text.replace(/\s+/g, " ").trim();
+  return clean.length > max ? `${clean.slice(0, max - 1).trimEnd()}…` : clean;
+};
+
+// Link previews for WhatsApp, Facebook and others. Uses the visitor's access, so hidden or
+// unapproved listings fall back to a generic preview.
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const supabase = await createClient();
+  const { data: product } = await supabase
+    .from("trade_products")
+    .select("name, description, price, currency, unit, images, is_active, vendor:trade_vendors(business_name, city, country, status)")
+    .eq("slug", slug)
+    .maybeSingle();
+  const vendor = product?.vendor as unknown as { business_name: string; city: string | null; country: string | null; status: string } | null;
+  if (!product || !product.is_active || vendor?.status !== "approved") {
+    return { title: "Product | AgriPro Green Market" };
+  }
+  const where = [vendor.city, vendor.country].filter(Boolean).join(", ");
+  const title = `${product.name.trim()} — ${productPrice(product.price, product.currency || "GHS", product.unit?.trim() || undefined)} | ${vendor.business_name.trim()}`;
+  const description = clip(`${where ? `${where}. ` : ""}${product.description || `${product.name} from ${vendor.business_name} on AgriPro Green Market.`}`, 200);
+  const image = product.images?.[0];
+  return {
+    title: `${title} · Green Market`, // the site layout appends "| AgriPro"
+    description,
+    alternates: { canonical: `/greenmarket/products/${slug}` },
+    openGraph: { type: "website", title, description, url: `/greenmarket/products/${slug}`, siteName: "AgriPro Green Market", images: image ? [{ url: image, alt: product.name }] : undefined },
+    twitter: { card: image ? "summary_large_image" : "summary", title, description, images: image ? [image] : undefined },
+  };
 }
 
 export default async function ProductDetailsPage({ params }: PageProps) {
@@ -88,6 +124,7 @@ export default async function ProductDetailsPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
+      {!isOwner && product.is_active && vendor.status === "approved" && <ViewTracker productId={product.id} />}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header Actions */}
         <div className="flex items-center justify-between mb-6">
@@ -169,6 +206,15 @@ export default async function ProductDetailsPage({ params }: PageProps) {
                   </span>
                   {/* Note: category_id is in product, better to fetch category name if possible or just skip for now */}
                 </div>
+              </div>
+
+              <div className="mb-6 flex flex-wrap items-center gap-2">
+                {!isOwner && <SaveButton productId={product.id} returnTo={`/greenmarket/products/${product.slug}`} />}
+                <ShareButtons
+                  path={`/greenmarket/products/${product.slug}`}
+                  title={product.name}
+                  text={`${product.name} — ${productPrice(product.price, product.currency || "GHS", product.unit || undefined)} from ${vendor.business_name}${location ? ` (${location})` : ""} on AgriPro Green Market`}
+                />
               </div>
 
               {/* Price */}
