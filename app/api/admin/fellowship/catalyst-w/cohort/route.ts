@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { requireAdminApi } from '@/lib/admin-auth';
+import { CATALYST_W_DATES, programmeWeekStart, rescheduleSessionDate } from '@/lib/catalyst-w-calendar';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -9,8 +11,8 @@ const supabase = createClient(
 const DEFAULT_COHORT = {
   name: 'AgriPro Catalyst W · Cohort 2026',
   cohort_number: 2026,
-  start_date: '2026-09-01',
-  end_date: '2026-11-23',
+  start_date: CATALYST_W_DATES.start,
+  end_date: CATALYST_W_DATES.end,
   total_weeks: 12,
   description:
     'A 12-week, action-oriented accelerator for 40 women agribusiness owners across Farm Tech, Value Addition, Market Infrastructure, and Agri-Fintech.',
@@ -31,11 +33,6 @@ const STARTER_PROGRAMME = [
   { week_number: 12, title: 'Demo Day & Summit Readiness', type: 'networking', description: 'Package founder showcases for the Africa Food Futures Summit in Kigali.' },
 ] as const;
 
-function addWeeks(date: string, weeks: number) {
-  const next = new Date(`${date}T00:00:00.000Z`);
-  next.setUTCDate(next.getUTCDate() + weeks * 7);
-  return next.toISOString().slice(0, 10);
-}
 
 async function getFallbackCohortNumber(startDate: string) {
   const year = Number(startDate.slice(0, 4));
@@ -56,7 +53,8 @@ async function seedStarterProgramme(cohortId: string, startDate: string) {
     cohort_id: cohortId,
     ...session,
     session_number: 1,
-    scheduled_date: addWeeks(startDate, index),
+    // Skips the holiday break, so week 4 starts on 4 January rather than 21 December.
+    scheduled_date: programmeWeekStart(startDate, index + 1),
     scheduled_time: '14:00',
     duration_minutes: 90,
     timezone: 'Africa/Lagos',
@@ -87,6 +85,8 @@ function cohortTablesMissingResponse() {
 
 // GET - Fetch all cohorts ordered by cohort_number desc
 export async function GET() {
+  const auth = await requireAdminApi();
+  if (auth.response) return auth.response;
   try {
     const { data, error } = await supabase
       .from('catalyst_w_cohorts')
@@ -108,6 +108,8 @@ export async function GET() {
 
 // POST - Create new cohort
 export async function POST(request: NextRequest) {
+  const auth = await requireAdminApi();
+  if (auth.response) return auth.response;
   try {
     const body = await request.json();
     const start_date = body.start_date || DEFAULT_COHORT.start_date;
@@ -173,13 +175,23 @@ export async function POST(request: NextRequest) {
 
 // PATCH - Update cohort by id
 export async function PATCH(request: NextRequest) {
+  const auth = await requireAdminApi();
+  if (auth.response) return auth.response;
   try {
     const body = await request.json();
-    const { id, ...fields } = body;
+    const { id, reschedule_sessions, ...rawFields } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'Missing cohort id' }, { status: 400 });
     }
+    const allowed = ['name', 'status', 'start_date', 'end_date', 'total_weeks', 'description', 'admin_notes'];
+    const fields = Object.fromEntries(Object.entries(rawFields).filter(([k]) => allowed.includes(k)));
+    const isDate = (v: unknown) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+    if (('start_date' in fields && !isDate(fields.start_date)) || ('end_date' in fields && !isDate(fields.end_date))) {
+      return NextResponse.json({ error: 'Dates must be YYYY-MM-DD' }, { status: 400 });
+    }
+
+    const { data: before } = await supabase.from('catalyst_w_cohorts').select('start_date').eq('id', id).single();
 
     const { data, error } = await supabase
       .from('catalyst_w_cohorts')
@@ -187,6 +199,19 @@ export async function PATCH(request: NextRequest) {
       .eq('id', id)
       .select()
       .single();
+
+    // Moving the start date can carry scheduled sessions along: same programme week and weekday,
+    // skipping the holiday break. Completed or cancelled sessions keep their historical dates.
+    if (!error && reschedule_sessions && before?.start_date && fields.start_date && fields.start_date !== before.start_date) {
+      const { data: sessions } = await supabase.from('catalyst_w_sessions')
+        .select('id, week_number, scheduled_date, status').eq('cohort_id', id).in('status', ['scheduled', 'postponed']);
+      for (const session of sessions || []) {
+        const scheduled_date = session.scheduled_date
+          ? rescheduleSessionDate(session.scheduled_date, session.week_number, before.start_date, fields.start_date as string)
+          : programmeWeekStart(fields.start_date as string, session.week_number);
+        await supabase.from('catalyst_w_sessions').update({ scheduled_date, updated_at: new Date().toISOString() }).eq('id', session.id);
+      }
+    }
 
     if (error) {
       console.error('Update error:', error);

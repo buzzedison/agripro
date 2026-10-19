@@ -114,7 +114,7 @@ function ProspectusDocument() {
                         </View>
                         <View style={s.coverDateItem}>
                             <Text style={s.coverDateLabel}>Programme</Text>
-                            <Text style={s.coverDateValue}>2 Nov 2026 – 7 Feb 2027</Text>
+                            <Text style={s.coverDateValue}>30 Nov 2026 – 7 Mar 2027</Text>
                         </View>
                         <View style={s.coverDateItem}>
                             <Text style={s.coverDateLabel}>Summit</Text>
@@ -263,7 +263,7 @@ function ProspectusDocument() {
             <Page size="A4" style={s.page}>
                 <View style={s.block}>
                     <Text style={s.eyebrow}>The programme</Text>
-                    <Text style={s.h2}>12 weeks of action. 2 November 2026 – 7 February 2027.</Text>
+                    <Text style={s.h2}>12 weeks of action. 30 November 2026 – 7 March 2027.</Text>
                     <Text style={s.body}>Break from 21 December 2026 – 3 January 2027.</Text>
                     <View style={{ marginTop: 4 }}>
                         <View style={s.step}>
@@ -318,7 +318,7 @@ function ProspectusDocument() {
                 <View style={s.ctaBand}>
                     <Text style={s.ctaTitle}>Apply for Cohort 2026</Text>
                     <Text style={s.ctaBody}>
-                        <Text style={s.ctaGold}>Applications are open now.</Text> Complete applications reviewed through Friday 16 October 2026.
+                        <Text style={s.ctaGold}>Applications are open now</Text> and reviewed on a rolling basis. The programme starts on Monday 30 November 2026.
                     </Text>
                     <Text style={s.ctaBody}>
                         Apply at <Text style={s.ctaGold}>agripro.com/womanyear</Text>

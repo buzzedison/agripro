@@ -23,7 +23,7 @@ const typeLabels: Record<string, string> = {
 const confirmationCopy: Record<string, string> = {
     apply: `Thank you for applying to AgriPro Catalyst W — Cohort 2026. We are thrilled by your ambition and commitment to building Africa's food future. Our team will review your application and be in touch within 10 business days. In the meantime, explore the Africa Food Futures summit at agriprohub.com/africa-food-futures.`,
     prospectus: `Your prospectus request has been received. We will send you the full AgriPro Catalyst W programme prospectus within 2 business days. If you have any immediate questions, reply to this email.`,
-    plan: `Thank you for selecting your Catalyst W programme plan. Our team will reach out to confirm your place and guide you through the next steps. Applications open March 2026 — we will keep you updated.`,
+    plan: `Thank you for selecting your Catalyst W programme plan. Our team will reach out to confirm your place and guide you through the next steps. The programme starts on 30 November 2026 — we will keep you updated.`,
 }
 
 const LEGACY_FIELDS = new Set([

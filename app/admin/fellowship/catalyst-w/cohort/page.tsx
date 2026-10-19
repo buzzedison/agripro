@@ -8,6 +8,7 @@ import {
   Clock, AlertCircle, X, Calendar, Plus, ChevronRight,
   Edit2, ClipboardList, TrendingUp, Loader2,
 } from 'lucide-react';
+import { CATALYST_W_DATES, currentProgrammeWeek, programmeWeekRange } from '@/lib/catalyst-w-calendar';
 import SubNav from './SubNav';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -100,12 +101,9 @@ function fmtShortDate(d: string) {
   return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
 
+// Programme weeks skip the holiday break (see lib/catalyst-w-calendar.ts).
 function getWeeksElapsed(startDate: string): number {
-  const start = new Date(startDate);
-  const now = new Date();
-  const diffMs = now.getTime() - start.getTime();
-  if (diffMs < 0) return 0;
-  return Math.floor(diffMs / (7 * 24 * 60 * 60 * 1000)) + 1;
+  return currentProgrammeWeek(startDate, 99).week;
 }
 
 function getCurrentWeekNumber(startDate: string): number {
@@ -113,10 +111,55 @@ function getCurrentWeekNumber(startDate: string): number {
 }
 
 function getWeekDateRange(startDate: string, weekNumber: number): string {
-  const start = new Date(startDate);
-  const weekStart = new Date(start.getTime() + (weekNumber - 1) * 7 * 24 * 60 * 60 * 1000);
-  const weekEnd = new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000);
-  return `${fmtShortDate(weekStart.toISOString())} – ${fmtShortDate(weekEnd.toISOString())}`;
+  const { start, end } = programmeWeekRange(startDate, Math.max(1, weekNumber));
+  return `${fmtShortDate(start)} – ${fmtShortDate(end)}`;
+}
+
+function CohortDatesEditor({ cohort, onSaved }: { cohort: Cohort; onSaved: (c: Cohort) => void }) {
+  const [open, setOpen] = useState(false);
+  const [start, setStart] = useState(cohort.start_date);
+  const [end, setEnd] = useState(cohort.end_date);
+  const [moveSessions, setMoveSessions] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const save = async () => {
+    setSaving(true);
+    setError('');
+    try {
+      const res = await fetch('/api/admin/fellowship/catalyst-w/cohort', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: cohort.id, start_date: start, end_date: end, reschedule_sessions: moveSessions }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not update dates');
+      onSaved(data);
+      setOpen(false);
+      if (moveSessions && start !== cohort.start_date) window.location.reload();
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+  if (!open) return <button onClick={() => setOpen(true)} className="text-xs font-medium text-green-700 hover:underline">Change dates</button>;
+  return (
+    <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm">
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="text-xs text-gray-600">Start<input type="date" value={start} onChange={e => setStart(e.target.value)} className="mt-1 block rounded border border-gray-200 px-2 py-1.5" /></label>
+        <label className="text-xs text-gray-600">End<input type="date" value={end} onChange={e => setEnd(e.target.value)} className="mt-1 block rounded border border-gray-200 px-2 py-1.5" /></label>
+        <button onClick={() => { setStart(CATALYST_W_DATES.start); setEnd(CATALYST_W_DATES.end); }} className="text-xs text-gray-600 underline">Use 30 Nov 2026 – 7 Mar 2027</button>
+      </div>
+      <label className="mt-2 flex items-center gap-2 text-xs text-gray-700">
+        <input type="checkbox" checked={moveSessions} onChange={e => setMoveSessions(e.target.checked)} />
+        Move scheduled sessions to match (same week and weekday, skipping the 21 Dec – 3 Jan break)
+      </label>
+      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+      <div className="mt-2 flex gap-2">
+        <button onClick={save} disabled={saving || !start || !end || end < start} className="rounded bg-[#0B2C24] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">{saving ? 'Saving…' : 'Save dates'}</button>
+        <button onClick={() => setOpen(false)} className="px-2 text-xs text-gray-500">Cancel</button>
+      </div>
+    </div>
+  );
 }
 
 function toTitleCase(str: string) {
@@ -159,8 +202,8 @@ function CreateCohortForm({ onCreated }: { onCreated: (c: Cohort, sessions?: Ses
   const [form, setForm] = useState({
     name: 'AgriPro Catalyst W · Cohort 2026',
     cohort_number: 2026,
-    start_date: '2026-09-01',
-    end_date: '2026-11-23',
+    start_date: CATALYST_W_DATES.start,
+    end_date: CATALYST_W_DATES.end,
     total_weeks: 12,
     description: 'A 12-week, action-oriented accelerator for 40 women agribusiness owners.',
     seed_programme: true,
@@ -427,11 +470,14 @@ export default function CohortOverview() {
             <div>
               <h2 className="font-semibold text-gray-900">{cohort.name}</h2>
               <p className="text-sm text-gray-500 mt-0.5">
-                {fmtDate(cohort.start_date)} → {fmtDate(cohort.end_date)}
+                {fmtDate(cohort.start_date)} → {fmtDate(cohort.end_date)} · holiday break 21 Dec – 3 Jan
               </p>
+              <CohortDatesEditor cohort={cohort} onSaved={c => setCohort(c)} />
             </div>
             <div className="text-right">
-              <p className="text-sm font-semibold text-green-700">Week {currentWeek} of {cohort.total_weeks}</p>
+              <p className="text-sm font-semibold text-green-700">
+                {currentWeek === 0 ? `Starts ${fmtDate(cohort.start_date)}` : currentProgrammeWeek(cohort.start_date, cohort.total_weeks).onBreak ? `Holiday break · after week ${currentWeek}` : `Week ${currentWeek} of ${cohort.total_weeks}`}
+              </p>
               <p className="text-xs text-gray-400 mt-0.5">{progressPct}% complete</p>
             </div>
           </div>

@@ -8,6 +8,7 @@ import {
   Calendar, Clock, User, ChevronDown, ChevronUp,
   Edit2, Video, FileText, ExternalLink, ChevronRight,
 } from 'lucide-react';
+import { currentProgrammeWeek, programmeWeekRange } from '@/lib/catalyst-w-calendar';
 import SubNav from '../SubNav';
 import { onUrlBlur } from '@/lib/utils/url';
 
@@ -97,19 +98,14 @@ function fmtShortDate(d: string) {
   return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
 
+// Programme weeks skip the holiday break (see lib/catalyst-w-calendar.ts).
 function getWeekDateRange(startDate: string, weekNumber: number): string {
-  const start = new Date(startDate);
-  const weekStart = new Date(start.getTime() + (weekNumber - 1) * 7 * 24 * 60 * 60 * 1000);
-  const weekEnd = new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000);
-  return `${fmtShortDate(weekStart.toISOString())} – ${fmtShortDate(weekEnd.toISOString())}`;
+  const { start, end } = programmeWeekRange(startDate, weekNumber);
+  return `${fmtShortDate(start)} – ${fmtShortDate(end)}`;
 }
 
 function getCurrentWeekNumber(startDate: string): number {
-  const start = new Date(startDate);
-  const now = new Date();
-  const diffMs = now.getTime() - start.getTime();
-  if (diffMs < 0) return 1;
-  return Math.floor(diffMs / (7 * 24 * 60 * 60 * 1000)) + 1;
+  return Math.max(1, currentProgrammeWeek(startDate, 99).week);
 }
 
 const EMPTY_FORM: SessionFormData = {

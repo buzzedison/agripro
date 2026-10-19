@@ -115,7 +115,7 @@ const WomanYearPage = () => {
                             >
                                 {[
                                     { value: "40", label: "Founders" },
-                                    { value: "12 weeks", label: "Nov 2 – Feb 7" },
+                                    { value: "12 weeks", label: "Nov 30 – Mar 7" },
                                     { value: "4 + 4", label: "Tracks + lanes" },
                                     { value: "Rwanda", label: "Summit · March 2027" },
                                 ].map((s) => (
@@ -135,8 +135,8 @@ const WomanYearPage = () => {
                         <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-white/10">
                             {[
                                 { icon: <Calendar className="text-[#F4C430]" size={20} />, label: "Applications", value: "Open now" },
-                                { icon: <Calendar className="text-[#F4C430]" size={20} />, label: "Complete applications reviewed through", value: "Fri 16 Oct 2026" },
-                                { icon: <Zap className="text-[#F4C430]" size={20} />, label: "Programme", value: "2 Nov 2026 – 7 Feb 2027" },
+                                { icon: <Calendar className="text-[#F4C430]" size={20} />, label: "Applications reviewed", value: "On a rolling basis" },
+                                { icon: <Zap className="text-[#F4C430]" size={20} />, label: "Programme", value: "30 Nov 2026 – 7 Mar 2027" },
                                 { icon: <Target className="text-[#F4C430]" size={20} />, label: "Africa Food Futures Summit", value: "Rwanda · March 2027" },
                             ].map((d, i) => (
                                 <div key={i} className="flex flex-col items-center text-center gap-2 py-8 px-3">
@@ -464,7 +464,7 @@ const WomanYearPage = () => {
                     <div className="container mx-auto px-6">
                         <div className="text-center mb-16">
                             <h2 className="text-4xl md:text-5xl font-bold mb-4">12 Weeks of Action.</h2>
-                            <p className="text-xl text-green-200">2 November 2026 – 7 February 2027, with a break from 21 December – 3 January. Then we take it to the Summit.</p>
+                            <p className="text-xl text-green-200">30 November 2026 – 7 March 2027, with a break from 21 December – 3 January. Then we take it to the Summit.</p>
                         </div>
 
                         <div className="relative">
