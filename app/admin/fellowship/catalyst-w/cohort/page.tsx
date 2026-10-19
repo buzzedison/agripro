@@ -141,7 +141,11 @@ function CohortDatesEditor({ cohort, onSaved }: { cohort: Cohort; onSaved: (c: C
       setSaving(false);
     }
   };
-  if (!open) return <button onClick={() => setOpen(true)} className="text-xs font-medium text-green-700 hover:underline">Change dates</button>;
+  if (!open) return (
+    <button onClick={() => setOpen(true)} className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-800 hover:bg-gray-50">
+      <Calendar className="h-3.5 w-3.5" /> Edit cohort dates
+    </button>
+  );
   return (
     <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm">
       <div className="flex flex-wrap items-end gap-3">
@@ -463,6 +467,14 @@ export default function CohortOverview() {
       <SubNav />
 
       <div className="px-6 py-6 max-w-6xl mx-auto space-y-6">
+
+        {(cohort.start_date !== CATALYST_W_DATES.start || cohort.end_date !== CATALYST_W_DATES.end) && (
+          <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+            <p className="font-semibold">This cohort runs {fmtDate(cohort.start_date)} → {fmtDate(cohort.end_date)}, but the programme now runs 30 Nov 2026 → 7 Mar 2027.</p>
+            <p className="mt-0.5">Update the dates so the timetable and founders&apos; welcome packs show the right weeks.</p>
+            <CohortDatesEditor cohort={cohort} onSaved={c => setCohort(c)} />
+          </div>
+        )}
 
         {/* Progress card */}
         <div className="bg-white rounded-xl border border-gray-200 p-5">
